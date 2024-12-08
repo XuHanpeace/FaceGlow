@@ -1,8 +1,7 @@
 import React from 'react';
-import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
+import {View, StyleSheet} from 'react-native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {RootStackParamList} from '../../App';
-import {useAppSelector} from '../hooks/reduxHooks';
+import {RootStackParamList} from '../types/navigation';
 import HeaderSection from '../components/HeaderSection';
 
 
@@ -16,8 +15,6 @@ type Props = {
 };
 
 const HomeScreen: React.FC<Props> = ({navigation}) => {
-  const counter = useAppSelector(state => state.counter.value);
-
   return (
     <View style={styles.container}>
       <HeaderSection

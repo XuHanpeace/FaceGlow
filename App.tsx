@@ -11,6 +11,13 @@ import {NavigationContainer} from '@react-navigation/native';
 import {SafeAreaView} from 'react-native';
 import {store} from './src/store';
 import TabNavigator from './src/navigation/TabNavigator';
+import {RootStackParamList} from './src/types/navigation';
+
+declare global {
+  namespace ReactNavigation {
+    interface RootParamList extends RootStackParamList {}
+  }
+}
 
 function App(): JSX.Element {
   return (

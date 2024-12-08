@@ -1,9 +1,14 @@
 import React from 'react';
 import {View, Text, StyleSheet} from 'react-native';
 import type {RouteProp} from '@react-navigation/native';
-import type {RootStackParamList} from '../../App';
 import { useAppDispatch } from '../hooks/reduxHooks';
 import { increment } from '../store/slices/counterSlice';
+
+type RootStackParamList = {
+  Detail: {
+    id: string;
+  };
+};
 
 type DetailScreenRouteProp = RouteProp<RootStackParamList, 'Detail'>;
 
