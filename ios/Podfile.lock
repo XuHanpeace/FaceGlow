@@ -1914,7 +1914,7 @@ SPEC CHECKSUMS:
   React-logger: 2c393ba3d92c733db9979116ff61023b8ebe6d31
   React-Mapbuffer: e086ffb0c143c96e19fa114bef0ff27bab208dff
   React-microtasksnativemodule: 8e528efbba69994a8cb107b4698d028430e80f25
-  react-native-safe-area-context: 15eb0ebf00de84719d3b84a5595a72230281c2a9
+  react-native-safe-area-context: d6406c2adbd41b2e09ab1c386781dc1c81a90919
   React-nativeconfig: 2199ff468fce8b95d1776d9cea31d35076fe7e48
   React-NativeModulesApple: c90010b6d0dd192bfe2aa92485ac4e58ccae8e27
   React-perflogger: 1991337a4cc9bcdbf2ecac52e827a3c1533064cf
@@ -1948,6 +1948,6 @@ SPEC CHECKSUMS:
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: 3ad6fa0f85a8ed6beab572d6212a1dfcf98e6c94
 
-PODFILE CHECKSUM: 883456917c4f23d5ad4d52df8252370e5d227611
+PODFILE CHECKSUM: 13e94061bfefe56f6ae0f03e55ae2b6e20140316
 
 COCOAPODS: 1.16.2

@@ -41,4 +41,5 @@ target 'MyCrossPlatformApp' do
   end
 
   pod 'SocketRocket', '= 0.7.1'
+  pod 'RNVectorIcons', :path => '../node_modules/react-native-vector-icons'
 end
