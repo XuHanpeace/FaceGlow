@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, FlatList } from 'react-native';
+import HeaderSection from '../components/HeaderSection';
 
 const MessageScreen = () => {
   const messages = [
@@ -10,6 +11,11 @@ const MessageScreen = () => {
 
   return (
     <View style={styles.container}>
+      <HeaderSection
+        title="消息中心"
+        subtitle="通知与提醒"
+        description="查看您的所有消息、通知和互动提醒。"
+      />
       <FlatList
         data={messages}
         keyExtractor={(item) => item.id}

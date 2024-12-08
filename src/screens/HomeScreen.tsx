@@ -3,6 +3,8 @@ import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../../App';
 import {useAppSelector} from '../hooks/reduxHooks';
+import HeaderSection from '../components/HeaderSection';
+
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -18,13 +20,11 @@ const HomeScreen: React.FC<Props> = ({navigation}) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome to My App</Text>
-      <Text style={styles.counter}>Counter: {counter}</Text>
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => navigation.navigate('Detail', {id: '1'})}>
-        <Text style={styles.buttonText}>Go to Details</Text>
-      </TouchableOpacity>
+      <HeaderSection
+        title="欢迎使用"
+        subtitle="探索更多功能"
+        description="这里是主页面，您可以浏览所有内容和功能。"
+      />
     </View>
   );
 };
@@ -32,18 +32,11 @@ const HomeScreen: React.FC<Props> = ({navigation}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
+    backgroundColor: '#fff',
   },
   counter: {
     fontSize: 18,
-    marginBottom: 20,
+    marginVertical: 20,
   },
   button: {
     backgroundColor: '#007AFF',

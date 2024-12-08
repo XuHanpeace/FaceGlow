@@ -1,10 +1,15 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import HeaderSection from '../components/HeaderSection';
 
 const FeedScreen = () => {
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>动态页面</Text>
+      <HeaderSection
+        title="动态"
+        subtitle="最新内容"
+        description="查看好友和关注的人发布的最新动态。"
+      />
     </View>
   );
 };
@@ -12,8 +17,6 @@ const FeedScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: '#fff',
   },
   text: {
