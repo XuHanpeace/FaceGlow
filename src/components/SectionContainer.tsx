@@ -18,9 +18,9 @@ const SectionContainer: React.FC<SectionContainerProps> = ({title, children, hor
           ))}
         </ScrollView>
       ) : (
-        <View style={styles.container}>
+        <View style={[styles.container, styles.spaceBetween]}>
           {React.Children.map(children, (child) => (
-            <View style={styles.cardWrapper}>{child}</View>
+            <View>{child}</View>
           ))}
         </View>
       )}
@@ -43,7 +43,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     paddingHorizontal: 16,
-    gap: 8,
+    gap: 4,
+  },
+  spaceBetween: {
+    justifyContent: 'space-between',
   },
   cardWrapper: {
     marginRight: 8,

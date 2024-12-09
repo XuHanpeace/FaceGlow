@@ -11,9 +11,8 @@ interface RecommendationCardProps {
 
 const isValidUrl = (url: string) => {
   try {
-    new URL(url);
-    return true;
-  } catch (_) {
+    return url.startsWith('http') || url.startsWith('file') || url.startsWith('data');
+  } catch {
     return false;
   }
 };
@@ -31,12 +30,22 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({image, title, su
     }).start();
   };
 
+  const onImageError = () => {
+    console.warn('Image failed to load:', image);
+    setImageLoaded(true);
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
   const isValidImage = isValidUrl(image);
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress}>
       <View style={styles.imageContainer}>
-        <View style={[styles.imagePlaceholder, styles.shimmer]} />
+        <View style={[styles.imagePlaceholder, !imageLoaded && styles.shimmer]} />
         {isValidImage ? (
           <Animated.Image
             source={{uri: image}}
@@ -48,6 +57,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({image, title, su
               },
             ]}
             onLoad={onImageLoad}
+            onError={onImageError}
           />
         ) : (
           <View style={styles.fallbackBackground} />
@@ -66,15 +76,15 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({image, title, su
 
 const styles = StyleSheet.create({
   card: {
-    width: (Dimensions.get('window').width - 75) / 2,
+    width: (Dimensions.get('window').width - 60) / 2,
     marginBottom: 12,
     marginHorizontal: 4,
-    borderRadius: 8,
+    borderRadius: 12,
     overflow: 'hidden',
   },
   imageContainer: {
     width: '100%',
-    height: 160,
+    height: 240,
     borderRadius: 8,
     overflow: 'hidden',
   },
