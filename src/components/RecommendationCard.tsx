@@ -43,59 +43,58 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({image, title, su
   const isValidImage = isValidUrl(image);
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress}>
-      <View style={styles.imageContainer}>
-        <View style={[styles.imagePlaceholder, !imageLoaded && styles.shimmer]} />
-        {isValidImage ? (
-          <Animated.Image
-            source={{uri: image}}
-            style={[
-              styles.image,
-              {
-                opacity: fadeAnim,
-                position: 'absolute',
-              },
-            ]}
-            onLoad={onImageLoad}
-            onError={onImageError}
-          />
-        ) : (
-          <View style={styles.fallbackBackground} />
-        )}
-      </View>
-      <View style={styles.overlay}>
-        <Text style={styles.count}>{count}</Text>
-        <View style={styles.textContainer}>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.subtitle}>{subtitle}</Text>
+    <TouchableOpacity onPress={onPress}>
+      <Animated.View style={[styles.card, { opacity: 1 }]}>
+        <View style={styles.imageContainer}>
+          {isValidImage ? (
+            <Image
+              source={{uri: image}}
+              style={styles.image}
+              onLoad={onImageLoad}
+              onError={onImageError}
+            />
+          ) : (
+            <View style={styles.fallbackBackground} />
+          )}
         </View>
-      </View>
+        <View style={styles.overlay}>
+          <Text style={styles.count}>{count}</Text>
+          <View style={styles.textContainer}>
+            <Text style={styles.title}>{title}</Text>
+            <Text style={styles.subtitle}>{subtitle}</Text>
+          </View>
+        </View>
+      </Animated.View>
     </TouchableOpacity>
   );
 };
 
+
+const cardWidth = (Dimensions.get('window').width - 55) / 2;
+const cardHeight = 240;
+
 const styles = StyleSheet.create({
   card: {
-    width: (Dimensions.get('window').width - 60) / 2,
+    width: cardWidth,
     marginBottom: 12,
     marginHorizontal: 4,
     borderRadius: 12,
     overflow: 'hidden',
   },
   imageContainer: {
-    width: '100%',
-    height: 240,
+    width: cardWidth,
+    height: cardHeight,
     borderRadius: 8,
     overflow: 'hidden',
   },
   image: {
-    width: '100%',
-    height: '100%',
+    width: 169,
+    height: 240,
     borderRadius: 8,
   },
   imagePlaceholder: {
-    width: '100%',
-    height: '100%',
+    width: cardWidth,
+    height: cardHeight,
     backgroundColor: '#f0f0f0',
     borderRadius: 8,
   },
@@ -140,8 +139,8 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   fallbackBackground: {
-    width: '100%',
-    height: '100%',
+    width: cardWidth,
+    height: cardHeight,
     backgroundColor: '#d3d3d3',
     position: 'absolute',
   },
