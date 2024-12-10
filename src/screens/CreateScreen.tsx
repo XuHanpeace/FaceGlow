@@ -1,10 +1,18 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, useColorScheme } from 'react-native';
 
 const CreateScreen = () => {
+  const colorScheme = useColorScheme();
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.text}>创建内容</Text>
+    <View style={[
+      styles.container,
+      { backgroundColor: colorScheme === 'dark' ? '#000000' : '#FFFFFF' }
+    ]}>
+      <Text style={[
+        styles.text,
+        { color: colorScheme === 'dark' ? '#FFFFFF' : '#333333' }
+      ]}>创建内容</Text>
       <TouchableOpacity style={styles.button}>
         <Text style={styles.buttonText}>点击创建</Text>
       </TouchableOpacity>

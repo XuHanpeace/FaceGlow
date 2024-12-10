@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
+import { View, Text, StyleSheet, FlatList, useColorScheme } from 'react-native';
 import HeaderSection from '../components/HeaderSection';
 
 const MessageScreen = () => {
+  const colorScheme = useColorScheme();
   const messages = [
     { id: '1', title: '系统通知', time: '刚刚' },
     { id: '2', title: '新的消息', time: '5分钟前' },
@@ -10,7 +11,10 @@ const MessageScreen = () => {
   ];
 
   return (
-    <View style={styles.container}>
+    <View style={[
+      styles.container,
+      { backgroundColor: colorScheme === 'dark' ? '#000000' : '#FFFFFF' }
+    ]}>
       <HeaderSection
         title="消息中心"
         subtitle="通知与提醒"
@@ -20,9 +24,18 @@ const MessageScreen = () => {
         data={messages}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <View style={styles.messageItem}>
-            <Text style={styles.title}>{item.title}</Text>
-            <Text style={styles.time}>{item.time}</Text>
+          <View style={[
+            styles.messageItem,
+            { borderBottomColor: colorScheme === 'dark' ? '#333333' : '#eeeeee' }
+          ]}>
+            <Text style={[
+              styles.title,
+              { color: colorScheme === 'dark' ? '#FFFFFF' : '#333333' }
+            ]}>{item.title}</Text>
+            <Text style={[
+              styles.time,
+              { color: colorScheme === 'dark' ? '#999999' : '#999999' }
+            ]}>{item.time}</Text>
           </View>
         )}
       />

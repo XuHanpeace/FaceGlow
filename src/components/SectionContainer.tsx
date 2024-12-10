@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, Text, StyleSheet, ScrollView} from 'react-native';
+import {View, Text, StyleSheet, ScrollView, useColorScheme} from 'react-native';
 
 interface SectionContainerProps {
   title: string;
@@ -8,9 +8,16 @@ interface SectionContainerProps {
 }
 
 const SectionContainer: React.FC<SectionContainerProps> = ({title, children, horizontalScroll = false}) => {
+  const colorScheme = useColorScheme();
+  
   return (
     <View style={styles.wrapper}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+      <Text style={[
+        styles.sectionTitle,
+        { color: colorScheme === 'dark' ? '#FFFFFF' : '#333333' }
+      ]}>
+        {title}
+      </Text>
       {horizontalScroll ? (
         <ScrollView horizontal style={styles.container} showsHorizontalScrollIndicator={false}>
           {React.Children.map(children, (child) => (
@@ -35,7 +42,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
     marginBottom: 12,
     paddingHorizontal: 16,
   },

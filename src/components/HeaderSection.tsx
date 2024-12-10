@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, useColorScheme } from 'react-native';
 
 interface HeaderSectionProps {
   title: string;
@@ -12,11 +12,26 @@ const HeaderSection: React.FC<HeaderSectionProps> = ({
   subtitle,
   description,
 }) => {
+  const isDarkMode = useColorScheme() === 'dark';
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{title}</Text>
-      {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
-      {description && <Text style={styles.description}>{description}</Text>}
+      <Text style={[
+        styles.title,
+        { color: isDarkMode ? '#fff' : '#333' }
+      ]}>{title}</Text>
+      {subtitle && (
+        <Text style={[
+          styles.subtitle,
+          { color: isDarkMode ? '#fff' : '#333' }
+        ]}>{subtitle}</Text>
+      )}
+      {description && (
+        <Text style={[
+          styles.description,
+          { color: isDarkMode ? '#999' : '#666' }
+        ]}>{description}</Text>
+      )}
     </View>
   );
 };
@@ -37,7 +52,6 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 16,
-    color: '#666',
   },
 });
 

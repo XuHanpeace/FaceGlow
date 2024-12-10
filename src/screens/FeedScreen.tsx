@@ -1,10 +1,15 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, useColorScheme } from 'react-native';
 import HeaderSection from '../components/HeaderSection';
 
 const FeedScreen = () => {
+  const colorScheme = useColorScheme();
+
   return (
-    <View style={styles.container}>
+    <View style={[
+      styles.container,
+      { backgroundColor: colorScheme === 'dark' ? '#000000' : '#FFFFFF' }
+    ]}>
       <HeaderSection
         title="动态"
         subtitle="最新内容"

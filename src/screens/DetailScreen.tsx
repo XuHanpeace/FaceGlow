@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, Text, StyleSheet} from 'react-native';
+import {View, Text, StyleSheet, useColorScheme} from 'react-native';
 import type {RouteProp} from '@react-navigation/native';
 import { useAppDispatch } from '../hooks/reduxHooks';
 import { increment } from '../store/slices/counterSlice';
@@ -19,15 +19,25 @@ type Props = {
 const DetailScreen: React.FC<Props> = ({route}) => {
   const {id} = route.params;
   const dispatch = useAppDispatch();
+  const colorScheme = useColorScheme();
 
   React.useEffect(() => {
     dispatch(increment());
   }, [dispatch]);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.text}>Detail Screen</Text>
-      <Text style={styles.text}>ID: {id}</Text>
+    <View style={[
+      styles.container,
+      { backgroundColor: colorScheme === 'dark' ? '#000000' : '#FFFFFF' }
+    ]}>
+      <Text style={[
+        styles.text,
+        { color: colorScheme === 'dark' ? '#FFFFFF' : '#333333' }
+      ]}>Detail Screen</Text>
+      <Text style={[
+        styles.text,
+        { color: colorScheme === 'dark' ? '#FFFFFF' : '#333333' }
+      ]}>ID: {id}</Text>
     </View>
   );
 };

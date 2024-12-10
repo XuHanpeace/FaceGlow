@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, StyleSheet, FlatList, ListRenderItem } from 'react-native';
+import { View, StyleSheet, FlatList, ListRenderItem, useColorScheme } from 'react-native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import HeaderSection from '../components/HeaderSection';
@@ -19,6 +19,7 @@ type Props = {
 const HomeScreen: React.FC<Props> = () => {
   const [sections, setSections] = useState(['AI工具集', '推荐']);
   const recommendationRef = useRef<RecommendationSectionRef>(null);
+  const isDarkMode = useColorScheme() === 'dark';
 
   const loadMoreSections = () => {
     recommendationRef.current?.fetchData();
@@ -34,7 +35,10 @@ const HomeScreen: React.FC<Props> = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[
+      styles.container, 
+      { backgroundColor: isDarkMode ? '#000' : '#fff' }
+    ]}>
       <HeaderSection
         title="欢迎使用"
         subtitle="探索更多功能"
@@ -55,7 +59,6 @@ const HomeScreen: React.FC<Props> = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
 });
 

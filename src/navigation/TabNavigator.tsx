@@ -24,8 +24,8 @@ const TabNavigator = () => {
       />
       <Tab.Navigator
         screenOptions={{
-          tabBarActiveTintColor: '#1890ff',
-          tabBarInactiveTintColor: '#999',
+          tabBarActiveTintColor: isDarkMode ? '#fff' : '#1890ff',
+          tabBarInactiveTintColor: isDarkMode ? '#666' : '#999',
           tabBarStyle: [
             styles.tabBar,
             {
@@ -33,6 +33,9 @@ const TabNavigator = () => {
               borderTopColor: isDarkMode ? '#333' : '#eee',
             }
           ],
+          tabBarItemStyle: {
+            paddingVertical: 8,
+          },
           headerShown: false,
         }}
       >
@@ -43,7 +46,15 @@ const TabNavigator = () => {
             tabBarLabel: '首页',
             tabBarIcon: ({ focused }) => (
               <Image
-                source={focused ? require('../assets/icons/home-active.png') : require('../assets/icons/home.png')}
+                source={
+                  isDarkMode
+                    ? focused
+                      ? require('../assets/icons/home-dark-active.png')
+                      : require('../assets/icons/home-dark.png')
+                    : focused
+                      ? require('../assets/icons/home-active.png')
+                      : require('../assets/icons/home.png')
+                }
                 style={styles.icon}
               />
             ),
@@ -56,7 +67,15 @@ const TabNavigator = () => {
             tabBarLabel: '动态',
             tabBarIcon: ({ focused }) => (
               <Image
-                source={focused ? require('../assets/icons/compass-active.png') : require('../assets/icons/compass.png')}
+                source={
+                  isDarkMode
+                    ? focused
+                      ? require('../assets/icons/compass-dark-active.png')
+                      : require('../assets/icons/compass-dark.png')
+                    : focused
+                      ? require('../assets/icons/compass-active.png')
+                      : require('../assets/icons/compass.png')
+                }
                 style={styles.icon}
               />
             ),
@@ -69,7 +88,15 @@ const TabNavigator = () => {
             tabBarLabel: '创建',
             tabBarIcon: ({ focused }) => (
               <Image
-                source={focused ? require('../assets/icons/plus-active.png') : require('../assets/icons/plus.png')}
+                source={
+                  isDarkMode
+                    ? focused
+                      ? require('../assets/icons/plus-dark-active.png')
+                      : require('../assets/icons/plus-dark.png')
+                    : focused
+                      ? require('../assets/icons/plus-active.png')
+                      : require('../assets/icons/plus.png')
+                }
                 style={[styles.icon, styles.createIcon]}
               />
             ),
@@ -82,7 +109,15 @@ const TabNavigator = () => {
             tabBarLabel: '消息',
             tabBarIcon: ({ focused }) => (
               <Image
-                source={focused ? require('../assets/icons/message-active.png') : require('../assets/icons/message.png')}
+                source={
+                  isDarkMode
+                    ? focused
+                      ? require('../assets/icons/message-dark-active.png')
+                      : require('../assets/icons/message-dark.png')
+                    : focused
+                      ? require('../assets/icons/message-active.png')
+                      : require('../assets/icons/message.png')
+                }
                 style={styles.icon}
               />
             ),
@@ -95,7 +130,15 @@ const TabNavigator = () => {
             tabBarLabel: '我的',
             tabBarIcon: ({ focused }) => (
               <Image
-                source={focused ? require('../assets/icons/profile-active.png') : require('../assets/icons/profile.png')}
+                source={
+                  isDarkMode
+                    ? focused
+                      ? require('../assets/icons/profile-dark-active.png')
+                      : require('../assets/icons/profile-dark.png')
+                    : focused
+                      ? require('../assets/icons/profile-active.png')
+                      : require('../assets/icons/profile.png')
+                }
                 style={styles.icon}
               />
             ),
@@ -108,13 +151,14 @@ const TabNavigator = () => {
 
 const styles = StyleSheet.create({
   tabBar: {
-    height: 60,
-    paddingBottom: 5,
+    height: 64,
+    paddingBottom: 8,
     paddingTop: 5,
   },
   icon: {
     width: 24,
     height: 24,
+    marginBottom: 4,
   },
   createIcon: {
     width: 28,
