@@ -1,6 +1,7 @@
 import React, { useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import RecommendationCard from './RecommendationCard';
 import SectionContainer from './SectionContainer';
+import { openNewNativeScreen } from '../navigation/nativeNavigationUtils';
 
 // 定义推荐卡片的数据类型
 interface RecommendationItem {
@@ -24,7 +25,7 @@ const generateMockData = (page: number): RecommendationItem[] => {
     id: `${page}-${index}`,
     image: MOCK_IMAGES[index], // 使用固定的图片数组
     title: `推荐内容 ${page * 4 + index + 1}`,
-    subtitle: `这是第 ${page * 4 + index + 1} 个推荐内容的描述`,
+    subtitle: `这是第 ${page * 4 + index + 1} 个���荐内容的描述`,
     count: Math.floor(Math.random() * 1000)
   }));
 };
@@ -71,6 +72,17 @@ const RecommendationSection = forwardRef<RecommendationSectionRef>((_, ref) => {
     fetchData();
   }, []);
 
+  const handleCardPress = (item: RecommendationItem) => {
+    openNewNativeScreen('RecommendationDetail', {
+      id: item.id,
+      title: item.title,
+      // 传递其他可能需要的参数
+      image: item.image,
+      subtitle: item.subtitle,
+      count: item.count
+    });
+  };
+
   return (
     <SectionContainer 
       title="推荐" 
@@ -83,7 +95,7 @@ const RecommendationSection = forwardRef<RecommendationSectionRef>((_, ref) => {
           title={item.title}
           subtitle={item.subtitle}
           count={item.count}
-          onPress={() => console.log(`Pressed ${item.title}`)}
+          onPress={() => handleCardPress(item)}
         />
       ))}
     </SectionContainer>

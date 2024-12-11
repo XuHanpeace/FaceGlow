@@ -1,43 +1,61 @@
 import React from 'react';
-import {View, Text, StyleSheet, useColorScheme} from 'react-native';
-import type {RouteProp} from '@react-navigation/native';
-import { useAppDispatch } from '../hooks/reduxHooks';
-import { increment } from '../store/slices/counterSlice';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  useColorScheme,
+} from 'react-native';
+import { closeNativeScreen } from '../navigation/nativeNavigationUtils';
 
-type RootStackParamList = {
-  Detail: {
-    id: string;
+type DetailScreenProps = {
+  route: {
+    params: {
+      id: string;
+      title: string;
+      content: string;
+    };
   };
 };
 
-type DetailScreenRouteProp = RouteProp<RootStackParamList, 'Detail'>;
+const DetailScreen: React.FC<DetailScreenProps> = ({ route }) => {
+  const { title, content } = route.params;
+  const isDarkMode = useColorScheme() === 'dark';
 
-type Props = {
-  route: DetailScreenRouteProp;
-};
-
-const DetailScreen: React.FC<Props> = ({route}) => {
-  const {id} = route.params;
-  const dispatch = useAppDispatch();
-  const colorScheme = useColorScheme();
-
-  React.useEffect(() => {
-    dispatch(increment());
-  }, [dispatch]);
+  const handleClose = () => {
+    closeNativeScreen();
+  };
 
   return (
     <View style={[
       styles.container,
-      { backgroundColor: colorScheme === 'dark' ? '#000000' : '#FFFFFF' }
+      { backgroundColor: isDarkMode ? '#000' : '#fff' }
     ]}>
-      <Text style={[
-        styles.text,
-        { color: colorScheme === 'dark' ? '#FFFFFF' : '#333333' }
-      ]}>Detail Screen</Text>
-      <Text style={[
-        styles.text,
-        { color: colorScheme === 'dark' ? '#FFFFFF' : '#333333' }
-      ]}>ID: {id}</Text>
+      <View style={[
+        styles.header,
+        { backgroundColor: isDarkMode ? '#1a1a1a' : '#f5f5f5' }
+      ]}>
+        <Text style={[
+          styles.title,
+          { color: isDarkMode ? '#fff' : '#000' }
+        ]}>{title}</Text>
+        <TouchableOpacity
+          style={styles.closeButton}
+          onPress={handleClose}
+        >
+          <Text style={[
+            styles.closeButtonText,
+            { color: isDarkMode ? '#fff' : '#000' }
+          ]}>关闭</Text>
+        </TouchableOpacity>
+      </View>
+      <ScrollView style={styles.content}>
+        <Text style={[
+          styles.contentText,
+          { color: isDarkMode ? '#ccc' : '#333' }
+        ]}>{content}</Text>
+      </ScrollView>
     </View>
   );
 };
@@ -45,12 +63,33 @@ const DetailScreen: React.FC<Props> = ({route}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  text: {
-    fontSize: 18,
-    marginBottom: 10,
+  header: {
+    padding: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  closeButton: {
+    padding: 8,
+  },
+  closeButtonText: {
+    fontSize: 16,
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  contentText: {
+    fontSize: 16,
+    lineHeight: 24,
   },
 });
 
