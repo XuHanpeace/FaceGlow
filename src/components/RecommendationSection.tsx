@@ -73,10 +73,10 @@ const RecommendationSection = forwardRef<RecommendationSectionRef>((_, ref) => {
   }, []);
 
   const handleCardPress = (item: RecommendationItem) => {
+    console.log('[RecommendationSection] Opening detail screen with item:', item);
     openNewNativeScreen('RecommendationDetail', {
       id: item.id,
       title: item.title,
-      // 传递其他可能需要的参数
       image: item.image,
       subtitle: item.subtitle,
       count: item.count
