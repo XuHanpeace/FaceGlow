@@ -26,9 +26,11 @@ const Modal: React.FC<ModalProps> = ({
 }) => {
   const isDarkMode = useColorScheme() === 'dark';
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const [localVisible, setLocalVisible] = React.useState(visible);
 
   useEffect(() => {
     if (visible) {
+      setLocalVisible(true);
       // 显示时从底部滑上来
       Animated.spring(slideAnim, {
         toValue: 0,
@@ -42,9 +44,15 @@ const Modal: React.FC<ModalProps> = ({
         toValue: SCREEN_HEIGHT,
         duration: 250,
         useNativeDriver: true,
-      }).start();
+      }).start(({ finished }) => {
+        // 只有在动画完成时才真正关闭modal
+        if (finished) {
+          setLocalVisible(false);
+          onClose();
+        }
+      });
     }
-  }, [visible, slideAnim]);
+  }, [visible, slideAnim, onClose]);
 
   const handleMaskPress = () => {
     if (maskClosable) {
@@ -52,12 +60,17 @@ const Modal: React.FC<ModalProps> = ({
     }
   };
 
+  if (!localVisible) {
+    return null;
+  }
+
   return (
     <RNModal
-      visible={visible}
+      visible={true}
       transparent
       animationType="fade"
       onRequestClose={onClose}
+      presentationStyle="pageSheet"
     >
       <TouchableWithoutFeedback onPress={handleMaskPress}>
         <View style={styles.mask}>
@@ -83,12 +96,13 @@ const Modal: React.FC<ModalProps> = ({
 const styles = StyleSheet.create({
   mask: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'flex-end', // 改为底部对齐
   },
   content: {
     width: '100%', // 改为全宽
     padding: 20,
+    minHeight: 400,
     borderTopLeftRadius: 16, // 只设置顶部圆角
     borderTopRightRadius: 16,
     shadowColor: '#000',
@@ -99,7 +113,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 3.84,
     elevation: 5,
-    maxHeight: '80%', // 最大高度限制
+    maxHeight: '80%', // ��大高度限制
   },
 });
 
