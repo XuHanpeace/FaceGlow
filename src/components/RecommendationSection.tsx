@@ -1,7 +1,7 @@
 import React, { useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import RecommendationCard from './RecommendationCard';
 import SectionContainer from './SectionContainer';
-import { openNewNativeScreen } from '../navigation/nativeNavigationUtils';
+import { useNavigation } from '@react-navigation/native';
 
 // 定义推荐卡片的数据类型
 interface RecommendationItem {
@@ -25,7 +25,7 @@ const generateMockData = (page: number): RecommendationItem[] => {
     id: `${page}-${index}`,
     image: MOCK_IMAGES[index], // 使用固定的图片数组
     title: `推荐内容 ${page * 4 + index + 1}`,
-    subtitle: `这是第 ${page * 4 + index + 1} 个���荐内容的描述`,
+    subtitle: `这是第 ${page * 4 + index + 1} 个荐内容的描述`,
     count: Math.floor(Math.random() * 1000)
   }));
 };
@@ -46,6 +46,7 @@ const RecommendationSection = forwardRef<RecommendationSectionRef>((_, ref) => {
   const [recommendations, setRecommendations] = useState<RecommendationItem[]>([]);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
+  const navigation = useNavigation();
 
   const fetchData = useCallback(async () => {
     if (loading) return;
@@ -73,13 +74,10 @@ const RecommendationSection = forwardRef<RecommendationSectionRef>((_, ref) => {
   }, []);
 
   const handleCardPress = (item: RecommendationItem) => {
-    console.log('[RecommendationSection] Opening detail screen with item:', item);
-    openNewNativeScreen('RecommendationDetail', {
+    navigation.navigate('Detail', {
       id: item.id,
       title: item.title,
-      image: item.image,
-      subtitle: item.subtitle,
-      count: item.count
+      content: item.subtitle // Using subtitle as content for DetailScreen
     });
   };
 

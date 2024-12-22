@@ -10,7 +10,7 @@ import {Provider} from 'react-redux';
 import {NavigationContainer} from '@react-navigation/native';
 import {SafeAreaView} from 'react-native';
 import {store} from './src/store';
-import TabNavigator from './src/navigation/TabNavigator';
+import StackNavigator from './src/navigation/StackNavigator';
 import {RootStackParamList} from './src/types/navigation';
 
 declare global {
@@ -24,7 +24,7 @@ function App(): JSX.Element {
     <Provider store={store}>
       <SafeAreaView style={{flex: 1}}>
         <NavigationContainer>
-          <TabNavigator />
+          <StackNavigator />
         </NavigationContainer>
       </SafeAreaView>
     </Provider>
