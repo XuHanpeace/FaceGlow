@@ -16,7 +16,7 @@ export const AIFeatureCard: React.FC<AIFeatureCardProps> = ({
   description,
   beforeImage,
   afterImage,
-  imageWidth = 350,
+  imageWidth = 360,
   imageHeight = 200,
 }) => {
   return (
@@ -42,18 +42,8 @@ export const AIFeatureCard: React.FC<AIFeatureCardProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: 'white',
     borderRadius: 20,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
-    margin: 16,
+    width: 360,
   },
   imageContainer: {
     width: '100%',

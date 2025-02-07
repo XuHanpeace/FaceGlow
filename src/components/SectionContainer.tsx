@@ -1,5 +1,5 @@
 import React from 'react';
-import {View, Text, StyleSheet, ScrollView, useColorScheme} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, useColorScheme } from 'react-native';
 
 interface SectionContainerProps {
   title: string;
@@ -7,26 +7,29 @@ interface SectionContainerProps {
   horizontalScroll?: boolean;
 }
 
-const SectionContainer: React.FC<SectionContainerProps> = ({title, children, horizontalScroll = false}) => {
+const SectionContainer: React.FC<SectionContainerProps> = ({
+  title,
+  children,
+  horizontalScroll = false,
+}) => {
   const colorScheme = useColorScheme();
-  
+
   return (
     <View style={styles.wrapper}>
-      <Text style={[
-        styles.sectionTitle,
-        { color: colorScheme === 'dark' ? '#FFFFFF' : '#333333' }
-      ]}>
+      <Text
+        style={[styles.sectionTitle, { color: colorScheme === 'dark' ? '#FFFFFF' : '#333333' }]}
+      >
         {title}
       </Text>
       {horizontalScroll ? (
         <ScrollView horizontal style={styles.container} showsHorizontalScrollIndicator={false}>
-          {React.Children.map(children, (child) => (
+          {React.Children.map(children, child => (
             <View style={styles.cardWrapper}>{child}</View>
           ))}
         </ScrollView>
       ) : (
-        <View style={[styles.container, styles.spaceBetween]}>
-          {React.Children.map(children, (child) => (
+        <View style={[styles.verticalContainer]}>
+          {React.Children.map(children, child => (
             <View>{child}</View>
           ))}
         </View>
@@ -40,7 +43,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 26,
     fontWeight: 'bold',
     marginBottom: 12,
     paddingHorizontal: 16,
@@ -51,6 +54,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     gap: 4,
   },
+  verticalContainer: {
+    flexDirection: 'column',
+    alignItems: 'center',
+  },
   spaceBetween: {
     justifyContent: 'space-between',
   },
@@ -59,4 +66,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SectionContainer; 
+export default SectionContainer;

@@ -47,11 +47,6 @@ const HomeScreen: React.FC<Props> = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: isDarkMode ? '#000' : '#fff' }]}>
-      <HeaderSection
-        title="欢迎使用"
-        subtitle="探索更多功能"
-        description="这里是主页面，您可以浏览所有内容和功能。"
-      />
       <FlatList
         data={sections}
         renderItem={renderSection}
@@ -60,7 +55,6 @@ const HomeScreen: React.FC<Props> = () => {
         onEndReachedThreshold={0.5}
         showsVerticalScrollIndicator={false}
       />
-      {!isLoggedIn && <Button title="登录" onPress={() => navigation.navigate('Login')} />}
     </View>
   );
 };

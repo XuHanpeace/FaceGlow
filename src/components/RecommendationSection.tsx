@@ -85,23 +85,13 @@ const RecommendationSection = forwardRef<RecommendationSectionRef>((_, ref) => {
   };
 
   return (
-    <SectionContainer title="推荐" horizontalScroll={false}>
+    <SectionContainer title="为照片添加AI色彩" horizontalScroll={false}>
       <AIFeatureCard
-        title="Restore Grainy Photos"
-        description="Whether due to age or challenging lighting, graininess can impact your pictures. Pica's AI image enhancement technology can restore these photos, improving their quality significantly."
-        beforeImage={'https://static.pica-ai.com/_next/static/media/enhance-before-6.084ea67f.png'}
-        afterImage={'https://static.pica-ai.com/_next/static/media/enhance-after-6.97c23d2e.png'}
+        title="修复破损老照片"
+        description="采用 deepseek 尖端 AI 修复技术，智能修复老照片的破损、褪色、折痕等问题。让破旧的黑白照片重现往日光彩，帮助您守护珍贵的家庭回忆。"
+        beforeImage={'https://static.pica-ai.com/_next/static/media/before.e3bdb174.jpg'}
+        afterImage={'https://static.pica-ai.com/_next/static/media/after.dedcbed1.jpg'}
       />
-      {recommendations.map(item => (
-        <RecommendationCard
-          key={item.id}
-          image={item.image}
-          title={item.title}
-          subtitle={item.subtitle}
-          count={item.count}
-          onPress={() => handleCardPress(item)}
-        />
-      ))}
     </SectionContainer>
   );
 });

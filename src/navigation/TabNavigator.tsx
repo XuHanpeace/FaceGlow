@@ -4,9 +4,6 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StyleSheet, Image, StatusBar, useColorScheme } from 'react-native';
 
 import HomeScreen from '../screens/HomeScreen';
-import FeedScreen from '../screens/FeedScreen';
-import CreateScreen from '../screens/CreateScreen';
-import MessageScreen from '../screens/MessageScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
@@ -18,20 +15,20 @@ const TabNavigator = () => {
   return (
     <>
       <StatusBar
-        barStyle={isDarkMode ? "light-content" : "dark-content"}
+        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
         backgroundColor="transparent"
         translucent={true}
       />
       <Tab.Navigator
         screenOptions={{
-          tabBarActiveTintColor: isDarkMode ? '#fff' : '#1890ff',
+          tabBarActiveTintColor: isDarkMode ? '#fff' : '#000',
           tabBarInactiveTintColor: isDarkMode ? '#666' : '#999',
           tabBarStyle: [
             styles.tabBar,
             {
               backgroundColor: isDarkMode ? '#000' : '#fff',
               borderTopColor: isDarkMode ? '#333' : '#eee',
-            }
+            },
           ],
           tabBarItemStyle: {
             paddingVertical: 8,
@@ -43,66 +40,24 @@ const TabNavigator = () => {
           name="Home"
           component={HomeScreen}
           options={{
-            tabBarLabel: '首页',
+            tabBarLabel: '',
             tabBarIcon: ({ focused }) => (
               <Image
                 source={
-                  isDarkMode
-                    ? focused
-                      ? require('../assets/icons/home-dark-active.png')
-                      : require('../assets/icons/home-dark.png')
-                    : focused
-                      ? require('../assets/icons/home-active.png')
-                      : require('../assets/icons/home.png')
+                  focused
+                    ? {
+                        uri: 'https://img.icons8.com/?size=100&id=TzMnSwiJW8HO&format=png&color=000000',
+                      }
+                    : {
+                        uri: 'https://img.icons8.com/?size=100&id=JvzawTJthRcR&format=png&color=000000',
+                      }
                 }
                 style={styles.icon}
               />
             ),
           }}
         />
-        <Tab.Screen
-          name="Feed"
-          component={FeedScreen}
-          options={{
-            tabBarLabel: '动态',
-            tabBarIcon: ({ focused }) => (
-              <Image
-                source={
-                  isDarkMode
-                    ? focused
-                      ? require('../assets/icons/compass-dark-active.png')
-                      : require('../assets/icons/compass-dark.png')
-                    : focused
-                      ? require('../assets/icons/compass-active.png')
-                      : require('../assets/icons/compass.png')
-                }
-                style={styles.icon}
-              />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Create"
-          component={CreateScreen}
-          options={{
-            tabBarLabel: '创建',
-            tabBarIcon: ({ focused }) => (
-              <Image
-                source={
-                  isDarkMode
-                    ? focused
-                      ? require('../assets/icons/plus-dark-active.png')
-                      : require('../assets/icons/plus-dark.png')
-                    : focused
-                      ? require('../assets/icons/plus-active.png')
-                      : require('../assets/icons/plus.png')
-                }
-                style={[styles.icon, styles.createIcon]}
-              />
-            ),
-          }}
-        />
-        <Tab.Screen
+        {/* <Tab.Screen
           name="Message"
           component={MessageScreen}
           options={{
@@ -122,22 +77,22 @@ const TabNavigator = () => {
               />
             ),
           }}
-        />
+        /> */}
         <Tab.Screen
           name="Profile"
           component={ProfileScreen}
           options={{
-            tabBarLabel: '我的',
+            tabBarLabel: '',
             tabBarIcon: ({ focused }) => (
               <Image
                 source={
-                  isDarkMode
-                    ? focused
-                      ? require('../assets/icons/profile-dark-active.png')
-                      : require('../assets/icons/profile-dark.png')
-                    : focused
-                      ? require('../assets/icons/profile-active.png')
-                      : require('../assets/icons/profile.png')
+                  focused
+                    ? {
+                        uri: 'https://img.icons8.com/?size=100&id=151IAtg8gTZE&format=png&color=000000',
+                      }
+                    : {
+                        uri: 'https://img.icons8.com/?size=100&id=YRJN4lBDhzh8&format=png&color=000000',
+                      }
                 }
                 style={styles.icon}
               />
@@ -151,13 +106,13 @@ const TabNavigator = () => {
 
 const styles = StyleSheet.create({
   tabBar: {
-    height: 64,
+    height: 44,
     paddingBottom: 8,
     paddingTop: 5,
   },
   icon: {
-    width: 24,
-    height: 24,
+    width: 32,
+    height: 32,
     marginBottom: 4,
   },
   createIcon: {
@@ -166,4 +121,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default TabNavigator; 
+export default TabNavigator;

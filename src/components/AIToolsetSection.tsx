@@ -15,41 +15,39 @@ const AIToolsetSection: React.FC = () => {
         <Text style={styles.modalDescription}>
           这是一个 AI 工具，您可以使用它来创建独特的内容。更多功能正在开发中...
         </Text>
-      </View>
+      </View>,
     );
   };
 
   return (
-    <SectionContainer title="AI工具集" horizontalScroll={true}>
+    <SectionContainer title="创意, 有趣, 写真" horizontalScroll={true}>
       <FeatureCard
-        title="故事生成器"
-        subtitle="有趣,创造性"
-        backgroundColor="#E8F4FF"
-        onPress={() => handleCardPress("故事生成器", "有趣,创造性")}
+        title="AI换脸"
+        backgroundColor="#fff"
+        imageSource={'https://static.pica-ai.com/_next/static/media/route_02_mobile.52f53604.png'}
+        onPress={() => handleCardPress('故事生成器', '有趣,创造性')}
+        buttonText="开始"
       />
       <FeatureCard
-        title="画作生成器"
-        subtitle="有趣,创造性"
-        backgroundColor="#FFF4E6"
-        onPress={() => handleCardPress("画作生成器", "有趣,创造性")}
+        title="证件照"
+        backgroundColor="#fff"
+        imageSource={'https://static.pica-ai.com/_next/static/media/route_03_mobile.00a24444.png'}
+        onPress={() => handleCardPress('画作生成器', '有趣,创造性')}
+        buttonText="开始"
       />
       <FeatureCard
-        title="绘画,艺术"
-        subtitle="有趣,创造性"
-        backgroundColor="#E6FFE6"
-        onPress={() => handleCardPress("绘画,艺术", "有趣,创造性")}
+        title="照片修复"
+        imageSource={'https://static.pica-ai.com/_next/static/media/route_01_mobile.f9f3aecc.png'}
+        backgroundColor="#fff"
+        onPress={() => handleCardPress('绘画,艺术', '有趣,创造性')}
+        buttonText="开始"
       />
       <FeatureCard
-        title="音乐生成器"
-        subtitle="旋律,节奏"
-        backgroundColor="#FFE6E6"
-        onPress={() => handleCardPress("音乐生成器", "旋律,节奏")}
-      />
-      <FeatureCard
-        title="视频编辑器"
-        subtitle="剪辑,特效"
-        backgroundColor="#E6E6FF"
-        onPress={() => handleCardPress("视频编辑器", "剪辑,特效")}
+        title="AI写真"
+        imageSource={'https://img.pica-cdn.com/image/aigc/2b52aa71d77e477588b2456eb9429254.webp'}
+        backgroundColor="#fff"
+        onPress={() => handleCardPress('绘画,艺术', '有趣,创造性')}
+        buttonText="开始"
       />
     </SectionContainer>
   );
@@ -77,4 +75,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AIToolsetSection; 
+export default AIToolsetSection;

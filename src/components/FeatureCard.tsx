@@ -1,5 +1,6 @@
 import React from 'react';
-import {View, Text, TouchableOpacity, StyleSheet, Dimensions} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Image } from 'react-native';
+import GradientButton from './GradientButton';
 
 // 获取屏幕宽度
 const screenWidth = Dimensions.get('window').width;
@@ -8,25 +9,42 @@ const cardWidth = (screenWidth - 48) / 3; // 48 = 左右padding(16) * 2 + 卡片
 
 interface FeatureCardProps {
   title: string;
-  subtitle: string;
+  imageSource: string;
+  buttonText: string;
   backgroundColor?: string;
-  onPress?: () => void;
+  onPress: () => void;
 }
 
 const FeatureCard: React.FC<FeatureCardProps> = ({
   title,
-  subtitle,
+  imageSource,
+  buttonText,
   backgroundColor = '#E8F4FF',
   onPress,
 }) => {
   return (
     <TouchableOpacity
-      style={[styles.container, {backgroundColor}]}
+      style={[styles.container, { backgroundColor }]}
       onPress={onPress}
-      activeOpacity={0.7}>
+      activeOpacity={0.7}
+    >
       <View style={styles.content}>
-        <Text style={styles.title} numberOfLines={2}>{title}</Text>
-        <Text style={styles.subtitle} numberOfLines={2}>{subtitle}</Text>
+        <View style={styles.titleWrapper}>
+          <Text style={styles.title} numberOfLines={2}>
+            {title}
+          </Text>
+        </View>
+
+        <Image source={{ uri: imageSource }} style={styles.image} />
+        {/* <GradientButton
+          text={buttonText}
+          onPress={onPress}
+          colors={['#5EE7DF', '#B7F985']}
+          style={styles.button}
+        /> */}
+        <TouchableOpacity style={styles.button} onPress={onPress} activeOpacity={0.7}>
+          <Text style={styles.buttonText}>{buttonText}</Text>
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -51,19 +69,43 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  titleWrapper: {
+    width: '100%',
   },
   title: {
     fontSize: 15,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 8,
-    textAlign: 'center',
+    marginBottom: 4,
   },
   subtitle: {
     fontSize: 13,
     color: '#666',
     textAlign: 'center',
   },
+  image: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+    resizeMode: 'cover',
+  },
+  button: {
+    backgroundColor: '#10f8f5',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    width: '100%',
+    marginTop: 8,
+    alignSelf: 'center',
+  },
+  buttonText: {
+    color: '#000',
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
 });
 
-export default FeatureCard; 
+export default FeatureCard;

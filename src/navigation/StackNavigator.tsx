@@ -5,7 +5,6 @@ import DetailScreen from '../screens/DetailScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { RootStackParamList } from '../types/navigation';
 
-
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const StackNavigator = () => {
@@ -13,17 +12,18 @@ const StackNavigator = () => {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
-      }}>
+      }}
+    >
       <Stack.Screen name="MainTab" component={TabNavigator} />
-      <Stack.Screen 
-        name="Detail" 
+      <Stack.Screen
+        name="Detail"
         component={DetailScreen}
         options={{
           headerShown: true,
           headerBackTitle: '返回',
         }}
       />
-      <Stack.Screen 
+      <Stack.Screen
         name="Login"
         component={LoginScreen}
         options={{
@@ -36,4 +36,4 @@ const StackNavigator = () => {
   );
 };
 
-export default StackNavigator; 
+export default StackNavigator;
