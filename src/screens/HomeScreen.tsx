@@ -8,6 +8,7 @@ import RecommendationSection from '../components/RecommendationSection';
 import { RecommendationSectionRef } from '../components/RecommendationSection';
 import { checkLoginStatus } from '../services/tcb';
 import { useNavigation } from '@react-navigation/native';
+import { ImageComparison } from '../components/ImageComparison';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -50,6 +51,12 @@ const HomeScreen: React.FC<Props> = () => {
         title="欢迎使用"
         subtitle="探索更多功能"
         description="这里是主页面，您可以浏览所有内容和功能。"
+      />
+      <ImageComparison
+        beforeImage={'https://static.pica-ai.com/_next/static/media/enhance-before-6.084ea67f.png'}
+        afterImage={'https://static.pica-ai.com/_next/static/media/enhance-after-6.97c23d2e.png'}
+        width={300}
+        height={400}
       />
       <FlatList
         data={sections}

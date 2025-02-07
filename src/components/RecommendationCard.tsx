@@ -1,5 +1,14 @@
-import React, {useState} from 'react';
-import {View, Text, Image, StyleSheet, TouchableOpacity, Animated, Dimensions} from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  TouchableOpacity,
+  Animated,
+  Dimensions,
+} from 'react-native';
+import { ImageComparison } from './ImageComparison';
 
 interface RecommendationCardProps {
   image: string;
@@ -17,7 +26,13 @@ const isValidUrl = (url: string) => {
   }
 };
 
-const RecommendationCard: React.FC<RecommendationCardProps> = ({image, title, subtitle, count, onPress}) => {
+const RecommendationCard: React.FC<RecommendationCardProps> = ({
+  image,
+  title,
+  subtitle,
+  count,
+  onPress,
+}) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const fadeAnim = new Animated.Value(0);
 
@@ -48,7 +63,7 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({image, title, su
         <View style={styles.imageContainer}>
           {isValidImage ? (
             <Image
-              source={{uri: image}}
+              source={{ uri: image }}
               style={styles.image}
               onLoad={onImageLoad}
               onError={onImageError}
@@ -68,7 +83,6 @@ const RecommendationCard: React.FC<RecommendationCardProps> = ({image, title, su
     </TouchableOpacity>
   );
 };
-
 
 const cardWidth = (Dimensions.get('window').width - 55) / 2;
 const cardHeight = 240;
@@ -100,9 +114,6 @@ const styles = StyleSheet.create({
   },
   shimmer: {
     backgroundColor: '#ebebeb',
-    backgroundImage: 'linear-gradient(to right, #ebebeb 0%, #f5f5f5 50%, #ebebeb 100%)',
-    backgroundRepeat: 'no-repeat',
-    backgroundSize: '1000px 100%',
   },
   overlay: {
     position: 'absolute',
@@ -146,4 +157,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default RecommendationCard; 
+export default RecommendationCard;
