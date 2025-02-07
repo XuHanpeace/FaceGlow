@@ -31,35 +31,22 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
   const [sliderPosition, setSliderPosition] = useState(width / 2);
   const panX = useRef(new Animated.Value(width / 2)).current;
 
-  // 计算全屏时的尺寸（保持原始比例，但略微放大）
+  // 计算全屏时的尺寸（使用固定屏幕比例）
   const fullscreenDimensions = React.useMemo(() => {
-    const scale = 1.2; // 放大倍数
-    const screenRatio = SCREEN_WIDTH / SCREEN_HEIGHT;
-    const imageRatio = width / height;
-
-    if (screenRatio > imageRatio) {
-      // 屏幕更宽，以高度为基准
-      const fullHeight = SCREEN_HEIGHT * 0.8; // 留出一些边距
-      const fullWidth = fullHeight * imageRatio;
-      return {
-        width: fullWidth * scale,
-        height: fullHeight * scale,
-      };
-    } else {
-      // 屏幕更窄，以宽度为基准
-      const fullWidth = SCREEN_WIDTH * 0.8; // 留出一些边距
-      const fullHeight = fullWidth / imageRatio;
-      return {
-        width: fullWidth * scale,
-        height: fullHeight * scale,
-      };
-    }
-  }, [width, height]);
+    return {
+      width: SCREEN_WIDTH * 0.9,  // 使用90%的屏幕宽度
+      height: SCREEN_HEIGHT * 0.5, // 使用80%的屏幕高度
+    };
+  }, []);  // 不再依赖 width 和 height
 
   // 创建拖动手势处理器
   const createPanResponder = (containerWidth: number) =>
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderTerminationRequest: () => false, // 拒绝其他组件请求终止响应
       onPanResponderMove: (_, gestureState) => {
         const newPosition = Math.max(0, Math.min(containerWidth, gestureState.moveX));
         setSliderPosition(newPosition);

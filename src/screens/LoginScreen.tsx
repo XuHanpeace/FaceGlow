@@ -1,14 +1,14 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { loginWithWechat } from '../services/tcb';
+// import { loginWithWechat } from '../services/tcb';
 
 export const LoginScreen = () => {
   const navigation = useNavigation();
 
   const handleWechatLogin = async () => {
     try {
-      const result = await loginWithWechat();
+      // const result = await loginWithWechat();
       //   if (result.success) {
       //     navigation.goBack();
       //   }
