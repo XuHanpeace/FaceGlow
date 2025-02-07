@@ -3,6 +3,7 @@ export type RootStackParamList = {
   Settings: undefined;
   Profile: undefined;
   Notifications: undefined;
+  Login: undefined;
   Detail: {
     id: string;
     title: string;

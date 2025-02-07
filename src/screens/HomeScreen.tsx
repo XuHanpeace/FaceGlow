@@ -1,25 +1,35 @@
-import React, { useState, useRef } from 'react';
-import { View, StyleSheet, FlatList, ListRenderItem, useColorScheme } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, StyleSheet, FlatList, ListRenderItem, useColorScheme, Button } from 'react-native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import HeaderSection from '../components/HeaderSection';
 import AIToolsetSection from '../components/AIToolsetSection';
 import RecommendationSection from '../components/RecommendationSection';
 import { RecommendationSectionRef } from '../components/RecommendationSection';
+import { checkLoginStatus } from '../services/tcb';
+import { useNavigation } from '@react-navigation/native';
 
-type HomeScreenNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
-  'Home'
->;
+type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 type Props = {
   navigation: HomeScreenNavigationProp;
 };
 
 const HomeScreen: React.FC<Props> = () => {
-  const [sections, setSections] = useState(['AI工具集', '推荐']);
+  const [sections] = useState(['AI工具集', '推荐']);
   const recommendationRef = useRef<RecommendationSectionRef>(null);
   const isDarkMode = useColorScheme() === 'dark';
+  const navigation = useNavigation();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    checkLoginState();
+  }, []);
+
+  const checkLoginState = async () => {
+    const userInfo = await checkLoginStatus();
+    setIsLoggedIn(!!userInfo);
+  };
 
   const loadMoreSections = () => {
     recommendationRef.current?.fetchData();
@@ -35,10 +45,7 @@ const HomeScreen: React.FC<Props> = () => {
   };
 
   return (
-    <View style={[
-      styles.container, 
-      { backgroundColor: isDarkMode ? '#000' : '#fff' }
-    ]}>
+    <View style={[styles.container, { backgroundColor: isDarkMode ? '#000' : '#fff' }]}>
       <HeaderSection
         title="欢迎使用"
         subtitle="探索更多功能"
@@ -52,6 +59,7 @@ const HomeScreen: React.FC<Props> = () => {
         onEndReachedThreshold={0.5}
         showsVerticalScrollIndicator={false}
       />
+      {!isLoggedIn && <Button title="登录" onPress={() => navigation.navigate('Login')} />}
     </View>
   );
 };
@@ -62,4 +70,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HomeScreen; 
+export default HomeScreen;
