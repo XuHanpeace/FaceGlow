@@ -32,7 +32,7 @@ export const AIFaceSwapIntro: React.FC<AIFaceSwapIntroProps> = ({
 
       {/* 底部按钮 */}
       <TouchableOpacity style={styles.button} onPress={onPress} activeOpacity={0.8}>
-        <Text style={styles.buttonText}>立即AI 換臉</Text>
+        <Text style={styles.buttonText}>开启艺术之旅</Text>
       </TouchableOpacity>
     </View>
   );

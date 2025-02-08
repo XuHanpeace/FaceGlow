@@ -3,17 +3,15 @@ import {
   View,
   Text,
   StyleSheet,
-  Image,
   ScrollView,
   TouchableOpacity,
-  Dimensions,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
-import Modal from '../components/modal/Modal';
 import ControlPanel from '../components/ControlPanel';
+import TemplatePreview from '../components/TemplatePreview';
+import TemplateGrid from '../components/TemplateGrid';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Detail'>;
 
@@ -28,12 +26,33 @@ const DetailScreen: React.FC<Props> = () => {
     {
       id: '1',
       imageUrl: 'https://img.pica-cdn.com/image/aigc/dd9c961862dba5af874c3e6bd6b31a65.webp',
+      height: 220,
     },
     {
       id: '2',
       imageUrl: 'https://img.pica-cdn.com/image/aigc/2b52aa71d77e477588b2456eb9429254.webp',
+      height: 320,
     },
-    // 添加更多模板...
+    {
+      id: '3',
+      imageUrl: 'https://img.pica-cdn.com/image/aigc/1eb46ad8228627726ba30aa18c21f45f.webp',
+      height: 200,
+    },
+    {
+      id: '4',
+      imageUrl: 'https://img.pica-cdn.com/image/aigc/3861a3758b53329f1f51161e19c5d503.webp',
+      height: 200,
+    },
+    {
+      id: '5',
+      imageUrl: 'https://img.pica-cdn.com/image/aigc/b5b034233845dae902572567b3100143.webp',
+      height: 300,
+    },
+    {
+      id: '6',
+      imageUrl: 'https://img.pica-cdn.com/image/aigc/489af1be76714a2f2a55e50c29dc71a1.webp',
+      height: 200,
+    },
   ];
 
   const handleTemplateSelect = (template: (typeof templates)[0]) => {
@@ -46,36 +65,20 @@ const DetailScreen: React.FC<Props> = () => {
 
   return (
     <View style={styles.container}>
-      {/* 顶部模板预览 */}
-      <View style={styles.previewContainer}>
-        <Image source={{ uri: selectedTemplate.imageUrl }} style={styles.previewImage} />
-      </View>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <TemplatePreview imageUrl={selectedTemplate.imageUrl} />
 
-      {/* 底部模板列表 */}
-      <View style={styles.templatesContainer}>
-        <Text style={styles.title}>选择模板</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.templatesList}>
-          {templates.map(template => (
-            <TouchableOpacity
-              key={template.id}
-              onPress={() => handleTemplateSelect(template)}
-              style={[
-                styles.templateItem,
-                selectedTemplate.id === template.id && styles.selectedTemplate,
-              ]}
-            >
-              <Image source={{ uri: template.imageUrl }} style={styles.templateImage} />
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+        <TemplateGrid
+          templates={templates}
+          selectedId={selectedTemplate.id}
+          onSelect={handleTemplateSelect}
+        />
+      </ScrollView>
 
-      {/* 底部上传按钮 */}
       <TouchableOpacity style={styles.uploadButton} onPress={handleUploadPhoto}>
         <Text style={styles.uploadButtonText}>上传照片</Text>
       </TouchableOpacity>
 
-      {/* 上传照片模态框 */}
       <ControlPanel selectedImage={selectedTemplate.imageUrl} onUpload={() => {}} />
     </View>
   );
@@ -86,42 +89,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
-  previewContainer: {
-    height: SCREEN_WIDTH * 1.2,
-    width: SCREEN_WIDTH,
+  scrollContent: {
+    paddingBottom: 100,
   },
-  previewImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  templatesContainer: {
-    padding: 16,
-  },
-  title: {
+  sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 12,
-  },
-  templatesList: {
-    flexDirection: 'row',
-  },
-  templateItem: {
-    width: 80,
-    height: 80,
-    marginRight: 8,
-    borderRadius: 8,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  selectedTemplate: {
-    borderColor: '#5EE7DF',
-  },
-  templateImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+    marginHorizontal: 16,
+    marginTop: 16,
   },
   uploadButton: {
     position: 'absolute',
@@ -137,19 +112,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#000',
-  },
-  modalContent: {
-    padding: 16,
-  },
-  modalButton: {
-    backgroundColor: '#f5f5f5',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  modalButtonText: {
-    fontSize: 16,
-    textAlign: 'center',
   },
 });
 
