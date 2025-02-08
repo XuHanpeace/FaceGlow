@@ -54,6 +54,7 @@ const HomeScreen: React.FC<Props> = () => {
         onEndReached={loadMoreSections}
         onEndReachedThreshold={0.5}
         showsVerticalScrollIndicator={false}
+        nestedScrollEnabled={true}
       />
     </View>
   );

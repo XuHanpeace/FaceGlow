@@ -1058,12 +1058,12 @@
 
 "@cloudbase/adapter-interface@^0.4.0":
   version "0.4.1"
-  resolved "https://mirrors.cloud.tencent.com/npm/@cloudbase/adapter-interface/-/adapter-interface-0.4.1.tgz#92c37e1a844d0964dd686806c70cb00e6ccabae2"
+  resolved "https://mirrors.cloud.tencent.com/npm/@cloudbase/adapter-interface/-/adapter-interface-0.4.1.tgz"
   integrity sha512-DJBhBUMg6pYByaw4II7rawbW8nu+x+faZFIxIkWeTRSxboW/jS3NpBQ7kAbycEJVAB2DO77FsnaHKYAMLnvwzw==
 
 "@cloudbase/analytics@^1.1.1-alpha.0":
   version "1.8.4"
-  resolved "https://mirrors.cloud.tencent.com/npm/@cloudbase/analytics/-/analytics-1.8.4.tgz#2c29844c49191e6ceea34009aec070cffb2fdbba"
+  resolved "https://mirrors.cloud.tencent.com/npm/@cloudbase/analytics/-/analytics-1.8.4.tgz"
   integrity sha512-paOcL9VV/A+2SIAUHI8Z6bRsYLS7Ork8py86gnscdgpcyXI318Kw79icZ5HVgX8G1IFVt6xOPiV25gILOYd1xQ==
   dependencies:
     "@cloudbase/functions" "^1.8.4"
@@ -1071,7 +1071,7 @@
 
 "@cloudbase/app@^1.4.1", "@cloudbase/app@^1.8.4":
   version "1.8.4"
-  resolved "https://mirrors.cloud.tencent.com/npm/@cloudbase/app/-/app-1.8.4.tgz#269ba7e78240c0250f29e3791c5e0ea9987f1aed"
+  resolved "https://mirrors.cloud.tencent.com/npm/@cloudbase/app/-/app-1.8.4.tgz"
   integrity sha512-9tI2I9ccyTwW8uzw/PrwO3k7BsIxyWwGKizbC6sCEtQTNMSzZbxZ8XIfuZcpvjHeiGaAzSNp3NZGeLZzTUd3zA==
   dependencies:
     "@cloudbase/adapter-interface" "^0.4.0"
@@ -1081,7 +1081,7 @@
 
 "@cloudbase/auth@^1.6.1":
   version "1.8.4"
-  resolved "https://mirrors.cloud.tencent.com/npm/@cloudbase/auth/-/auth-1.8.4.tgz#f9c4950fbb9a4adcefc7df3824c4d1ff0f8e0bb0"
+  resolved "https://mirrors.cloud.tencent.com/npm/@cloudbase/auth/-/auth-1.8.4.tgz"
   integrity sha512-rQ2PBdHSP3oVC+dBFQuo42h1Q5w9whh/kvkf8NgLVmLtQ8b4SSUR8RN59RB867v876OO6yJnF5Bx/MKu272tww==
   dependencies:
     "@cloudbase/adapter-interface" "^0.4.0"
@@ -1092,7 +1092,7 @@
 
 "@cloudbase/database@0.9.18-next":
   version "0.9.18-next"
-  resolved "https://mirrors.cloud.tencent.com/npm/@cloudbase/database/-/database-0.9.18-next.tgz#3c8919512c891783f3acaad7228da2dfcfd951d7"
+  resolved "https://mirrors.cloud.tencent.com/npm/@cloudbase/database/-/database-0.9.18-next.tgz"
   integrity sha512-iXruD1T5scc/h+zNc7o3EdoiEr5l0eLhMH47UsIprp5livB7tdZTDX9U5EBXflYmRIG/1TrK983GsvCbKWT7iw==
   dependencies:
     bson "^4.0.2"
@@ -1102,7 +1102,7 @@
 
 "@cloudbase/functions@^1.3.4", "@cloudbase/functions@^1.8.4":
   version "1.8.4"
-  resolved "https://mirrors.cloud.tencent.com/npm/@cloudbase/functions/-/functions-1.8.4.tgz#f78f3c7c59f53d32ffeffec93eb27304ce91e9d8"
+  resolved "https://mirrors.cloud.tencent.com/npm/@cloudbase/functions/-/functions-1.8.4.tgz"
   integrity sha512-B8vV+qPpquebVNpbK6w3NE9Ki66LYteEBZFJeQdYKzYaBT3EksRyAggv/EO7wI8M9jRM+3zq7TWhgsHg+xDbfQ==
   dependencies:
     "@cloudbase/adapter-interface" "^0.4.0"
@@ -1126,7 +1126,7 @@
 
 "@cloudbase/realtime@^1.1.4-alpha.0":
   version "1.8.4"
-  resolved "https://mirrors.cloud.tencent.com/npm/@cloudbase/realtime/-/realtime-1.8.4.tgz#7b0b9c013d5bd51849390f061d1d860cb29a6d9d"
+  resolved "https://mirrors.cloud.tencent.com/npm/@cloudbase/realtime/-/realtime-1.8.4.tgz"
   integrity sha512-ExmC5pbnihFdIBVzSDUeVsHFgqU+/TbrRzFNMOf7i8zSVW01HKjcBnz2TojGlf6Jf+7MMxnDRaPzpP8AtZKU/Q==
   dependencies:
     "@cloudbase/types" "^1.8.4"
@@ -1136,7 +1136,7 @@
 
 "@cloudbase/storage@^1.3.4":
   version "1.8.4"
-  resolved "https://mirrors.cloud.tencent.com/npm/@cloudbase/storage/-/storage-1.8.4.tgz#339b43a422f9a58d46956d6de25743a75978871a"
+  resolved "https://mirrors.cloud.tencent.com/npm/@cloudbase/storage/-/storage-1.8.4.tgz"
   integrity sha512-j0YZyPrAKDBehgSVl39uoi2u/0GOFaxIczBRoyTI6S3Z3nw0Z5n0h4lm3WdXaX+scGcuSSdUo+Bm0Cl/hET11g==
   dependencies:
     "@cloudbase/types" "^1.8.4"
@@ -1144,14 +1144,14 @@
 
 "@cloudbase/types@^1.1.3-alpha.0", "@cloudbase/types@^1.8.4":
   version "1.8.4"
-  resolved "https://mirrors.cloud.tencent.com/npm/@cloudbase/types/-/types-1.8.4.tgz#359f092d784e2061cf1ef1970b9fcce0abf5ae37"
+  resolved "https://mirrors.cloud.tencent.com/npm/@cloudbase/types/-/types-1.8.4.tgz"
   integrity sha512-imFEHcrAORsFlWt4dwVAY0neo3Vfye4MNaYwGWfLXlheQPElFBwfC167hO9DYA/RVntmswTj4eYZDL1cd2FqZA==
   dependencies:
     "@cloudbase/adapter-interface" "^0.4.0"
 
 "@cloudbase/utilities@^1.3.4", "@cloudbase/utilities@^1.8.4":
   version "1.8.4"
-  resolved "https://mirrors.cloud.tencent.com/npm/@cloudbase/utilities/-/utilities-1.8.4.tgz#7769a9b0eb0003af509b152362501a09d7beff43"
+  resolved "https://mirrors.cloud.tencent.com/npm/@cloudbase/utilities/-/utilities-1.8.4.tgz"
   integrity sha512-+xgQA1fCyASekWrmXDgXEhYGh8i4Ot9WWfOH9LLVg3Cy1yZzTMcXjnWxYD9dpsjgvfhRkKDqDmlUVfOea0BQjQ==
   dependencies:
     "@cloudbase/adapter-interface" "^0.4.0"
@@ -2686,7 +2686,7 @@ bser@2.1.1:
 
 bson@^4.0.2:
   version "4.7.2"
-  resolved "https://mirrors.cloud.tencent.com/npm/bson/-/bson-4.7.2.tgz#320f4ad0eaf5312dd9b45dc369cc48945e2a5f2e"
+  resolved "https://mirrors.cloud.tencent.com/npm/bson/-/bson-4.7.2.tgz"
   integrity sha512-Ry9wCtIZ5kGqkJoi6aD8KjxFZEx78guTQDnpXWiNthsxzrxAK/i8E6pCHAIZTbaEFWcOCvbecMukfK7XUvyLpQ==
   dependencies:
     buffer "^5.6.0"
@@ -2891,7 +2891,7 @@ clone@^1.0.2:
 
 cloudbase-adapter-wx_mp@0.2.0:
   version "0.2.0"
-  resolved "https://mirrors.cloud.tencent.com/npm/cloudbase-adapter-wx_mp/-/cloudbase-adapter-wx_mp-0.2.0.tgz#21bd81acec852373ee8b62ab4de57e535eec0059"
+  resolved "https://mirrors.cloud.tencent.com/npm/cloudbase-adapter-wx_mp/-/cloudbase-adapter-wx_mp-0.2.0.tgz"
   integrity sha512-GiQGm11cH0K8oKY5tuJZm7DgsM2+WUw5toteMJlKTLMH4ouFrizu5J228I2kXtEWU+u/wE+5tuNGrEdhlfpkZQ==
   dependencies:
     "@cloudbase/adapter-interface" "^0.4.0"
@@ -3092,7 +3092,7 @@ cross-spawn@^7.0.2, cross-spawn@^7.0.3:
 
 crypto-js@4.2.0:
   version "4.2.0"
-  resolved "https://mirrors.cloud.tencent.com/npm/crypto-js/-/crypto-js-4.2.0.tgz#4d931639ecdfd12ff80e8186dba6af2c2e856631"
+  resolved "https://mirrors.cloud.tencent.com/npm/crypto-js/-/crypto-js-4.2.0.tgz"
   integrity sha512-KALDyEYgpY+Rlob/iriUtjV6d5Eq+Y191A5g4UqLAi8CyGP9N1+FdVbkc1SxKc2r4YAYqG8JzO2KGL+AizD70Q==
 
 csstype@^3.0.2:
@@ -3674,7 +3674,7 @@ eventemitter3@^5.0.1:
 
 events@1.0.1:
   version "1.0.1"
-  resolved "https://mirrors.cloud.tencent.com/npm/events/-/events-1.0.1.tgz#386f6471cbb609e7925e7bfe7468634b9e069ac2"
+  resolved "https://mirrors.cloud.tencent.com/npm/events/-/events-1.0.1.tgz"
   integrity sha512-Ee2RsyA5p9FyGVnVvbb1j7VKg+ezi6IOcgis2crSNo1V7S/M0eUnMABobd/fRhm6L3p/jGhPJzDFQDRpYw3O+g==
 
 execa@^5.0.0, execa@^5.1.1:
@@ -5178,7 +5178,7 @@ locate-path@^6.0.0:
 
 lodash.clonedeep@4.5.0, lodash.clonedeep@^4.5.0:
   version "4.5.0"
-  resolved "https://mirrors.cloud.tencent.com/npm/lodash.clonedeep/-/lodash.clonedeep-4.5.0.tgz#e23f3f9c4f8fbdde872529c1071857a086e5ccef"
+  resolved "https://mirrors.cloud.tencent.com/npm/lodash.clonedeep/-/lodash.clonedeep-4.5.0.tgz"
   integrity sha512-H5ZhCF25riFd9uB5UCkVKo61m3S/xZk1x4wA6yp/L3RFP6Z/eHH1ymQcGLo7J3GMPfm0V/7m1tryHuGVxpqEBQ==
 
 lodash.debounce@^4.0.8:
@@ -5198,7 +5198,7 @@ lodash.merge@^4.6.2:
 
 lodash.set@4.3.2, lodash.set@^4.3.2:
   version "4.3.2"
-  resolved "https://mirrors.cloud.tencent.com/npm/lodash.set/-/lodash.set-4.3.2.tgz#d8757b1da807dde24816b0d6a84bea1a76230b23"
+  resolved "https://mirrors.cloud.tencent.com/npm/lodash.set/-/lodash.set-4.3.2.tgz"
   integrity sha512-4hNPN5jlm/N/HLMCO43v8BXKq9Z7QdAGc/VGrRD61w8gN9g/6jF9A4L1pbUgBLCffi0w9VsXfTOij5x8iTyFvg==
 
 lodash.throttle@^4.1.1:
@@ -5208,7 +5208,7 @@ lodash.throttle@^4.1.1:
 
 lodash.unset@4.5.2, lodash.unset@^4.5.2:
   version "4.5.2"
-  resolved "https://mirrors.cloud.tencent.com/npm/lodash.unset/-/lodash.unset-4.5.2.tgz#370d1d3e85b72a7e1b0cdf2d272121306f23e4ed"
+  resolved "https://mirrors.cloud.tencent.com/npm/lodash.unset/-/lodash.unset-4.5.2.tgz"
   integrity sha512-bwKX88k2JhCV9D1vtE8+naDKlLiGrSmf8zi/Y9ivFHwbmRfA8RxS/aVJ+sIht2XOwqoNr4xUPUkGZpc1sHFEKg==
 
 lodash@^4.17.15, lodash@^4.17.21:
@@ -6135,10 +6135,20 @@ react-native-elements@^3.4.3:
     react-native-ratings "8.0.4"
     react-native-size-matters "^0.3.1"
 
+react-native-fast-image@^8.6.3:
+  version "8.6.3"
+  resolved "https://mirrors.cloud.tencent.com/npm/react-native-fast-image/-/react-native-fast-image-8.6.3.tgz#6edc3f9190092a909d636d93eecbcc54a8822255"
+  integrity sha512-Sdw4ESidXCXOmQ9EcYguNY2swyoWmx53kym2zRsvi+VeFCHEdkO+WG1DK+6W81juot40bbfLNhkc63QnWtesNg==
+
 react-native-linear-gradient@^2.8.3:
   version "2.8.3"
   resolved "https://mirrors.cloud.tencent.com/npm/react-native-linear-gradient/-/react-native-linear-gradient-2.8.3.tgz#9a116649f86d74747304ee13db325e20b21e564f"
   integrity sha512-KflAXZcEg54PXkLyflaSZQ3PJp4uC4whM7nT/Uot9m0e/qxFV3p6uor1983D1YOBJbJN7rrWdqIjq0T42jOJyA==
+
+react-native-pager-view@^6.7.0:
+  version "6.7.0"
+  resolved "https://mirrors.cloud.tencent.com/npm/react-native-pager-view/-/react-native-pager-view-6.7.0.tgz#88f2520e85f07ce55f3f56c57d6637249a215160"
+  integrity sha512-sutxKiMqBuQrEyt4mLaLNzy8taIC7IuYpxfcwQBXfSYBSSpAa0qE9G1FXlP/iXqTSlFgBXyK7BESsl9umOjECQ==
 
 react-native-ratings@8.0.4:
   version "8.0.4"
@@ -6175,7 +6185,7 @@ react-native-vector-icons@^10.2.0:
 
 react-native-wechat-lib@^1.1.27:
   version "1.1.27"
-  resolved "https://mirrors.cloud.tencent.com/npm/react-native-wechat-lib/-/react-native-wechat-lib-1.1.27.tgz#22d8c74bd6099627978ffe898f0ee089e113c7e9"
+  resolved "https://mirrors.cloud.tencent.com/npm/react-native-wechat-lib/-/react-native-wechat-lib-1.1.27.tgz"
   integrity sha512-OstWvE0vaBvIGqAegaCIS/jvsVg5bH1IYk/EU8flmDRPl3mMlraG2C2AnvzHkrzXbJLJamQigA44CDoYj2p/4g==
   dependencies:
     events "1.0.1"
@@ -6728,7 +6738,7 @@ source-map-support@^0.5.16, source-map-support@~0.5.20:
 
 source-map@0.5.6:
   version "0.5.6"
-  resolved "https://mirrors.cloud.tencent.com/npm/source-map/-/source-map-0.5.6.tgz#75ce38f52bf0733c5a7f0c118d81334a2bb5f412"
+  resolved "https://mirrors.cloud.tencent.com/npm/source-map/-/source-map-0.5.6.tgz"
   integrity sha512-MjZkVp0NHr5+TPihLcadqnlVoGIoWo4IBHptutGh9wI3ttUYvCG26HkSuDi+K6lsZ25syXJXcctwgyVCt//xqA==
 
 source-map@^0.5.6:
@@ -6743,7 +6753,7 @@ source-map@^0.6.0, source-map@^0.6.1, source-map@~0.6.1:
 
 sourcemapped-stacktrace@^1.1.11:
   version "1.1.11"
-  resolved "https://mirrors.cloud.tencent.com/npm/sourcemapped-stacktrace/-/sourcemapped-stacktrace-1.1.11.tgz#e2dede7fc148599c52a4f883276e527f8452657d"
+  resolved "https://mirrors.cloud.tencent.com/npm/sourcemapped-stacktrace/-/sourcemapped-stacktrace-1.1.11.tgz"
   integrity sha512-O0pcWjJqzQFVsisPlPXuNawJHHg9N9UgpJ/aDmvi9+vnS3x1C0NhwkVFzzZ1VN0Xo+bekyweoqYvBw5ZBKiNnQ==
   dependencies:
     source-map "0.5.6"

@@ -3,6 +3,8 @@ import RecommendationCard from './RecommendationCard';
 import SectionContainer from './SectionContainer';
 import { useNavigation } from '@react-navigation/native';
 import { AIFeatureCard } from './AIFeatureCard';
+import { AIFaceSwapIntro } from './AIFaceSwapIntro';
+import { AIIDPhotoIntro } from './AIIDPhotoIntro';
 
 // 定义推荐卡片的数据类型
 interface RecommendationItem {
@@ -92,6 +94,12 @@ const RecommendationSection = forwardRef<RecommendationSectionRef>((_, ref) => {
         beforeImage={'https://static.pica-ai.com/_next/static/media/before.e3bdb174.jpg'}
         afterImage={'https://static.pica-ai.com/_next/static/media/after.dedcbed1.jpg'}
       />
+      <AIFaceSwapIntro
+        templateImage="https://img.pica-cdn.com/image/aigc/dd9c961862dba5af874c3e6bd6b31a65.webp"
+        // templateImage="https://static.pica-ai.com/_next/static/media/right_sample.89e22a28.png"
+        onPress={() => console.log('Button pressed')}
+      />
+      <AIIDPhotoIntro onPress={() => console.log('Button pressed')} />
     </SectionContainer>
   );
 });
