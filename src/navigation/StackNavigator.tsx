@@ -19,8 +19,7 @@ const StackNavigator = () => {
         name="Detail"
         component={DetailScreen}
         options={{
-          headerShown: true,
-          headerBackTitle: '返回',
+          headerShown: false,
         }}
       />
       <Stack.Screen

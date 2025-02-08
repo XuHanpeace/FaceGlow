@@ -1,119 +1,82 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
+  Image,
   ScrollView,
   TouchableOpacity,
-  useColorScheme,
-  ActivityIndicator,
+  Dimensions,
 } from 'react-native';
-import { closeNativeScreen } from '../navigation/nativeNavigationUtils';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/navigation';
+import Modal from '../components/modal/Modal';
+import ControlPanel from '../components/ControlPanel';
 
-interface Movie {
-  id: string;
-  title: string;
-  releaseYear: string;
-}
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-type DetailScreenProps = {
-  route: {
-    params: {
-      id: string;
-      title: string;
-      content: string;
-    };
-  };
-};
+type Props = NativeStackScreenProps<RootStackParamList, 'Detail'>;
 
-const DetailScreen: React.FC<DetailScreenProps> = ({ route }) => {
-  const { title, content } = route.params;
-  const isDarkMode = useColorScheme() === 'dark';
-  const [movies, setMovies] = useState<Movie[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+const DetailScreen: React.FC<Props> = () => {
+  const [selectedTemplate, setSelectedTemplate] = useState({
+    id: '1',
+    imageUrl: 'https://img.pica-cdn.com/image/aigc/dd9c961862dba5af874c3e6bd6b31a65.webp',
+  });
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
-  useEffect(() => {
-    fetchMovies();
-  }, []);
+  const templates = [
+    {
+      id: '1',
+      imageUrl: 'https://img.pica-cdn.com/image/aigc/dd9c961862dba5af874c3e6bd6b31a65.webp',
+    },
+    {
+      id: '2',
+      imageUrl: 'https://img.pica-cdn.com/image/aigc/2b52aa71d77e477588b2456eb9429254.webp',
+    },
+    // 添加更多模板...
+  ];
 
-  async function fetchMovies() {
-    try {
-      setLoading(true);
-      let response = await fetch('https://facebook.github.io/react-native/movies.json');
-      let responseJson = await response.json();
-      setMovies(responseJson.movies);
-      setError(null);
-    } catch (e) {
-      setError('获取电影数据失败');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const handleClose = () => {
-    closeNativeScreen();
+  const handleTemplateSelect = (template: (typeof templates)[0]) => {
+    setSelectedTemplate(template);
   };
 
-  const renderContent = () => {
-    if (loading) {
-      return (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#1890ff" />
-        </View>
-      );
-    }
-
-    if (error) {
-      return (
-        <View style={styles.centerContainer}>
-          <Text style={[styles.errorText, { color: isDarkMode ? '#ff4d4f' : '#f5222d' }]}>
-            {error}
-          </Text>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchMovies}>
-            <Text style={styles.retryText}>重试</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
-
-    return (
-      <ScrollView style={styles.content}>
-        <Text style={[styles.contentText, { color: isDarkMode ? '#ccc' : '#333' }]}>{content}</Text>
-
-        <View style={styles.moviesContainer}>
-          <Text style={[styles.moviesTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
-            电影列表
-          </Text>
-          {movies.map(movie => (
-            <View
-              key={movie.id}
-              style={[styles.movieItem, { backgroundColor: isDarkMode ? '#1a1a1a' : '#f5f5f5' }]}
-            >
-              <Text style={[styles.movieTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
-                {movie.title}
-              </Text>
-              <Text style={[styles.movieYear, { color: isDarkMode ? '#ccc' : '#666' }]}>
-                ({movie.releaseYear})
-              </Text>
-            </View>
-          ))}
-        </View>
-      </ScrollView>
-    );
+  const handleUploadPhoto = () => {
+    setIsModalVisible(true);
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: isDarkMode ? '#000' : '#fff' }]}>
-      <View style={[styles.header, { backgroundColor: isDarkMode ? '#1a1a1a' : '#f5f5f5' }]}>
-        <Text style={[styles.title, { color: isDarkMode ? '#fff' : '#000' }]}>{title}</Text>
-        <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-          <Text style={[styles.closeButtonText, { color: isDarkMode ? '#fff' : '#000' }]}>
-            关闭
-          </Text>
-        </TouchableOpacity>
+    <View style={styles.container}>
+      {/* 顶部模板预览 */}
+      <View style={styles.previewContainer}>
+        <Image source={{ uri: selectedTemplate.imageUrl }} style={styles.previewImage} />
       </View>
-      {renderContent()}
+
+      {/* 底部模板列表 */}
+      <View style={styles.templatesContainer}>
+        <Text style={styles.title}>选择模板</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.templatesList}>
+          {templates.map(template => (
+            <TouchableOpacity
+              key={template.id}
+              onPress={() => handleTemplateSelect(template)}
+              style={[
+                styles.templateItem,
+                selectedTemplate.id === template.id && styles.selectedTemplate,
+              ]}
+            >
+              <Image source={{ uri: template.imageUrl }} style={styles.templateImage} />
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* 底部上传按钮 */}
+      <TouchableOpacity style={styles.uploadButton} onPress={handleUploadPhoto}>
+        <Text style={styles.uploadButtonText}>上传照片</Text>
+      </TouchableOpacity>
+
+      {/* 上传照片模态框 */}
+      <ControlPanel selectedImage={selectedTemplate.imageUrl} onUpload={() => {}} />
     </View>
   );
 };
@@ -121,75 +84,72 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#fff',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  previewContainer: {
+    height: SCREEN_WIDTH * 1.2,
+    width: SCREEN_WIDTH,
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  templatesContainer: {
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
   title: {
     fontSize: 18,
     fontWeight: 'bold',
+    marginBottom: 12,
   },
-  closeButton: {
-    padding: 8,
+  templatesList: {
+    flexDirection: 'row',
   },
-  closeButtonText: {
+  templateItem: {
+    width: 80,
+    height: 80,
+    marginRight: 8,
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  selectedTemplate: {
+    borderColor: '#5EE7DF',
+  },
+  templateImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  uploadButton: {
+    position: 'absolute',
+    bottom: 32,
+    left: 16,
+    right: 16,
+    backgroundColor: '#5EE7DF',
+    paddingVertical: 16,
+    borderRadius: 25,
+    alignItems: 'center',
+  },
+  uploadButtonText: {
     fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
   },
-  content: {
-    flex: 1,
+  modalContent: {
     padding: 16,
   },
-  contentText: {
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 20,
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorText: {
-    fontSize: 16,
-    marginBottom: 16,
-  },
-  retryButton: {
-    backgroundColor: '#1890ff',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 4,
-  },
-  retryText: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  moviesContainer: {
-    marginTop: 20,
-  },
-  moviesTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
-  movieItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
+  modalButton: {
+    backgroundColor: '#f5f5f5',
+    padding: 16,
     borderRadius: 8,
     marginBottom: 8,
   },
-  movieTitle: {
+  modalButtonText: {
     fontSize: 16,
-    fontWeight: '500',
-    marginRight: 8,
-  },
-  movieYear: {
-    fontSize: 14,
+    textAlign: 'center',
   },
 });
 
