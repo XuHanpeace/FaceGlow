@@ -40,15 +40,12 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ route }) => {
   async function fetchMovies() {
     try {
       setLoading(true);
-      let response = await fetch(
-        'https://facebook.github.io/react-native/movies.json',
-      );
+      let response = await fetch('https://facebook.github.io/react-native/movies.json');
       let responseJson = await response.json();
       setMovies(responseJson.movies);
       setError(null);
-    } catch (error) {
+    } catch (e) {
       setError('获取电影数据失败');
-      console.error('Error fetching movies:', error);
     } finally {
       setLoading(false);
     }
@@ -82,32 +79,23 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ route }) => {
 
     return (
       <ScrollView style={styles.content}>
-        <Text style={[
-          styles.contentText,
-          { color: isDarkMode ? '#ccc' : '#333' }
-        ]}>{content}</Text>
-        
+        <Text style={[styles.contentText, { color: isDarkMode ? '#ccc' : '#333' }]}>{content}</Text>
+
         <View style={styles.moviesContainer}>
-          <Text style={[
-            styles.moviesTitle,
-            { color: isDarkMode ? '#fff' : '#000' }
-          ]}>电影列表</Text>
-          {movies.map((movie) => (
-            <View 
-              key={movie.id} 
-              style={[
-                styles.movieItem,
-                { backgroundColor: isDarkMode ? '#1a1a1a' : '#f5f5f5' }
-              ]}
+          <Text style={[styles.moviesTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
+            电影列表
+          </Text>
+          {movies.map(movie => (
+            <View
+              key={movie.id}
+              style={[styles.movieItem, { backgroundColor: isDarkMode ? '#1a1a1a' : '#f5f5f5' }]}
             >
-              <Text style={[
-                styles.movieTitle,
-                { color: isDarkMode ? '#fff' : '#000' }
-              ]}>{movie.title}</Text>
-              <Text style={[
-                styles.movieYear,
-                { color: isDarkMode ? '#ccc' : '#666' }
-              ]}>({movie.releaseYear})</Text>
+              <Text style={[styles.movieTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
+                {movie.title}
+              </Text>
+              <Text style={[styles.movieYear, { color: isDarkMode ? '#ccc' : '#666' }]}>
+                ({movie.releaseYear})
+              </Text>
             </View>
           ))}
         </View>
@@ -116,26 +104,13 @@ const DetailScreen: React.FC<DetailScreenProps> = ({ route }) => {
   };
 
   return (
-    <View style={[
-      styles.container,
-      { backgroundColor: isDarkMode ? '#000' : '#fff' }
-    ]}>
-      <View style={[
-        styles.header,
-        { backgroundColor: isDarkMode ? '#1a1a1a' : '#f5f5f5' }
-      ]}>
-        <Text style={[
-          styles.title,
-          { color: isDarkMode ? '#fff' : '#000' }
-        ]}>{title}</Text>
-        <TouchableOpacity
-          style={styles.closeButton}
-          onPress={handleClose}
-        >
-          <Text style={[
-            styles.closeButtonText,
-            { color: isDarkMode ? '#fff' : '#000' }
-          ]}>关闭</Text>
+    <View style={[styles.container, { backgroundColor: isDarkMode ? '#000' : '#fff' }]}>
+      <View style={[styles.header, { backgroundColor: isDarkMode ? '#1a1a1a' : '#f5f5f5' }]}>
+        <Text style={[styles.title, { color: isDarkMode ? '#fff' : '#000' }]}>{title}</Text>
+        <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+          <Text style={[styles.closeButtonText, { color: isDarkMode ? '#fff' : '#000' }]}>
+            关闭
+          </Text>
         </TouchableOpacity>
       </View>
       {renderContent()}
@@ -218,4 +193,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default DetailScreen; 
+export default DetailScreen;

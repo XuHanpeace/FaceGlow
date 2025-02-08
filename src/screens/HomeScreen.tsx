@@ -1,14 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, FlatList, ListRenderItem, useColorScheme, Button } from 'react-native';
+import { View, StyleSheet, FlatList, ListRenderItem, useColorScheme } from 'react-native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
-import HeaderSection from '../components/HeaderSection';
 import AIToolsetSection from '../components/AIToolsetSection';
 import RecommendationSection from '../components/RecommendationSection';
 import { RecommendationSectionRef } from '../components/RecommendationSection';
-// import { checkLoginStatus } from '../services/tcb';
-import { useNavigation } from '@react-navigation/native';
-import { ImageComparison } from '../components/ImageComparison';
 import BlurBackground from '../components/BlurBackground';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
@@ -21,8 +17,6 @@ const HomeScreen: React.FC<Props> = () => {
   const [sections] = useState(['AI工具集', '推荐']);
   const recommendationRef = useRef<RecommendationSectionRef>(null);
   const isDarkMode = useColorScheme() === 'dark';
-  const navigation = useNavigation();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     checkLoginState();

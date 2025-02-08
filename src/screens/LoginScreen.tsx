@@ -1,10 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Image } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-// import { loginWithWechat } from '../services/tcb';
 
 export const LoginScreen = () => {
-  const navigation = useNavigation();
 
   const handleWechatLogin = async () => {
     try {

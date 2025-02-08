@@ -1,22 +1,18 @@
 import React from 'react';
 import FeatureCard from './FeatureCard';
 import SectionContainer from './SectionContainer';
-import { View, Text, StyleSheet } from 'react-native';
-import { useModal } from './modal';
+import { useNavigation } from '@react-navigation/native';
 
 const AIToolsetSection: React.FC = () => {
-  const { showModal } = useModal();
+
+  const navigation = useNavigation();
 
   const handleCardPress = (title: string, subtitle: string) => {
-    showModal(
-      <View style={styles.modalContent}>
-        <Text style={styles.modalTitle}>{title}</Text>
-        <Text style={styles.modalSubtitle}>{subtitle}</Text>
-        <Text style={styles.modalDescription}>
-          这是一个 AI 工具，您可以使用它来创建独特的内容。更多功能正在开发中...
-        </Text>
-      </View>,
-    );
+    navigation.navigate('Detail', {
+      id: title,
+      title,
+      content: subtitle, // Using subtitle as content for DetailScreen
+    });
   };
 
   return (
@@ -52,27 +48,5 @@ const AIToolsetSection: React.FC = () => {
     </SectionContainer>
   );
 };
-
-const styles = StyleSheet.create({
-  modalContent: {
-    padding: 20,
-  },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    color: '#333',
-  },
-  modalSubtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 16,
-  },
-  modalDescription: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-  },
-});
 
 export default AIToolsetSection;
