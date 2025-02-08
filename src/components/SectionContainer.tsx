@@ -45,7 +45,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 26,
     fontWeight: 'bold',
-    marginBottom: 12,
+    marginVertical: 24,
     paddingHorizontal: 16,
   },
   container: {

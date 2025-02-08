@@ -9,6 +9,7 @@ import { RecommendationSectionRef } from '../components/RecommendationSection';
 // import { checkLoginStatus } from '../services/tcb';
 import { useNavigation } from '@react-navigation/native';
 import { ImageComparison } from '../components/ImageComparison';
+import BlurBackground from '../components/BlurBackground';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -47,6 +48,7 @@ const HomeScreen: React.FC<Props> = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: isDarkMode ? '#000' : '#fff' }]}>
+      <BlurBackground />
       <FlatList
         data={sections}
         renderItem={renderSection}
