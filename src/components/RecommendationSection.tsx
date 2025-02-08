@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { AIFeatureCard } from './AIFeatureCard';
 import { AIFaceSwapIntro } from './AIFaceSwapIntro';
 import { AIIDPhotoIntro } from './AIIDPhotoIntro';
+import { HotCommentSection } from './HotCommentSection';
 
 // 定义推荐卡片的数据类型
 interface RecommendationItem {
@@ -100,6 +101,7 @@ const RecommendationSection = forwardRef<RecommendationSectionRef>((_, ref) => {
         onPress={() => console.log('Button pressed')}
       />
       <AIIDPhotoIntro onPress={() => console.log('Button pressed')} />
+      <HotCommentSection />
     </SectionContainer>
   );
 });

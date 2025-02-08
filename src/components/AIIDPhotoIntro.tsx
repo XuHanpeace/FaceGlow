@@ -6,13 +6,10 @@ import {
   Dimensions,
   ImageBackground,
   TouchableOpacity,
-  Image,
-  Alert,
 } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import FastImage from 'react-native-fast-image';
 import { LinearGradient } from 'react-native-linear-gradient';
-import ImageCarousel from './ImagePager';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = Math.min(360, SCREEN_WIDTH - 32);
