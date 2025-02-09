@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Image, TouchableOpacity, StyleSheet, Dimensions, Text } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const COLUMN_WIDTH = (SCREEN_WIDTH - 48) / 2; // 考虑边距和列间距
 
 interface Template {
   id: string;

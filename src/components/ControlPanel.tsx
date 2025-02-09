@@ -1,13 +1,16 @@
 import React, { useState, useRef } from 'react';
-import { View, StyleSheet, TouchableOpacity, Image, Animated, Text } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Image, Animated, Text, Alert } from 'react-native';
+import * as ImagePicker from 'react-native-image-picker';
 
 interface ControlPanelProps {
   selectedImage: string | null;
-  onUpload: () => void;
+  onUpload: (imageUri: string) => void;
+  onGenerate?: () => void;
 }
 
-const ControlPanel: React.FC<ControlPanelProps> = ({ selectedImage, onUpload }) => {
+const ControlPanel: React.FC<ControlPanelProps> = ({ selectedImage, onUpload, onGenerate }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [userImage, setUserImage] = useState<string | null>(null);
   const animatedHeight = useRef(new Animated.Value(80)).current;
 
   const toggleExpand = () => {
@@ -19,6 +22,59 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ selectedImage, onUpload }) 
       friction: 8,
       tension: 40,
     }).start();
+  };
+
+  const handleImageSelection = async () => {
+    try {
+      const options: ImagePicker.ImageLibraryOptions = {
+        mediaType: 'photo',
+        quality: 1,
+      };
+
+      // 显示操作表单让用户选择
+      Alert.alert(
+        '选择图片来源',
+        '请选择图片来源',
+        [
+          {
+            text: '相册',
+            onPress: async () => {
+              try {
+                const result = await ImagePicker.launchImageLibrary(options);
+                handleImageResult(result);
+              } catch (error) {
+                console.error('Error picking image:', error);
+              }
+            },
+          },
+          {
+            text: '相机',
+            onPress: async () => {
+              const result = await ImagePicker.launchCamera(options);
+              handleImageResult(result);
+            },
+          },
+          {
+            text: '取消',
+            style: 'cancel',
+          },
+        ],
+        { cancelable: true },
+      );
+    } catch (error) {
+      console.error('Error picking image:', error);
+    }
+  };
+
+  const handleImageResult = (result: ImagePicker.ImagePickerResponse) => {
+    if (!result.didCancel && result.assets && result.assets[0]) {
+      const selectedUri = result.assets[0].uri;
+      setUserImage(selectedUri);
+      onUpload(selectedUri);
+      if (!isExpanded) {
+        toggleExpand();
+      }
+    }
   };
 
   return (
@@ -44,36 +100,57 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ selectedImage, onUpload }) 
                 source={{ uri: 'https://img.icons8.com/?size=100&id=7811&format=png&color=000000' }}
                 style={[styles.arrowIcon, isExpanded && styles.expandedArrow]}
               />
-              <TouchableOpacity onPress={onUpload}>
-                <View style={[styles.addButton, isExpanded && styles.expandedImage]}>
+              <TouchableOpacity onPress={handleImageSelection}>
+                {userImage ? (
                   <Image
-                    source={{
-                      uri: 'https://img.icons8.com/?size=100&id=1501&format=png&color=000000',
-                    }}
-                    style={styles.plusIcon}
+                    source={{ uri: userImage }}
+                    style={[styles.selectedImage, isExpanded && styles.expandedImage]}
                   />
-                </View>
+                ) : (
+                  <View style={[styles.addButton, isExpanded && styles.expandedImage]}>
+                    <Image
+                      source={{
+                        uri: 'https://img.icons8.com/?size=100&id=1501&format=png&color=000000',
+                      }}
+                      style={styles.plusIcon}
+                    />
+                  </View>
+                )}
               </TouchableOpacity>
             </View>
           ) : (
             <TouchableOpacity
               style={[styles.addButton, isExpanded && styles.expandedImage]}
-              onPress={onUpload}
+              onPress={handleImageSelection}
             >
-              <Image
-                source={{ uri: 'https://img.icons8.com/?size=100&id=1501&format=png&color=000000' }}
-                style={styles.plusIcon}
-              />
+              {userImage ? (
+                <Image
+                  source={{ uri: userImage }}
+                  style={[styles.selectedImage, isExpanded && styles.expandedImage]}
+                />
+              ) : (
+                <Image
+                  source={{
+                    uri: 'https://img.icons8.com/?size=100&id=1501&format=png&color=000000',
+                  }}
+                  style={styles.plusIcon}
+                />
+              )}
             </TouchableOpacity>
           )}
         </View>
+
+        {isExpanded && userImage && (
+          <TouchableOpacity style={styles.generateButton} onPress={onGenerate}>
+            <Text style={styles.generateButtonText}>开始生成</Text>
+          </TouchableOpacity>
+        )}
 
         {!isExpanded && (
           <TouchableOpacity
             style={styles.uploadButton}
             onPress={() => {
-              onUpload();
-              if (!isExpanded) toggleExpand();
+              handleImageSelection();
             }}
           >
             <Text style={styles.uploadButtonText}>添加</Text>
@@ -92,8 +169,8 @@ const styles = StyleSheet.create({
     right: 0,
   },
   controlBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'column',
     backgroundColor: '#fff',
     height: 80,
     paddingHorizontal: 16,
@@ -205,6 +282,21 @@ const styles = StyleSheet.create({
   expandedArrow: {
     width: 40,
     height: 40,
+  },
+  generateButton: {
+    width: 150,
+    marginBottom: 30,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: '#5EE7DF',
+    borderRadius: 25,
+    alignSelf: 'center',
+  },
+  generateButtonText: {
+    color: '#000',
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });
 

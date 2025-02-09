@@ -1,17 +1,10 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import ControlPanel from '../components/ControlPanel';
 import TemplatePreview from '../components/TemplatePreview';
 import TemplateGrid from '../components/TemplateGrid';
-
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Detail'>;
 
@@ -63,6 +56,10 @@ const DetailScreen: React.FC<Props> = () => {
     setIsModalVisible(true);
   };
 
+  const handleGenerate = () => {
+    console.log('开始生成AI换脸...');
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -79,7 +76,11 @@ const DetailScreen: React.FC<Props> = () => {
         <Text style={styles.uploadButtonText}>上传照片</Text>
       </TouchableOpacity>
 
-      <ControlPanel selectedImage={selectedTemplate.imageUrl} onUpload={() => {}} />
+      <ControlPanel
+        selectedImage={selectedTemplate.imageUrl}
+        onUpload={() => {}}
+        onGenerate={handleGenerate}
+      />
     </View>
   );
 };
