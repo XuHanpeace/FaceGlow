@@ -61,7 +61,7 @@
 
 <div align="center">
 
-✨ **React Native** ｜ 🚀 **DeepSeek** ｜ 🤖 **Claude3.5** ✨
+✨ **React Native** ｜ 🚀 **DeepSeek-R1** ｜ 🤖 **Claude3.5** ✨
 
 </div>
 
