@@ -13,12 +13,6 @@ export const CLOUDBASE_CONFIG = {
   // 应用标识
   appSign: 'meiyanhuanhuan',
   
-  // 应用凭证（如果需要的话）
-  appSecret: {
-    appAccessKeyId: '1',
-    appAccessKey: 'a54f1411b649a71178ad8030255c29a4',
-  },
-  
   // 存储相关配置
   storage: {
     // AccessToken 存储的 key
@@ -60,12 +54,8 @@ export const {
   baseUrl,
   timeout,
   appSign,
-  appSecret,
   storage,
   functions,
   auth,
   apiPaths,
 } = CLOUDBASE_CONFIG;
-
-// SecretId:AKIDjT3SsHtJVUIsFOK2XosiLn2Vr1ykQyIP
-// SecretKey:0vmX8Xq7FCzb2FH7vWwAC1e6MQJySt2y
