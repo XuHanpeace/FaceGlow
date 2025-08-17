@@ -13,14 +13,6 @@ export const CLOUDBASE_CONFIG = {
   // 应用标识
   appSign: 'meiyanhuanhuan',
   
-  // 存储相关配置
-  storage: {
-    // AccessToken 存储的 key
-    accessTokenKey: 'cloudbase_access_token',
-    // 用户信息存储的 key
-    userInfoKey: 'cloudbase_user_info',
-  },
-  
   // 云函数配置
   functions: {
     // 默认云函数名称
@@ -54,7 +46,6 @@ export const {
   baseUrl,
   timeout,
   appSign,
-  storage,
   functions,
   auth,
   apiPaths,
