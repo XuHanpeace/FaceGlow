@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import { CLOUDBASE_CONFIG, storage, apiPaths } from './cloudbaseConfig';
+import { apiPaths } from './cloudbaseConfig';
 
 /**
  * CloudBase HTTP API 服务类
@@ -11,9 +11,9 @@ class CloudBaseHttpApi {
   private timeout: number;
 
   constructor() {
-    this.env = CLOUDBASE_CONFIG.env;
-    this.baseUrl = CLOUDBASE_CONFIG.baseUrl;
-    this.timeout = CLOUDBASE_CONFIG.timeout;
+    this.env = 'startup-2gn33jt0ca955730';
+    this.baseUrl = 'https://startup-2gn33jt0ca955730.api.tcloudbasegateway.com';
+    this.timeout = 30000;
   }
 
   /**
@@ -21,7 +21,7 @@ class CloudBaseHttpApi {
    */
   private async getAccessToken(): Promise<string | null> {
     try {
-      const token = await AsyncStorage.getItem(storage.accessTokenKey);
+      const token = await AsyncStorage.getItem('cloudbase_access_token');
       return token;
     } catch (error) {
       console.error('获取 AccessToken 失败:', error);
@@ -34,7 +34,7 @@ class CloudBaseHttpApi {
    */
   private async setAccessToken(token: string): Promise<void> {
     try {
-      await AsyncStorage.setItem(storage.accessTokenKey, token);
+      await AsyncStorage.setItem('cloudbase_access_token', token);
     } catch (error) {
       console.error('保存 AccessToken 失败:', error);
     }
@@ -183,8 +183,8 @@ class CloudBaseHttpApi {
    */
   async logout(): Promise<void> {
     try {
-      await AsyncStorage.removeItem(storage.accessTokenKey);
-      await AsyncStorage.removeItem(storage.userInfoKey);
+      await AsyncStorage.removeItem('cloudbase_access_token');
+      await AsyncStorage.removeItem('cloudbase_user_info');
     } catch (error) {
       console.error('登出失败:', error);
     }
@@ -195,7 +195,7 @@ class CloudBaseHttpApi {
    */
   async getUserInfo(): Promise<any> {
     try {
-      const userInfo = await AsyncStorage.getItem(storage.userInfoKey);
+      const userInfo = await AsyncStorage.getItem('cloudbase_user_info');
       return userInfo ? JSON.parse(userInfo) : null;
     } catch (error) {
       console.error('获取用户信息失败:', error);
@@ -208,7 +208,7 @@ class CloudBaseHttpApi {
    */
   async setUserInfo(userInfo: any): Promise<void> {
     try {
-      await AsyncStorage.setItem(storage.userInfoKey, JSON.stringify(userInfo));
+      await AsyncStorage.setItem('cloudbase_user_info', JSON.stringify(userInfo));
     } catch (error) {
       console.error('保存用户信息失败:', error);
     }

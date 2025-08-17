@@ -13,15 +13,16 @@ import {
 import * as ImagePicker from 'react-native-image-picker';
 import { callFusion } from '../services/tcb';
 import { ImageComparison } from './ImageComparison';
+import { ModelTemplate } from './TemplateGrid';
 
 interface ControlPanelProps {
-  selectedImage: string | null;
+  selectedTemplate: ModelTemplate;
   onUpload?: (imageUri: string) => void;
   onGenerate?: () => void;
 }
 
 const ControlPanel: React.FC<ControlPanelProps> = ({
-  selectedImage,
+  selectedTemplate,
   onUpload: _onUpload,
   onGenerate: _onGenerate,
 }) => {
@@ -29,8 +30,9 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   const [userImage, _setUserImage] = useState<string>('https://iai-face-demo-user-upload-1254418846.cos.ap-guangzhou.myqcloud.com/facefuse-4-2.png');
   const [isLoading, setIsLoading] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const selectedImage = selectedTemplate.imageUrl;
+  const modelId = selectedTemplate.modelId;
   const animatedHeight = useRef(new Animated.Value(80)).current;
-  
   // 获取屏幕高度
   const screenHeight = Dimensions.get('window').height;
   const expandedHeight = screenHeight * 0.80; // 屏幕高度的75%
@@ -47,6 +49,23 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       }).start();
     }
   }, [generatedImage, isExpanded, animatedHeight, expandedHeight]);
+
+  // 监听 selectedTemplate 变化，重置相关数据
+  useEffect(() => {
+    // 重置生成的图片
+    setGeneratedImage(null);
+    // 重置加载状态
+    setIsLoading(false);
+    // 如果面板已展开，重置到默认展开高度
+    if (isExpanded) {
+      Animated.spring(animatedHeight, {
+        toValue: 400,
+        useNativeDriver: false,
+        friction: 8,
+        tension: 40,
+      }).start();
+    }
+  }, [selectedTemplate.id, isExpanded, animatedHeight]);
 
   const toggleExpand = () => {
     // 如果有生成的图片，展开到屏幕高度的75%，否则展开到400
@@ -124,7 +143,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
 
       const params = {
         projectId: 'at_1888958525505814528',
-        modelId: 'mt_1956738875868848128',
+        modelId: modelId,
         imageUrl: userImage,
       };
 
@@ -251,8 +270,6 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
           </TouchableOpacity>
         )}
       </Animated.View>
-
-      
     </View>
   );
 };
