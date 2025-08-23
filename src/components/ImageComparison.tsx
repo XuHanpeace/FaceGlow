@@ -6,7 +6,6 @@ import {
   PanResponder,
   Animated,
   Modal,
-  TouchableOpacity,
   Dimensions,
   TouchableWithoutFeedback,
 } from 'react-native';
@@ -28,8 +27,9 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
   height = 400,
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [sliderPosition, setSliderPosition] = useState(width / 2);
+  const [isAfterImageLoaded, setIsAfterImageLoaded] = useState(false);
   const panX = useRef(new Animated.Value(width / 2)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   // 计算全屏时的尺寸（使用固定屏幕比例）
   const fullscreenDimensions = React.useMemo(() => {
@@ -38,6 +38,12 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
       height: SCREEN_HEIGHT * 0.5, // 使用80%的屏幕高度
     };
   }, []);  // 不再依赖 width 和 height
+
+  // 当 afterImage 改变时重置动画状态
+  React.useEffect(() => {
+    setIsAfterImageLoaded(false);
+    fadeAnim.setValue(0);
+  }, [afterImage, fadeAnim]);
 
   // 创建拖动手势处理器
   const createPanResponder = (containerWidth: number) =>
@@ -49,7 +55,6 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
       onPanResponderTerminationRequest: () => false, // 拒绝其他组件请求终止响应
       onPanResponderMove: (_, gestureState) => {
         const newPosition = Math.max(0, Math.min(containerWidth, gestureState.moveX));
-        setSliderPosition(newPosition);
         panX.setValue(newPosition);
       },
     });
@@ -61,6 +66,15 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
         source={{ uri: afterImage }}
         style={[styles.image, { width: containerWidth, height: containerHeight }]}
         resizeMode="cover"
+        onLoad={() => {
+          setIsAfterImageLoaded(true);
+          // 启动淡入动画
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }).start();
+        }}
       />
 
       {/* 处理前的图片（上层，被裁切） */}
@@ -78,6 +92,29 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
           style={[styles.image, { width: containerWidth, height: containerHeight }]}
           resizeMode="cover"
         />
+      </Animated.View>
+
+      {/* 加载状态遮罩层 - 当 afterImage 未加载完成时显示 */}
+      <Animated.View 
+        style={[
+          styles.loadingOverlay, 
+          { 
+            width: containerWidth, 
+            height: containerHeight,
+            opacity: fadeAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [1, 0],
+            }),
+          }
+        ]}
+        pointerEvents={isAfterImageLoaded ? 'none' : 'auto'}
+      >
+        <Image
+          source={{ uri: beforeImage }}
+          style={[styles.image, { width: containerWidth, height: containerHeight }]}
+          resizeMode="cover"
+        />
+        <View style={styles.blurOverlay} />
       </Animated.View>
 
       {/* 滑动条 */}
@@ -212,5 +249,19 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    zIndex: 10,
+  },
+  blurOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
   },
 });

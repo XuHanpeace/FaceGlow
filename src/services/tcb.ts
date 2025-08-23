@@ -1,42 +1,45 @@
-import cloudbase from '@cloudbase/js-sdk';
-import ReactNativeAdapter from '../adapters/react-native-adapter';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { cloudbaseHttpApi, callFunction as httpCallFunction, checkLoginStatus as httpCheckLoginStatus, logout as httpLogout } from './cloudbaseHttpApi';
 
-// 注册适配器
-cloudbase.useAdapters(ReactNativeAdapter);
+// 保持原有的导出接口，但内部使用 HTTP API
+export const app = {
+  // 模拟 app 对象，保持兼容性
+  callFunction: httpCallFunction,
+};
 
-// 正确初始化（补充缺失的appSecret）
-const app = cloudbase.init({
-  env: 'your-env-id',
-  appSign: 'your-app-sign',
-  appSecret: {
-    appAccessKeyId: '1', // 凭证版本号
-    appAccessKey: 'your-access-key', // 从控制台获取
-  },
-  persistence: 'local',
-});
+export const auth = {
+  // 模拟 auth 对象，保持兼容性
+  anonymousAuthProvider: () => ({
+    signIn: async () => {
+      const success = await cloudbaseHttpApi.anonymousLogin();
+      if (success) {
+        return { success: true };
+      } else {
+        throw new Error('匿名登录失败');
+      }
+    },
+  }),
+  signOut: httpLogout,
+};
 
-// 修复3：使用正确的微信登录方法
-export const loginWithWechat = async () => {
-  const auth = app.auth({persistence: 'local'});
-  const provider = auth.weixinAuthProvider({
-    appid: 'your-appid',
-    scope: 'snsapi_base',
-  });
-  provider.getRedirectResult().then(loginState => {
-    if (loginState) {
-      // 登录成功，本地已存在登录态
+export const doAnonymousLogin = async () => {
+  try {
+    const success = await cloudbaseHttpApi.anonymousLogin();
+    if (success) {
+      console.log('匿名登录成功');
+      return { success: true };
     } else {
-      // 未登录，唤起微信登录
-      provider.signInWithRedirect();
+      throw new Error('匿名登录失败');
     }
-  });
+  } catch (err: any) {
+    console.log('login error', err);
+    throw err;
+  }
 };
 
 export const checkLoginStatus = async () => {
   try {
-    const userInfo = await AsyncStorage.getItem('userInfo');
-    return userInfo ? JSON.parse(userInfo) : null;
+    const isLoggedIn = await httpCheckLoginStatus();
+    return isLoggedIn ? { loggedIn: true } : null;
   } catch (error) {
     console.error('检查登录状态错误:', error);
     return null;
@@ -45,12 +48,50 @@ export const checkLoginStatus = async () => {
 
 export const logout = async () => {
   try {
-    const auth = app.auth({persistence: 'local'});
-    await auth.signOut();
-    await AsyncStorage.removeItem('userInfo');
-    return {success: true};
+    await httpLogout();
+    return { success: true };
   } catch (error) {
     console.error('登出错误:', error);
-    return {success: false, error};
+    return { success: false, error };
+  }
+};
+
+interface GenerateResponse<T> {
+  code: number;
+  message: string;
+  data?: T;
+}
+
+interface FusionParams {
+  /** 人脸融合活动ID @see https://console.cloud.tencent.com/facefusion/activities*/
+  projectId: string;
+  /** 人脸融合模型ID 
+   * @see https://console.cloud.tencent.com/facefusion/activities/at_1888958525505814528
+  */
+  modelId: string;
+  imageUrl: string;
+}
+
+interface FusionResult { 
+  FusedImage: string;
+}
+
+export const callFusion = async (params: FusionParams): Promise<GenerateResponse<FusionResult>> => {
+  try {
+    // 调用云函数
+    const result = await cloudbaseHttpApi.callFunction<FusionResult>('fusion', params);
+
+    console.log('Generate function response:', result);
+    return {
+      code: 0,
+      message: 'success',
+      data: result,
+    };
+  } catch (error: any) {
+    console.error('Generate function error:', error);
+    return {
+      code: -1,
+      message: error.message || '调用失败',
+    };
   }
 };
