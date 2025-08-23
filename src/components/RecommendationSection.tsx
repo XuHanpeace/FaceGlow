@@ -10,7 +10,7 @@ export interface RecommendationSectionRef {
   fetchData: () => Promise<void>;
 }
 
-const RecommendationSection = forwardRef<RecommendationSectionRef>((_) => {
+const RecommendationSection = forwardRef<RecommendationSectionRef>((props, ref) => {
 
   return (
     <SectionContainer title="为照片添加AI色彩" horizontalScroll={false}>

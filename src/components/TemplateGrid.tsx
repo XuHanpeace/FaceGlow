@@ -3,16 +3,17 @@ import { View, Image, TouchableOpacity, StyleSheet, Dimensions, Text } from 'rea
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-interface Template {
+export interface ModelTemplate {
   id: string;
   imageUrl: string;
-  height: number; // 新增height属性来支持不同高度
+  modelId: string;
+  height: number;
 }
 
 interface TemplateGridProps {
-  templates: Template[];
+  templates: ModelTemplate[];
   selectedId: string;
-  onSelect: (template: Template) => void;
+  onSelect: (template: ModelTemplate) => void;
 }
 
 const TemplateGrid: React.FC<TemplateGridProps> = ({ templates, selectedId, onSelect }) => {
