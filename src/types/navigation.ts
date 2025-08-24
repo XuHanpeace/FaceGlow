@@ -10,4 +10,5 @@ export type RootStackParamList = {
     title: string;
     content: string;
   };
+  COSUploadTest: undefined;
 };

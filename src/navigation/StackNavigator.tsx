@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import TabNavigator from './TabNavigator';
 import DetailScreen from '../screens/DetailScreen';
 import { LoginScreen } from '../screens/LoginScreen';
+import COSUploadTestScreen from '../screens/COSUploadTestScreen';
 import { RootStackParamList } from '../types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -29,6 +30,15 @@ const StackNavigator = () => {
           headerShown: true,
           headerBackTitle: '返回',
           title: '登录',
+        }}
+      />
+      <Stack.Screen
+        name="COSUploadTest"
+        component={COSUploadTestScreen}
+        options={{
+          headerShown: true,
+          headerBackTitle: '返回',
+          title: 'COS上传测试',
         }}
       />
     </Stack.Navigator>

@@ -27,6 +27,7 @@
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = MyCrossPlatformApp/main.m; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = MyCrossPlatformApp/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		19F6CBCC0A4E27FBF8BF4A61 /* libPods-MyCrossPlatformApp-MyCrossPlatformAppTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-MyCrossPlatformApp-MyCrossPlatformAppTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		365D68932E5AE8F000CF6564 /* NativeCOS.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NativeCOS.m; sourceTree = "<group>"; };
 		365F1FB52D1710BA00177D30 /* NativeNavigation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NativeNavigation.h; sourceTree = "<group>"; };
 		365F1FB62D1710BA00177D30 /* NativeNavigation.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NativeNavigation.m; sourceTree = "<group>"; };
 		3B4392A12AC88292D35C810B /* Pods-MyCrossPlatformApp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MyCrossPlatformApp.debug.xcconfig"; path = "Target Support Files/Pods-MyCrossPlatformApp/Pods-MyCrossPlatformApp.debug.xcconfig"; sourceTree = "<group>"; };
@@ -103,6 +104,7 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
+				365D68932E5AE8F000CF6564 /* NativeCOS.m */,
 				13B07FAE1A68108700A75B9A /* MyCrossPlatformApp */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				00E356EF1AD99517003FC87E /* MyCrossPlatformAppTests */,
