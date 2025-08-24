@@ -44,4 +44,7 @@ target 'MyCrossPlatformApp' do
   pod 'SocketRocket', '= 0.7.1'
   pod 'RNVectorIcons', :path => '../node_modules/react-native-vector-icons'
   pod 'DoubleConversion', :podspec => '../node_modules/react-native/third-party-podspecs/DoubleConversion.podspec'
+  
+  # 腾讯云COS SDK
+  pod 'QCloudCOSXML'
 end
