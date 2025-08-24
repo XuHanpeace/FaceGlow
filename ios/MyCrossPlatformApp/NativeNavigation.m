@@ -65,7 +65,7 @@ RCT_EXPORT_METHOD(openNewScreen:(NSString *)screenName params:(NSDictionary *)pa
         newController.modalPresentationStyle = UIModalPresentationFullScreen;
         
         // 设置视图控制器的标题（可选）
-        newController.title = screenName;
+        newController.title = screenName;·
 
         if ([rootViewController isKindOfClass:[UINavigationController class]]) {
             NSLog(@"[NativeNavigation] Pushing view controller to navigation stack");

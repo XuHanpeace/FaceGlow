@@ -17,6 +17,14 @@ export interface COSConfig {
   tmpSecretId?: string;
   tmpSecretKey?: string;
   sessionToken?: string;
+  // 高级配置选项
+  useHTTPS?: boolean;
+  enableLogging?: boolean;
+  timeoutInterval?: number;
+  // 服务配置
+  enableOCR?: boolean;
+  enableImageProcessing?: boolean;
+  enableVideoProcessing?: boolean;
 }
 
 export interface UploadProgress {
@@ -25,13 +33,6 @@ export interface UploadProgress {
   progress: number;
   bytesSent: number;
   totalBytes: number;
-}
-
-export interface UploadState {
-  filePath: string;
-  fileName: string;
-  state: string;
-  uploadId: string;
 }
 
 export interface UploadResult {
@@ -85,6 +86,7 @@ class NativeCOSService {
     fileName: string,
     folder: string = 'uploads'
   ): Promise<UploadResult> {
+    console.log('uploadFile', filePath, fileName, folder);
     try {
       const result = await NativeCOS.uploadFile(filePath, fileName, folder);
       return result;
@@ -134,21 +136,6 @@ class NativeCOSService {
     }
     
     // 如果事件发射器不可用，返回一个空的监听器
-    return {
-      remove: () => {},
-    };
-  }
-
-  // 监听上传状态
-  onUploadState(callback: (state: UploadState) => void) {
-    if (!this.eventEmitter) {
-      this.initEventEmitter();
-    }
-    
-    if (this.eventEmitter) {
-      return this.eventEmitter.addListener('onUploadState', callback);
-    }
-    
     return {
       remove: () => {},
     };

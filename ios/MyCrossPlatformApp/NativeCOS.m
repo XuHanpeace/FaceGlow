@@ -14,7 +14,7 @@ RCT_EXPORT_MODULE();
 }
 
 - (NSArray<NSString *> *)supportedEvents {
-    return @[@"onUploadProgress", @"onUploadState", @"onUploadComplete"];
+    return @[@"onUploadProgress", @"onUploadComplete"];
 }
 
 // 初始化COS服务
@@ -35,18 +35,26 @@ RCT_EXPORT_METHOD(initializeCOS:(NSDictionary *)config
         QCloudServiceConfiguration *configuration = [QCloudServiceConfiguration new];
         QCloudCOSXMLEndPoint *endpoint = [[QCloudCOSXMLEndPoint alloc] init];
         endpoint.regionName = region;
-        endpoint.useHTTPS = YES;
-        configuration.endpoint = endpoint;
         
-        // 设置认证信息
-        QCloudCredential *credential = [QCloudCredential new];
-        credential.secretID = secretId;
-        credential.secretKey = secretKey;
-        configuration.credential = credential;
+        // 从配置中读取HTTPS设置，默认为YES
+        BOOL useHTTPS = YES;
+        if (config[@"useHTTPS"] != nil) {
+            useHTTPS = [config[@"useHTTPS"] boolValue];
+        }
+        endpoint.useHTTPS = useHTTPS;
+        
+        // 设置超时时间（如果配置了）
+        if (config[@"timeoutInterval"]) {
+            configuration.timeoutInterval = [config[@"timeoutInterval"] doubleValue];
+        }
+        
+        configuration.endpoint = endpoint;
         
         // 注册默认COS服务
         [QCloudCOSXMLService registerDefaultCOSXMLWithConfiguration:configuration];
+        [QCloudCOSXMLService defaultCOSXML].configuration = configuration;
         [QCloudCOSTransferMangerService registerDefaultCOSTransferMangerWithConfiguration:configuration];
+        [QCloudCOSTransferMangerService defaultCOSTransferManager].configuration = configuration;
         
         // 存储配置信息
         [[NSUserDefaults standardUserDefaults] setObject:config forKey:@"COS_CONFIG"];
@@ -90,7 +98,21 @@ RCT_EXPORT_METHOD(uploadFile:(NSString *)filePath
         QCloudCOSXMLUploadObjectRequest *put = [QCloudCOSXMLUploadObjectRequest new];
         put.bucket = [NSString stringWithFormat:@"%@-%@", bucket, appId];
         put.object = fileKey;
-        put.body = [NSURL fileURLWithPath:filePath];
+        
+        // 处理文件路径，移除 file:// 前缀
+        NSString *cleanFilePath = filePath;
+        if ([filePath hasPrefix:@"file://"]) {
+            cleanFilePath = [filePath substringFromIndex:7];
+        }
+        
+        // 检查文件是否存在
+        NSFileManager *fileManager = [NSFileManager defaultManager];
+        if (![fileManager fileExistsAtPath:cleanFilePath]) {
+            reject(@"FILE_NOT_FOUND", [NSString stringWithFormat:@"File not found at path: %@", cleanFilePath], nil);
+            return;
+        }
+        
+        put.body = [NSURL fileURLWithPath:cleanFilePath];
         
         // 设置临时密钥（如果配置了）
         if (config[@"tmpSecretId"] && config[@"tmpSecretKey"] && config[@"sessionToken"]) {
@@ -110,16 +132,6 @@ RCT_EXPORT_METHOD(uploadFile:(NSString *)filePath
                 @"progress": @(progress),
                 @"bytesSent": @(totalBytesSent),
                 @"totalBytes": @(totalBytesExpectedToSend)
-            }];
-        }];
-        
-        // 监听上传状态
-        [put setInitMultipleUploadFinishBlock:^(QCloudInitiateMultipartUploadResult *multipleUploadInitResult, NSString *bucket, NSString *object) {
-            [self sendEventWithName:@"onUploadState" body:@{
-                @"filePath": filePath,
-                @"fileName": fileName,
-                @"state": @"INITIATED",
-                @"uploadId": multipleUploadInitResult.uploadId ?: @""
             }];
         }];
         
