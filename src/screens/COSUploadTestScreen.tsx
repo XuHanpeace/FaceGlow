@@ -10,7 +10,13 @@ import {
   ActivityIndicator,
   useColorScheme,
 } from 'react-native';
-import { launchCamera, launchImageLibrary, ImagePickerResponse, MediaType } from 'react-native-image-picker';
+import { 
+  launchCamera, 
+  launchImageLibrary, 
+  ImagePickerResponse, 
+  CameraOptions,
+  ImageLibraryOptions
+} from 'react-native-image-picker';
 import nativeCOSService, { COSConfig } from '../services/nativeCOS';
 
 const COSUploadTestScreen: React.FC = () => {
@@ -28,6 +34,14 @@ const COSUploadTestScreen: React.FC = () => {
     bucket: 'myhh',
     region: 'ap-nanjing',
     appId: '1257391807',
+    // 高级配置选项
+    useHTTPS: true,
+    enableLogging: true,
+    timeoutInterval: 30,
+    // 服务配置
+    enableOCR: false,
+    enableImageProcessing: false,
+    enableVideoProcessing: false,
   };
 
   useEffect(() => {
@@ -38,10 +52,13 @@ const COSUploadTestScreen: React.FC = () => {
   // 检查初始化状态
   const checkInitialization = async () => {
     try {
+      console.log('检查COS初始化状态...');
       const initialized = await nativeCOSService.isInitialized();
+      console.log('初始化状态检查结果:', initialized);
       setIsInitialized(initialized);
     } catch (error) {
       console.error('检查初始化状态失败:', error);
+      setIsInitialized(false);
     }
   };
 
@@ -73,31 +90,43 @@ const COSUploadTestScreen: React.FC = () => {
   // 初始化COS服务
   const initializeCOS = async () => {
     try {
-      if (COS_CONFIG.secretId === 'SECRETID' || COS_CONFIG.secretKey === 'SECRETKEY') {
-        Alert.alert(
-          '配置提示', 
-          '请先在代码中配置您的真实COS信息：\n\n' +
-          '1. 替换 SECRETID 为您的真实 SecretId\n' +
-          '2. 替换 SECRETKEY 为您的真实 SecretKey\n' +
-          '3. 确认 bucket、region、appId 配置正确',
-          [{ text: '知道了', style: 'default' }]
-        );
-        return;
-      }
+      console.log('开始初始化COS服务...');
+      console.log('配置信息:', COS_CONFIG);
 
-      await nativeCOSService.initialize(COS_CONFIG);
-      setIsInitialized(true);
-      Alert.alert('成功', 'COS服务初始化成功！');
+      // if (COS_CONFIG.secretId === 'SECRETID' || COS_CONFIG.secretKey === 'SECRETKEY') {
+      //   Alert.alert(
+      //     '配置提示',
+      //     '请先在代码中配置您的真实COS信息：\n\n' +
+      //     '1. 替换 SECRETID 为您的真实 SecretId\n' +
+      //     '2. 替换 SECRETKEY 为您的真实 SecretKey\n' +
+      //     '3. 确认 bucket、region、appId 配置正确',
+      //     [{ text: '知道了', style: 'default' }]
+      //   );
+      //   return;
+      // }
+
+      console.log('调用原生模块初始化...');
+      const result = await nativeCOSService.initialize(COS_CONFIG);
+      console.log('初始化结果:', result);
+
+      if (result.success) {
+        setIsInitialized(true);
+        Alert.alert('成功', 'COS服务初始化成功！');
+        console.log('COS服务初始化成功，状态已更新');
+      } else {
+        throw new Error(result.message || '初始化失败');
+      }
     } catch (error) {
+      console.error('COS初始化错误:', error);
       Alert.alert('错误', 'COS服务初始化失败：' + error);
     }
   };
 
   // 拍照
   const takePhoto = () => {
-    const options = {
-      mediaType: 'photo' as MediaType,
-      quality: 'high' as any,
+    const options: CameraOptions = {
+      mediaType: 'photo',
+      quality: 0.8,
       saveToPhotos: false,
     };
 
@@ -118,9 +147,9 @@ const COSUploadTestScreen: React.FC = () => {
 
   // 选择相册图片
   const selectFromGallery = () => {
-    const options = {
-      mediaType: 'photo' as MediaType,
-      quality: 'high' as any,
+    const options: ImageLibraryOptions = {
+      mediaType: 'photo',
+      quality: 0.8,
       selectionLimit: 1,
     };
 
@@ -151,19 +180,26 @@ const COSUploadTestScreen: React.FC = () => {
       return;
     }
 
+    const fileName = selectedImage.split('/').pop() || 'image.jpg';
+    
+    // 添加调试信息
+    console.log('准备上传文件:');
+    console.log('  - 文件路径:', selectedImage);
+    console.log('  - 文件名:', fileName);
+    console.log('  - 文件夹:', 'uploads');
+    
     try {
       setIsUploading(true);
       setUploadProgress(0);
 
-      // 获取文件名
-      const fileName = selectedImage.split('/').pop() || 'image.jpg';
-      
-      // 上传文件
-      await nativeCOSService.uploadFile(selectedImage, fileName, 'uploads');
+      // 上传文件 - 参数顺序：filePath, fileName, folder
+      const result = await nativeCOSService.uploadFile(selectedImage, fileName, 'uploads');
+      console.log('上传成功:', result);
       
     } catch (error) {
       setIsUploading(false);
-      Alert.alert('错误', '上传失败：' + error);
+      console.error('上传失败详细信息:', error);
+      Alert.alert('上传失败', `错误详情: ${error}`);
     }
   };
 
@@ -210,17 +246,29 @@ const COSUploadTestScreen: React.FC = () => {
         )}
       </View>
 
+      {/* 初始化按钮 */}
+      {!isInitialized && (
+        <View style={[styles.initSection, { backgroundColor: isDarkMode ? '#333' : '#f5f5f5' }]}>
+          <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
+            初始化COS服务
+          </Text>
+          <TouchableOpacity style={styles.initButton} onPress={initializeCOS}>
+            <Text style={styles.initButtonText}>🔧 初始化COS</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* 图片选择区域 */}
       <View style={[styles.imageSection, { backgroundColor: isDarkMode ? '#333' : '#f5f5f5' }]}>
         <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
           选择图片
         </Text>
-        
+
         <View style={styles.buttonRow}>
           <TouchableOpacity style={styles.button} onPress={takePhoto}>
             <Text style={styles.buttonText}>📷 拍照</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.button} onPress={selectFromGallery}>
             <Text style={styles.buttonText}>🖼️ 相册</Text>
           </TouchableOpacity>
@@ -242,9 +290,9 @@ const COSUploadTestScreen: React.FC = () => {
           <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
             上传到COS
           </Text>
-          
-          <TouchableOpacity 
-            style={[styles.uploadButton, isUploading && styles.uploadButtonDisabled]} 
+
+          <TouchableOpacity
+            style={[styles.uploadButton, isUploading && styles.uploadButtonDisabled]}
             onPress={uploadImage}
             disabled={isUploading}
           >
@@ -258,8 +306,8 @@ const COSUploadTestScreen: React.FC = () => {
           {isUploading && (
             <View style={styles.progressContainer}>
               <View style={styles.progressBar}>
-                <View 
-                  style={[styles.progressFill, { width: `${uploadProgress}%` }]} 
+                <View
+                  style={[styles.progressFill, { width: `${uploadProgress}%` }]}
                 />
               </View>
               <Text style={[styles.progressText, { color: isDarkMode ? '#fff' : '#000' }]}>
@@ -276,7 +324,7 @@ const COSUploadTestScreen: React.FC = () => {
           <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
             上传结果
           </Text>
-          
+
           <View style={styles.resultContainer}>
             <Image source={{ uri: uploadedImageUrl }} style={styles.resultImage} />
             <Text style={[styles.resultUrl, { color: isDarkMode ? '#4CAF50' : '#4CAF50' }]}>
@@ -341,6 +389,23 @@ const styles = StyleSheet.create({
   },
   statusValue: {
     fontSize: 14,
+    fontWeight: '500',
+  },
+  initSection: {
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  initButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  initButtonText: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: '500',
   },
   imageSection: {
