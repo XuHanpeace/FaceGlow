@@ -1843,7 +1843,7 @@ DEPENDENCIES:
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
 SPEC REPOS:
-  https://github.com/CocoaPods/Specs.git:
+  https://mirrors.tuna.tsinghua.edu.cn/git/CocoaPods/Specs.git:
     - libwebp
     - QCloudCore
     - QCloudCOSXML
@@ -2081,8 +2081,8 @@ SPEC CHECKSUMS:
   SDWebImage: a7f831e1a65eb5e285e3fb046a23fcfbf08e696d
   SDWebImageWebPCoder: 908b83b6adda48effe7667cd2b7f78c897e5111d
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
-  Yoga: 3ad6fa0f85a8ed6beab572d6212a1dfcf98e6c94
+  Yoga: 15229115f886a6e594381100b299d3aa0238078a
 
-PODFILE CHECKSUM: e3a0faa4c2c184e7d5ed7f6bc3d93bd44606efd9
+PODFILE CHECKSUM: 27e93f0a7aab5a34a0fe6c36bcefa2ebfa5f5a3c
 
 COCOAPODS: 1.16.2

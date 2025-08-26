@@ -17,7 +17,7 @@ import {
   CameraOptions,
   ImageLibraryOptions
 } from 'react-native-image-picker';
-import nativeCOSService, { COSConfig } from '../services/nativeCOS';
+import cosService, { COSUploadResult } from '../services/COSService';
 
 const COSUploadTestScreen: React.FC = () => {
   const [isInitialized, setIsInitialized] = useState(false);
@@ -27,23 +27,6 @@ const COSUploadTestScreen: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const isDarkMode = useColorScheme() === 'dark';
 
-  // COS配置
-  const COS_CONFIG: COSConfig = {
-    secretId: 'SECRETID',
-    secretKey: 'SECRETKEY',
-    bucket: 'myhh',
-    region: 'ap-nanjing',
-    appId: '1257391807',
-    // 高级配置选项
-    useHTTPS: true,
-    enableLogging: true,
-    timeoutInterval: 30,
-    // 服务配置
-    enableOCR: false,
-    enableImageProcessing: false,
-    enableVideoProcessing: false,
-  };
-
   useEffect(() => {
     checkInitialization();
     setupEventListeners();
@@ -52,9 +35,7 @@ const COSUploadTestScreen: React.FC = () => {
   // 检查初始化状态
   const checkInitialization = async () => {
     try {
-      console.log('检查COS初始化状态...');
-      const initialized = await nativeCOSService.isInitialized();
-      console.log('初始化状态检查结果:', initialized);
+      const initialized = await cosService.checkInitialization();
       setIsInitialized(initialized);
     } catch (error) {
       console.error('检查初始化状态失败:', error);
@@ -64,61 +45,56 @@ const COSUploadTestScreen: React.FC = () => {
 
   // 设置事件监听器
   const setupEventListeners = () => {
-    // 监听上传进度
-    const progressListener = nativeCOSService.onUploadProgress((progress) => {
-      setUploadProgress(progress.progress);
-    });
-
-    // 监听上传完成
-    const completeListener = nativeCOSService.onUploadComplete((result) => {
-      setIsUploading(false);
-      if (result.success && result.url) {
-        setUploadedImageUrl(result.url);
-        Alert.alert('成功', '图片上传成功！');
-      } else {
-        Alert.alert('失败', `上传失败: ${result.error}`);
+    // 使用COSService设置事件监听器
+    const cleanup = cosService.setupEventListeners(
+      // 进度回调
+      (progress) => {
+        setUploadProgress(progress.progress);
+      },
+      // 完成回调
+      (result: COSUploadResult) => {
+        setIsUploading(false);
+        if (result.success && result.url) {
+          setUploadedImageUrl(result.url);
+        }
       }
-    });
+    );
 
-    // 清理监听器
-    return () => {
-      progressListener.remove();
-      completeListener.remove();
-    };
+    // 返回清理函数
+    return cleanup;
   };
 
   // 初始化COS服务
   const initializeCOS = async () => {
     try {
-      console.log('开始初始化COS服务...');
-      console.log('配置信息:', COS_CONFIG);
-
-      // if (COS_CONFIG.secretId === 'SECRETID' || COS_CONFIG.secretKey === 'SECRETKEY') {
-      //   Alert.alert(
-      //     '配置提示',
-      //     '请先在代码中配置您的真实COS信息：\n\n' +
-      //     '1. 替换 SECRETID 为您的真实 SecretId\n' +
-      //     '2. 替换 SECRETKEY 为您的真实 SecretKey\n' +
-      //     '3. 确认 bucket、region、appId 配置正确',
-      //     [{ text: '知道了', style: 'default' }]
-      //   );
-      //   return;
-      // }
-
-      console.log('调用原生模块初始化...');
-      const result = await nativeCOSService.initialize(COS_CONFIG);
-      console.log('初始化结果:', result);
-
+      const result = await cosService.initialize();
+      
       if (result.success) {
         setIsInitialized(true);
-        Alert.alert('成功', 'COS服务初始化成功！');
-        console.log('COS服务初始化成功，状态已更新');
+        Alert.alert('成功', result.message || 'COS服务初始化成功！');
       } else {
-        throw new Error(result.message || '初始化失败');
+        Alert.alert('错误', result.message || '初始化失败');
       }
     } catch (error) {
       console.error('COS初始化错误:', error);
       Alert.alert('错误', 'COS服务初始化失败：' + error);
+    }
+  };
+
+  // 重新初始化COS服务
+  const reinitializeCOS = async () => {
+    try {
+      const result = await cosService.reinitialize();
+      
+      if (result.success) {
+        setIsInitialized(true);
+        Alert.alert('成功', result.message || 'COS服务重新初始化成功！');
+      } else {
+        Alert.alert('错误', result.message || '重新初始化失败');
+      }
+    } catch (error) {
+      console.error('COS重新初始化错误:', error);
+      Alert.alert('错误', 'COS服务重新初始化失败：' + error);
     }
   };
 
@@ -193,8 +169,30 @@ const COSUploadTestScreen: React.FC = () => {
       setUploadProgress(0);
 
       // 上传文件 - 参数顺序：filePath, fileName, folder
-      const result = await nativeCOSService.uploadFile(selectedImage, fileName, 'uploads');
+      const result = await cosService.uploadFile(selectedImage, fileName, 'uploads');
       console.log('上传成功:', result);
+      
+      // 上传成功后设置状态
+      if (result.success && result.url) {
+        setUploadedImageUrl(result.url);
+        
+        // 显示成功Alert，包含图片地址
+        Alert.alert(
+          '上传成功', 
+          `图片上传成功！\n\n图片地址：\n${result.url}`,
+          [{ text: '复制地址', onPress: () => console.log('用户选择复制地址') }, { text: '确定' }]
+        );
+        
+        // 在console中输出图片地址
+        console.log('🎉 图片上传成功！');
+        console.log('📸 图片地址:', result.url);
+        console.log('🔑 文件Key:', result.fileKey);
+        console.log('🏷️ ETag:', result.etag);
+        console.log('📁 文件路径:', result.filePath);
+        console.log('📝 文件名:', result.fileName);
+      } else {
+        throw new Error(result.error || '上传失败');
+      }
       
     } catch (error) {
       setIsUploading(false);
@@ -240,7 +238,7 @@ const COSUploadTestScreen: React.FC = () => {
               存储桶：
             </Text>
             <Text style={[styles.statusValue, { color: isDarkMode ? '#fff' : '#000' }]}>
-              {COS_CONFIG.bucket}
+              {cosService.getConfig()?.bucket || '未知'}
             </Text>
           </View>
         )}
@@ -252,8 +250,32 @@ const COSUploadTestScreen: React.FC = () => {
           <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
             初始化COS服务
           </Text>
-          <TouchableOpacity style={styles.initButton} onPress={initializeCOS}>
-            <Text style={styles.initButtonText}>🔧 初始化COS</Text>
+          <TouchableOpacity
+            style={[styles.button, styles.initButton]}
+            onPress={initializeCOS}
+            disabled={isUploading} // 避免同时点击多个按钮
+          >
+            <Text style={styles.buttonText}>
+              {isUploading ? '初始化中...' : '初始化COS服务'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* 重新初始化按钮 - 只有在已初始化状态下才显示 */}
+      {isInitialized && (
+        <View style={[styles.initSection, { backgroundColor: isDarkMode ? '#333' : '#f5f5f5' }]}>
+          <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
+            重新初始化COS服务
+          </Text>
+          <TouchableOpacity
+            style={[styles.button, styles.reinitButton]}
+            onPress={reinitializeCOS}
+            disabled={isUploading}
+          >
+            <Text style={styles.buttonText}>
+              {isUploading ? '重新初始化中...' : '重新初始化COS服务'}
+            </Text>
           </TouchableOpacity>
         </View>
       )}
@@ -402,6 +424,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
+    marginBottom: 10, // Added margin for spacing
+  },
+  reinitButton: {
+    backgroundColor: '#FF9800', // 橙色，用于重新初始化
+    marginTop: 10, // 与初始化按钮的间距
   },
   initButtonText: {
     color: '#fff',

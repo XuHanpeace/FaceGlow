@@ -72,3 +72,9 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# COS敏感配置文件
+src/config/cosSecrets.js
+src/config/cosSecrets.local.js
+src/config/cosSecrets.prod.js
+src/config/cosSecrets.dev.js
