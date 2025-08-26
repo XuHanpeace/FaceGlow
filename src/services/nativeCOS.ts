@@ -80,18 +80,47 @@ class NativeCOSService {
     }
   }
 
+  // 重新初始化COS服务
+  async reinitializeCOS(config: COSConfig): Promise<COSResponse> {
+    console.log('Reinitializing COS service with config:', config);
+    try {
+      const result = await NativeCOS.reinitializeCOS(config);
+      console.log('COS service reinitialized successfully:', result);
+      return result;
+    } catch (error) {
+      console.error('Failed to reinitialize COS service:', error);
+      throw new Error(`重新初始化COS服务失败: ${error}`);
+    }
+  }
+
   // 上传文件
   async uploadFile(
     filePath: string,
     fileName: string,
     folder: string = 'uploads'
   ): Promise<UploadResult> {
+    console.log('NativeCOS', NativeCOS);
     console.log('uploadFile', filePath, fileName, folder);
     try {
       const result = await NativeCOS.uploadFile(filePath, fileName, folder);
       return result;
     } catch (error) {
       throw new Error(`文件上传失败: ${error}`);
+    }
+  }
+
+  // 上传图片到COS（专门用于图片上传，避免OCR服务问题）
+  async uploadImage(
+    filePath: string,
+    fileName: string,
+    folder: string = 'images'
+  ): Promise<UploadResult> {
+    console.log('uploadImage', filePath, fileName, folder);
+    try {
+      const result = await NativeCOS.uploadImage(filePath, fileName, folder);
+      return result;
+    } catch (error) {
+      throw new Error(`图片上传失败: ${error}`);
     }
   }
 
