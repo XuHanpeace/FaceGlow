@@ -1,6 +1,6 @@
 import { Alert } from 'react-native';
 import nativeCOSService, { COSConfig } from './nativeCOS';
-import COS_SECRETS from '../config/cosSecrets';
+import COS_SECRETS from '../../config/cosSecrets';
 
 export interface COSUploadResult {
   success: boolean;

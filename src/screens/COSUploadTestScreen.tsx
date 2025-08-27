@@ -17,7 +17,7 @@ import {
   CameraOptions,
   ImageLibraryOptions
 } from 'react-native-image-picker';
-import cosService, { COSUploadResult } from '../services/COSService';
+import cosService, { COSUploadResult } from '../services/cos/COSService';
 
 const COSUploadTestScreen: React.FC = () => {
   const [isInitialized, setIsInitialized] = useState(false);
