@@ -11,10 +11,10 @@ import {
   Dimensions,
 } from 'react-native';
 import * as ImagePicker from 'react-native-image-picker';
-import { callFusion } from '../services/tcb';
+import { callFusion } from '../services/tcb/tcb';
 import { ImageComparison } from './ImageComparison';
 import { ModelTemplate } from './TemplateGrid';
-import cosService, { COSUploadResult } from '../services/COSService';
+import cosService, { COSUploadResult } from '../services/cos/COSService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface ControlPanelProps {
