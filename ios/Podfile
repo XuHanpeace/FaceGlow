@@ -32,6 +32,15 @@ target 'MyCrossPlatformApp' do
   # end
 
   post_install do |installer|
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '18.6' # 确保版本号与你项目的一致
+        
+        # 以下部分是关键！排除模拟器的 arm64 架构，这是 React Native 的常见配置
+        config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64'
+      end
+    end
+
     # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202
     react_native_post_install(
       installer,
