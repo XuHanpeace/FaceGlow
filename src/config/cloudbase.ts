@@ -25,6 +25,14 @@ export const CLOUDBASE_CONFIG = {
     MAX_RETRIES: 2,
   },
   
+  // 数据库API配置 - 使用tcloudbasegateway.com域名
+  DATABASE_API: {
+    BASE_URL: 'https://startup-2gn33jt0ca955730.api.tcloudbasegateway.com',
+    VERSION: 'v1',
+    TIMEOUT: 15000, // 15秒
+    MAX_RETRIES: 2,
+  },
+  
   // 腾讯云官方认证API端点
   AUTH_API: {
     BASE_URL: 'https://startup-2gn33jt0ca955730.api.tcloudbasegateway.com',

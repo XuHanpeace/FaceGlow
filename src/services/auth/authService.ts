@@ -2,6 +2,7 @@ import { MMKV } from 'react-native-mmkv';
 import { cloudBaseAuthService } from './cloudbaseAuthService';
 import { verificationService } from './verificationService';
 import { AuthCredentials, RegisterRequest, LoginRequest, AuthResponse, CloudBaseAuthResponse, SendVerificationResponse, STORAGE_KEYS } from '../../types/auth';
+import { userDataService } from '../database/userDataService';
 
 // 创建MMKV存储实例
 const storage = new MMKV();
@@ -111,6 +112,20 @@ export class AuthService {
       // 保存认证信息到本地存储
       this.saveAuthCredentials(credentials);
 
+      // 注册成功后，自动创建用户信息
+      try {
+        await userDataService.createUser({
+          uid: credentials.uid,
+          username: username,
+          phone_number: phoneNumber.startsWith('+86') ? phoneNumber : `+86 ${phoneNumber}`,
+          name: username, // 默认使用用户名作为昵称
+          locale: 'zh-CN'
+        });
+      } catch (error) {
+        console.warn('Failed to create user info:', error);
+        // 不影响注册流程
+      }
+
       return {
         success: true,
         data: credentials,
@@ -144,6 +159,19 @@ export class AuthService {
 
       // 保存认证信息到本地存储
       this.saveAuthCredentials(credentials);
+
+      // 登录成功后，获取用户信息并更新登录时间
+      try {
+        // 获取用户信息
+        const userInfo = await userDataService.getUserByUid(credentials.uid);
+        if (userInfo.success && userInfo.data) {
+          // 用户存在，更新登录信息
+         console.log('frog.userInfo', userInfo);
+        } 
+      } catch (error) {
+        console.warn('Failed to get/update user info:', error);
+        // 不影响登录流程
+      }
 
       return {
         success: true,
@@ -256,17 +284,19 @@ export class AuthService {
    */
   isLoggedIn(): boolean {
     const token = storage.getString(STORAGE_KEYS.ACCESS_TOKEN);
-    const expiresAt = storage.getString(STORAGE_KEYS.EXPIRES_AT);
+    // const expiresAt = storage.getString(STORAGE_KEYS.EXPIRES_AT);
     
-    if (!token || !expiresAt) {
+    if (!token) {
       return false;
     }
 
-    const expirationTime = parseInt(expiresAt, 10);
+    return true;
+
+    /* // const expirationTime = parseInt(expiresAt, 10);
     const currentTime = Date.now();
     
     // 检查令牌是否过期（提前5分钟认为过期）
-    return currentTime < (expirationTime - 5 * 60 * 1000);
+    return currentTime < (expirationTime - 5 * 60 * 1000); */
   }
 
   /**
@@ -298,7 +328,7 @@ export class AuthService {
     storage.set(STORAGE_KEYS.ACCESS_TOKEN, credentials.accessToken);
     storage.set(STORAGE_KEYS.REFRESH_TOKEN, credentials.refreshToken);
     storage.set(STORAGE_KEYS.UID, credentials.uid);
-    storage.set(STORAGE_KEYS.EXPIRES_AT, credentials.expiresAt.toString());
+    // storage.set(STORAGE_KEYS.EXPIRES_AT, credentials.expiresAt.toString());
   }
 
   /**
@@ -308,7 +338,7 @@ export class AuthService {
     storage.delete(STORAGE_KEYS.ACCESS_TOKEN);
     storage.delete(STORAGE_KEYS.REFRESH_TOKEN);
     storage.delete(STORAGE_KEYS.UID);
-    storage.delete(STORAGE_KEYS.EXPIRES_AT);
+    // storage.delete(STORAGE_KEYS.EXPIRES_AT);
     storage.delete(STORAGE_KEYS.USER_INFO);
   }
 

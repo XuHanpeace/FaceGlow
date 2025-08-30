@@ -168,7 +168,7 @@ export const LoginScreen: React.FC = () => {
       try {
         const result = await handleLogin(username, password);
 
-                  if (result.success && result.data) {
+        if (result.success && result.data) {
             // 更新全局认证状态
             setAuthData(result.data);
             Alert.alert('成功', '登录成功！', [

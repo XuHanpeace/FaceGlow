@@ -4,6 +4,7 @@ import TabNavigator from './TabNavigator';
 import DetailScreen from '../screens/DetailScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import COSUploadTestScreen from '../screens/COSUploadTestScreen';
+import DatabaseTestScreen from '../screens/DatabaseTestScreen';
 import { RootStackParamList } from '../types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -39,6 +40,15 @@ const StackNavigator = () => {
           headerShown: true,
           headerBackTitle: '返回',
           title: 'COS上传测试',
+        }}
+      />
+      <Stack.Screen
+        name="DatabaseTest"
+        component={DatabaseTestScreen}
+        options={{
+          headerShown: true,
+          headerBackTitle: '返回',
+          title: '数据库测试',
         }}
       />
     </Stack.Navigator>

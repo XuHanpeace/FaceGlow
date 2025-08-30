@@ -40,7 +40,7 @@ export interface RegisterRequest {
   password?: string;            // 密码（可选）
   name?: string;                // 昵称（可选）
   gender?: string;              // 性别（可选）
-  picture?: string;             // 头像（可选）
+  avatar_url?: string;             // 头像（可选）
   locale?: string;              // 地区（可选）
 }
 
@@ -58,6 +58,12 @@ export interface AuthResponse {
     code: string;
     message: string;
   };
+}
+
+// 更新登录信息请求
+export interface UpdateLoginInfoRequest {
+  uid: string;                    // 用户唯一ID
+  last_login_at: number;          // 最后登录时间
 }
 
 // 存储键名

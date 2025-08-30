@@ -11,4 +11,5 @@ export type RootStackParamList = {
     content: string;
   };
   COSUploadTest: undefined;
+  DatabaseTest: undefined;
 };

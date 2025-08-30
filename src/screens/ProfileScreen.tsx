@@ -1,11 +1,25 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, useColorScheme, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  ScrollView, 
+  TouchableOpacity, 
+  Image, 
+  useColorScheme,
+  Alert 
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/navigation';
 import HeaderSection from '../components/HeaderSection';
 import { useAuthState } from '../hooks/useAuthState';
+import { userDataService } from '../services/database/userDataService';
 
 const ProfileScreen = () => {
   const isDarkMode = useColorScheme() === 'dark';
   const { isLoggedIn, user, logout, isLoading } = useAuthState();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const handleLogout = async () => {
     Alert.alert(
@@ -29,11 +43,49 @@ const ProfileScreen = () => {
     );
   };
 
+  const handleGetUserInfo = async () => {
+    if (!user?.uid) {
+      Alert.alert('错误', '用户ID不存在');
+      return;
+    }
+
+    try {
+      // 调用getUserByUid获取用户信息
+      const result = await userDataService.getUserByUid(user.uid);
+      
+      if (result.success && result.data) {
+        Alert.alert(
+          '用户信息获取成功',
+          `用户ID: ${result.data.uid}\n用户名: ${result.data.username}\n昵称: ${result.data.name || '未设置'}\n手机号: ${result.data.phone_number || '未设置'}\n创建时间: ${new Date(result.data.created_at).toLocaleString()}\n最后登录: ${result.data.last_login_at ? new Date(result.data.last_login_at).toLocaleString() : '未记录'}`,
+          [{ text: '确定' }]
+        );
+      } else {
+        Alert.alert('获取失败', result.error?.message || '获取用户信息失败');
+      }
+    } catch (error) {
+      console.error('获取用户信息失败:', error);
+      Alert.alert('错误', '获取用户信息时发生错误');
+    }
+  };
+
   const handleMenuPress = (menuName: string) => {
     if (!isLoggedIn) {
       Alert.alert('提示', '请先登录');
       return;
     }
+    
+    if (menuName === '数据库测试') {
+      // 跳转到数据库测试页面
+      navigation.navigate('DatabaseTest');
+      return;
+    }
+    
+    if (menuName === '获取用户信息') {
+      // 测试getUserById功能
+      handleGetUserInfo();
+      return;
+    }
+    
     Alert.alert('功能提示', `${menuName}功能开发中...`);
   };
 
@@ -60,7 +112,7 @@ const ProfileScreen = () => {
       { backgroundColor: isDarkMode ? '#000' : '#fff' }
     ]}>
       <HeaderSection
-        title="个人中心"
+        title="个人中心 Profile"
         subtitle="我的资料"
         description="管理您的个人信息、收藏和设置。"
       />
@@ -174,6 +226,52 @@ const ProfileScreen = () => {
             { color: isDarkMode ? '#666' : '#999' }
           ]}>›</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[
+            styles.menuItem,
+            { borderBottomColor: isDarkMode ? '#333' : '#e9ecef' }
+          ]}
+          onPress={() => handleMenuPress('数据库测试')}
+        >
+          <View style={styles.menuContent}>
+            <Text style={[
+              styles.menuText,
+              { color: isDarkMode ? '#fff' : '#333' }
+            ]}>数据库测试</Text>
+            <Text style={[
+              styles.menuSubtext,
+              { color: isDarkMode ? '#666' : '#999' }
+            ]}>测试数据库操作功能</Text>
+          </View>
+          <Text style={[
+            styles.menuArrow,
+            { color: isDarkMode ? '#666' : '#999' }
+          ]}>›</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[
+            styles.menuItem,
+            { borderBottomColor: isDarkMode ? '#333' : '#e9ecef' }
+          ]}
+          onPress={() => handleMenuPress('获取用户信息')}
+        >
+          <View style={styles.menuContent}>
+            <Text style={[
+              styles.menuText,
+              { color: isDarkMode ? '#fff' : '#333' }
+            ]}>获取用户信息</Text>
+            <Text style={[
+              styles.menuSubtext,
+              { color: isDarkMode ? '#666' : '#999' }
+            ]}>测试getUserById功能</Text>
+          </View>
+          <Text style={[
+            styles.menuArrow,
+            { color: isDarkMode ? '#666' : '#999' }
+          ]}>›</Text>
+        </TouchableOpacity>
       </View>
 
       {/* 登录/登出按钮 */}
@@ -188,7 +286,7 @@ const ProfileScreen = () => {
         ) : (
           <TouchableOpacity 
             style={[styles.loginButton, { backgroundColor: '#4A90E2' }]}
-            onPress={() => Alert.alert('提示', '请到首页进行登录')}
+            onPress={() => navigation.navigate('Login')}
           >
             <Text style={styles.buttonText}>去登录</Text>
           </TouchableOpacity>
