@@ -82,6 +82,9 @@ FaceGlow是一个基于React Native的跨平台AI换脸应用，使用CloudBase�
 - 遵循TypeScript最佳实践
 - 保持代码清洁可读
 - 使用现有的服务模式
+- 引用资源前先检查文件是否存在
+- 使用项目中已存在的资源文件
+- 为缺失的资源提供合适的替代方案
 description:
 globs:
 alwaysApply: true

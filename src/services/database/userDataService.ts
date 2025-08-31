@@ -2,19 +2,13 @@ import { databaseService, DatabaseResponse, DatabaseError } from './databaseServ
 
 // 用户数据模型接口
 export interface UserDocument {
-  id?: string;
+  _id?: string;                   // 文档ID（CloudBase自动生成）
   uid: string;                    // 用户唯一标识
   username: string;               // 用户名
   phone_number: string;           // 手机号
   name?: string;                  // 昵称
   gender?: string;                // 性别
-  avatar_url?: string;               // 头像
-  locale?: string;                // 地区
-  created_at: number;             // 创建时间
-  updated_at: number;             // 更新时间
-  last_login_at?: number;         // 最后登录时间
-  login_count: number;            // 登录次数
-  is_active: boolean;             // 是否激活
+  picture?: string;               // 头像（CloudBase中的字段名）
 }
 
 // 创建用户文档请求参数
@@ -24,8 +18,7 @@ export interface CreateUserRequest {
   phone_number: string;
   name?: string;
   gender?: string;
-  avatar_url?: string;
-  locale?: string;
+  picture?: string;
 }
 
 // 更新用户登录信息请求参数
@@ -41,21 +34,13 @@ export class UserDataService {
   // 创建新用户文档（注册成功后调用）
   async createUser(userData: CreateUserRequest): Promise<DatabaseResponse<{ id: string }>> {
     try {
-      const now = Date.now();
-      
       const createData = {
         uid: userData.uid,         // 来自CloudBase返回的sub字段
         username: userData.username,
+        phone_number: userData.phone_number,
         name: userData.name || '',
         gender: userData.gender || '',
-        avatar_url: userData.avatar_url || '',
-        phone_number: userData.phone_number || '',
-        locale: userData.locale || 'zh-CN',
-        created_at: now,
-        updated_at: now,
-        last_login_at: now,
-        login_count: 1,
-        is_active: true,
+        picture: userData.picture || '',
       };
 
       // 使用 upsert 接口创建用户文档

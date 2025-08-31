@@ -1,12 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, useColorScheme } from 'react-native';
 import HeaderSection from '../components/HeaderSection';
 import { userDataService, databaseService } from '../services/database';
+import { userWorkService } from '../services/database/userWorkService';
+import { useAuthState } from '../hooks/useAuthState';
 
 const DatabaseTestScreen = () => {
   const isDarkMode = useColorScheme() === 'dark';
+  const { isLoggedIn, user } = useAuthState();
   const [loading, setLoading] = useState(false);
   const [testResults, setTestResults] = useState<string[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string>('');
+  const [lastCreatedUserId, setLastCreatedUserId] = useState<string>('');
+
+  useEffect(() => {
+    if (isLoggedIn && user?.uid) {
+      setCurrentUserId(user.uid);
+      addTestResult(`🔐 当前登录用户: ${user.uid}`);
+    }
+  }, [isLoggedIn, user]);
 
   const addTestResult = (result: string) => {
     setTestResults(prev => [...prev, `${new Date().toLocaleTimeString()}: ${result}`]);
@@ -14,10 +26,25 @@ const DatabaseTestScreen = () => {
 
   const clearResults = () => {
     setTestResults([]);
+    if (isLoggedIn && user?.uid) {
+      addTestResult(`🔐 当前登录用户: ${user.uid}`);
+    }
+  };
+
+  // 检查用户登录状态
+  const checkUserLogin = () => {
+    if (!isLoggedIn || !user?.uid) {
+      addTestResult(`❌ 用户未登录，请先登录`);
+      return false;
+    }
+    addTestResult(`✅ 用户已登录，UID: ${user.uid}`);
+    return true;
   };
 
   // 测试创建用户
   const testCreateUser = async () => {
+    if (!checkUserLogin()) return;
+    
     setLoading(true);
     try {
       const mockUserData = {
@@ -25,13 +52,19 @@ const DatabaseTestScreen = () => {
         username: 'test_user_' + Date.now(),
         phone_number: '+8613800138000',
         name: '测试用户',
-        locale: 'zh-CN'
+        picture: 'https://via.placeholder.com/100x100/4A90E2/FFFFFF?text=Avatar',
+        gender: '男'
       };
 
       const result = await userDataService.createUser(mockUserData);
-      
+      console.log('frog.result.createUser', result);
       if (result.success) {
-        addTestResult(`✅ 用户创建成功: ${result.data?.id}`);
+        // 记录创建的测试用户uid，用于后续操作
+        setLastCreatedUserId(mockUserData.uid);
+        addTestResult(`✅ 用户创建成功: ${mockUserData.uid}`);
+        addTestResult(`📝 用户名: ${mockUserData.username}, 昵称: ${mockUserData.name}`);
+        addTestResult(`📱 手机号: ${mockUserData.phone_number}, 性别: ${mockUserData.gender}`);
+        addTestResult(`🔑 测试用户UID已记录: ${mockUserData.uid}`);
       } else {
         addTestResult(`❌ 用户创建失败: ${result.error?.message}`);
       }
@@ -42,39 +75,23 @@ const DatabaseTestScreen = () => {
     }
   };
 
-  // 测试更新登录时间
-  const testUpdateLoginTime = async () => {
-    setLoading(true);
-    try {
-      const mockLoginData = {
-        uid: 'test_user_' + Date.now(),
-        last_login_at: Date.now()
-      };
-
-      const result = await userDataService.updateLastLoginTime(mockLoginData);
-      
-      if (result.success) {
-        addTestResult(`✅ 登录时间更新成功: 更新了 ${result.data?.count} 条记录`);
-      } else {
-        addTestResult(`❌ 登录时间更新失败: ${result.error?.message}`);
-      }
-    } catch (error) {
-      addTestResult(`❌ 登录时间更新异常: ${error instanceof Error ? error.message : '未知错误'}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // 测试获取用户信息
   const testGetUserInfo = async () => {
+    if (!checkUserLogin()) return;
+    
     setLoading(true);
     try {
-      const testUid = 'test_user_' + Date.now();
-      
+      // 优先使用刚创建的用户ID，如果没有则使用当前登录用户ID
+      const testUid = lastCreatedUserId || currentUserId;
       const result = await userDataService.getUserByUid(testUid);
       
+      console.log('frog.result.getUserByUid', result);
       if (result.success && result.data) {
         addTestResult(`✅ 用户信息获取成功: ${result.data.username}`);
+        addTestResult(`📋 用户详情: ID=${result.data.uid}, 昵称=${result.data.name || '未设置'}`);
+        addTestResult(`📱 手机号: ${result.data.phone_number || '未设置'}`);
+        addTestResult(`👤 性别: ${result.data.gender || '未设置'}`);
+        addTestResult(`🖼️ 头像: ${result.data.picture || '未设置'}`);
       } else {
         addTestResult(`ℹ️ 用户信息获取: ${result.error?.message || '用户不存在'}`);
       }
@@ -85,39 +102,123 @@ const DatabaseTestScreen = () => {
     }
   };
 
-  // 测试数据库服务基础功能
-  const testDatabaseService = () => {
+  // 测试创建用户作品
+  const testCreateUserWork = async () => {
+    if (!checkUserLogin()) return;
+    
+    setLoading(true);
     try {
-      // 测试设置和清除访问令牌
-      addTestResult('✅ 访问令牌设置成功');
-      
-      addTestResult('✅ 访问令牌清除成功');
-      
-      addTestResult('✅ 数据库服务基础功能正常');
+      // 优先使用刚创建的用户ID，如果没有则使用当前登录用户ID
+      const testUid = lastCreatedUserId || currentUserId;
+      const mockWorkData = {
+        uid: testUid,
+        template_id: 'test_template_' + Date.now(),
+        original_image: 'https://via.placeholder.com/400x400/FF6B6B/FFFFFF?text=Original',
+        result_image: 'https://via.placeholder.com/400x400/4ECDC4/FFFFFF?text=Result',
+        likes: '0',
+        is_public: 'true',
+        download_count: '0'
+      };
+
+      const result = await userWorkService.createWork(mockWorkData);
+      console.log('frog.result.createWork', result);
+      if (result.success) {
+        addTestResult(`✅ 用户作品创建成功: ${result.data?.id}`);
+        addTestResult(`🎨 作品信息: 模板=${mockWorkData.template_id}`);
+        addTestResult(`🖼️ 原始图片: ${mockWorkData.original_image}`);
+        addTestResult(`✨ 结果图片: ${mockWorkData.result_image}`);
+        addTestResult(`👤 关联用户UID: ${testUid}`);
+      } else {
+        addTestResult(`❌ 用户作品创建失败: ${result.error?.message}`);
+      }
     } catch (error) {
-      addTestResult(`❌ 数据库服务测试失败: ${error instanceof Error ? error.message : '未知错误'}`);
+      addTestResult(`❌ 用户作品创建异常: ${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // 运行所有测试
-  const runAllTests = async () => {
-    setTestResults([]);
-    addTestResult('🚀 开始运行所有测试...');
+  // 测试获取用户作品
+  const testGetUserWorks = async () => {
+    if (!checkUserLogin()) return;
     
-    // 基础功能测试
-    testDatabaseService();
+    setLoading(true);
+    try {
+      // 优先使用刚创建的用户ID，如果没有则使用当前登录用户ID
+      const testUid = lastCreatedUserId || currentUserId;
+      const result = await userWorkService.getUserWorks({
+        uid: testUid,
+        limit: 10
+      });
+      console.log('frog.result.getUserWorks', result);      
+      if (result.success && result.data) {
+        addTestResult(`✅ 用户作品获取成功: 共 ${result.data.length} 个作品`);
+        addTestResult(`🔍 查询用户UID: ${testUid}`);
+        
+        if (result.data.length > 0) {
+          result.data.forEach((work, index) => {
+            addTestResult(`📸 作品${index + 1}: ID=${work._id}, 模板=${work.template_id}`);
+            addTestResult(`  点赞: ${work.likes}, 下载: ${work.download_count}, 公开: ${work.is_public}`);
+          });
+        } else {
+          addTestResult(`ℹ️ 该用户暂无作品`);
+        }
+      } else {
+        addTestResult(`ℹ️ 用户作品获取: ${result.error?.message || '获取失败'}`);
+      }
+    } catch (error) {
+      addTestResult(`❌ 用户作品获取异常: ${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 测试更新用户信息
+  const testUpdateUserInfo = async () => {
+    if (!checkUserLogin()) return;
     
-    // 等待一下再运行其他测试
-    setTimeout(async () => {
-      await testCreateUser();
-      setTimeout(async () => {
-        await testUpdateLoginTime();
+    setLoading(true);
+    try {
+      // 优先使用刚创建的用户ID，如果没有则使用当前登录用户ID
+      const testUid = lastCreatedUserId || currentUserId;
+      const newUsername = 'updated_user_' + Date.now();
+      const updateData = {
+        username: newUsername,
+        name: '更新后的昵称',
+        updated_at: Date.now()
+      };
+
+      // 使用upsert方法更新用户信息
+      const result = await userDataService.createUser({
+        uid: testUid,
+        username: newUsername,
+        phone_number: '+8613800138000',
+        name: '更新后的昵称',
+        gender: '女',
+        picture: 'https://via.placeholder.com/100x100/E91E63/FFFFFF?text=Updated'
+      });
+      console.log('frog.result.createUser', result);      
+      if (result.success) {
+        addTestResult(`✅ 用户信息更新成功`);
+        addTestResult(`📝 新用户名: ${newUsername}`);
+        addTestResult(`🕐 更新时间: ${new Date(updateData.updated_at).toLocaleString()}`);
+        addTestResult(`👤 更新用户UID: ${testUid}`);
+        
+        // 验证更新结果
         setTimeout(async () => {
-          await testGetUserInfo();
-          addTestResult('🎉 所有测试完成！');
+          const verifyResult = await userDataService.getUserByUid(testUid);
+          if (verifyResult.success && verifyResult.data) {
+            addTestResult(`✅ 验证更新结果: 用户名=${verifyResult.data.username}, 昵称=${verifyResult.data.name}`);
+          }
         }, 1000);
-      }, 1000);
-    }, 1000);
+      } else {
+        addTestResult(`❌ 用户信息更新失败: ${result.error?.message}`);
+      }
+    } catch (error) {
+      addTestResult(`❌ 用户信息更新异常: ${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -128,8 +229,43 @@ const DatabaseTestScreen = () => {
       <HeaderSection
         title="数据库测试"
         subtitle="测试数据库操作功能"
-        description="验证用户数据的创建、更新和查询功能是否正常工作。"
+        description="验证用户数据的创建、更新和查询功能是否正常工作。需要先登录。"
       />
+
+      {/* 用户状态显示 */}
+      {!isLoggedIn ? (
+        <View style={[
+          styles.warningContainer,
+          { backgroundColor: isDarkMode ? '#2d1b1b' : '#fff3cd' }
+        ]}>
+          <Text style={[
+            styles.warningText,
+            { color: isDarkMode ? '#ff6b6b' : '#856404' }
+          ]}>
+            ⚠️ 请先登录后再进行数据库测试
+          </Text>
+        </View>
+      ) : (
+        <View style={[
+          styles.userInfoContainer,
+          { backgroundColor: isDarkMode ? '#1a2d1a' : '#d4edda' }
+        ]}>
+          <Text style={[
+            styles.userInfoText,
+            { color: isDarkMode ? '#4caf50' : '#155724' }
+          ]}>
+            ✅ 已登录用户: {user?.uid}
+          </Text>
+          {lastCreatedUserId && (
+            <Text style={[
+              styles.userInfoText,
+              { color: isDarkMode ? '#4caf50' : '#155724', marginTop: 5 }
+            ]}>
+              🆕 测试用户: {lastCreatedUserId}
+            </Text>
+          )}
+        </View>
+      )}
 
       {/* 测试按钮区域 */}
       <View style={[
@@ -147,7 +283,7 @@ const DatabaseTestScreen = () => {
           <TouchableOpacity
             style={[styles.testButton, { backgroundColor: '#4CAF50' }]}
             onPress={testCreateUser}
-            disabled={loading}
+            disabled={loading || !isLoggedIn}
           >
             <Text style={styles.buttonText}>创建用户</Text>
           </TouchableOpacity>
@@ -155,27 +291,35 @@ const DatabaseTestScreen = () => {
           <TouchableOpacity
             style={[styles.testButton, { backgroundColor: '#FF9800' }]}
             onPress={testGetUserInfo}
-            disabled={loading}
+            disabled={loading || !isLoggedIn}
           >
             <Text style={styles.buttonText}>获取用户信息</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.testButton, { backgroundColor: '#9C27B0' }]}
-            onPress={testDatabaseService}
-            disabled={loading}
+            style={[styles.testButton, { backgroundColor: '#2196F3' }]}
+            onPress={testCreateUserWork}
+            disabled={loading || !isLoggedIn}
           >
-            <Text style={styles.buttonText}>基础功能测试</Text>
+            <Text style={styles.buttonText}>创建用户作品</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.testButton, { backgroundColor: '#9C27B0' }]}
+            onPress={testGetUserWorks}
+            disabled={loading || !isLoggedIn}
+          >
+            <Text style={styles.buttonText}>获取用户作品</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.testButton, { backgroundColor: '#607D8B' }]}
+            onPress={testUpdateUserInfo}
+            disabled={loading || !isLoggedIn}
+          >
+            <Text style={styles.buttonText}>更新用户信息</Text>
           </TouchableOpacity>
         </View>
-
-        <TouchableOpacity
-          style={[styles.runAllButton, { backgroundColor: '#E91E63' }]}
-          onPress={runAllTests}
-          disabled={loading}
-        >
-          <Text style={styles.buttonText}>运行所有测试</Text>
-        </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.clearButton, { backgroundColor: '#607D8B' }]}
@@ -202,7 +346,7 @@ const DatabaseTestScreen = () => {
             styles.noResults,
             { color: isDarkMode ? '#666' : '#999' }
           ]}>
-            暂无测试结果，请点击上方按钮开始测试
+            {isLoggedIn ? '暂无测试结果，请点击上方按钮开始测试' : '请先登录后再进行测试'}
           </Text>
         ) : (
           <View style={styles.resultsList}>
@@ -248,13 +392,25 @@ const DatabaseTestScreen = () => {
           styles.noteText,
           { color: isDarkMode ? '#666' : '#999' }
         ]}>
-          • 网络请求需要有效的访问令牌
+          • 必须先登录才能进行测试
         </Text>
         <Text style={[
           styles.noteText,
           { color: isDarkMode ? '#666' : '#999' }
         ]}>
-          • 测试结果仅供参考，实际使用请验证
+          • 测试将使用当前登录用户的access token
+        </Text>
+        <Text style={[
+          styles.noteText,
+          { color: isDarkMode ? '#666' : '#999' }
+        ]}>
+          • 建议按顺序测试：创建用户 → 获取用户信息 → 创建作品 → 获取作品 → 更新用户信息
+        </Text>
+        <Text style={[
+          styles.noteText,
+          { color: isDarkMode ? '#666' : '#999' }
+        ]}>
+          • 创建测试用户后，后续操作将优先使用测试用户UID
         </Text>
       </View>
     </ScrollView>
@@ -264,6 +420,26 @@ const DatabaseTestScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  warningContainer: {
+    margin: 15,
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  warningText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  userInfoContainer: {
+    margin: 15,
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  userInfoText: {
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   testContainer: {
     margin: 15,

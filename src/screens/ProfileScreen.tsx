@@ -14,12 +14,20 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import HeaderSection from '../components/HeaderSection';
 import { useAuthState } from '../hooks/useAuthState';
-import { userDataService } from '../services/database/userDataService';
+import { userWorkService } from '../services/database/userWorkService';
+import UserWorkItem from '../components/UserWorkItem';
+import { UserWork } from '../types/auth';
 
 const ProfileScreen = () => {
   const isDarkMode = useColorScheme() === 'dark';
   const { isLoggedIn, user, logout, isLoading } = useAuthState();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  
+  // 作品相关状态
+  const [userWorks, setUserWorks] = useState<UserWork[]>([]);
+  const [worksLoading, setWorksLoading] = useState(false);
+  const [worksError, setWorksError] = useState<string | null>(null);
+  const [showWorks, setShowWorks] = useState(false);
 
   const handleLogout = async () => {
     Alert.alert(
@@ -43,46 +51,92 @@ const ProfileScreen = () => {
     );
   };
 
-  const handleGetUserInfo = async () => {
+  // 获取用户作品列表
+  const fetchUserWorks = async () => {
     if (!user?.uid) {
-      Alert.alert('错误', '用户ID不存在');
+      setWorksError('用户ID不存在');
       return;
     }
 
+    setWorksLoading(true);
+    setWorksError(null);
+
     try {
-      // 调用getUserByUid获取用户信息
-      const result = await userDataService.getUserByUid(user.uid);
-      
+      const result = await userWorkService.getUserWorks({
+        uid: user.uid,
+        limit: 20 // 限制返回20个作品
+      });
+
       if (result.success && result.data) {
-        Alert.alert(
-          '用户信息获取成功',
-          `用户ID: ${result.data.uid}\n用户名: ${result.data.username}\n昵称: ${result.data.name || '未设置'}\n手机号: ${result.data.phone_number || '未设置'}\n创建时间: ${new Date(result.data.created_at).toLocaleString()}\n最后登录: ${result.data.last_login_at ? new Date(result.data.last_login_at).toLocaleString() : '未记录'}`,
-          [{ text: '确定' }]
-        );
+        setUserWorks(result.data);
+        console.log('获取用户作品成功:', result.data); // 打印返回数据到控制台
       } else {
-        Alert.alert('获取失败', result.error?.message || '获取用户信息失败');
+        setWorksError(result.error?.message || '获取作品失败');
+        console.error('获取用户作品失败:', result.error); // 打印错误信息到控制台
       }
     } catch (error) {
-      console.error('获取用户信息失败:', error);
-      Alert.alert('错误', '获取用户信息时发生错误');
+      console.error('获取用户作品异常:', error);
+      setWorksError('获取作品时发生异常');
+    } finally {
+      setWorksLoading(false);
     }
   };
 
-  const handleMenuPress = (menuName: string) => {
-    if (!isLoggedIn) {
-      Alert.alert('提示', '请先登录');
-      return;
+  // 切换作品显示状态
+  const toggleWorks = () => {
+    if (!showWorks && userWorks.length === 0) {
+      fetchUserWorks();
     }
-    
+    setShowWorks(!showWorks);
+  };
+
+  // 处理作品点赞
+  const handleWorkLike = async (workId: string) => {
+    try {
+      const result = await userWorkService.incrementLikes(workId);
+      if (result.success) {
+        // 刷新作品列表
+        fetchUserWorks();
+        Alert.alert('成功', '点赞成功！');
+      } else {
+        Alert.alert('失败', result.error?.message || '点赞失败');
+      }
+    } catch (error) {
+      console.error('点赞失败:', error);
+      Alert.alert('错误', '点赞时发生错误');
+    }
+  };
+
+  // 处理作品下载
+  const handleWorkDownload = async (workId: string) => {
+    try {
+      const result = await userWorkService.incrementDownloadCount(workId);
+      if (result.success) {
+        // 刷新作品列表
+        fetchUserWorks();
+        Alert.alert('成功', '下载记录已更新！');
+      } else {
+        Alert.alert('失败', result.error?.message || '更新下载记录失败');
+      }
+    } catch (error) {
+      console.error('更新下载记录失败:', error);
+      Alert.alert('错误', '更新下载记录时发生错误');
+    }
+  };
+
+  // 处理作品点击
+  const handleWorkPress = (work: UserWork) => {
+    Alert.alert(
+      '作品详情',
+      `作品ID: ${work._id}\n模板ID: ${work.template_id}\n状态: ${work.status}\n创建时间: ${new Date(work.created_at).toLocaleString()}`,
+      [{ text: '确定' }]
+    );
+  };
+
+  const handleMenuPress = (menuName: string) => {
     if (menuName === '数据库测试') {
       // 跳转到数据库测试页面
       navigation.navigate('DatabaseTest');
-      return;
-    }
-    
-    if (menuName === '获取用户信息') {
-      // 测试getUserById功能
-      handleGetUserInfo();
       return;
     }
     
@@ -90,12 +144,8 @@ const ProfileScreen = () => {
   };
 
   const getAvatarSource = () => {
-    if (user?.uid) {
-      // 如果有用户ID，可以生成基于用户ID的默认头像
-      // 这里使用一个简单的占位符，实际项目中可以使用Gravatar等服务
-      return { uri: `https://via.placeholder.com/100/4A90E2/FFFFFF?text=${user.uid.slice(0, 2).toUpperCase()}` };
-    }
-    return { uri: 'https://via.placeholder.com/100/CCCCCC/666666?text=?' };
+    // 使用存在的图标文件作为默认头像
+    return require('../assets/icons/profile.png');
   };
 
   const getUserDisplayName = () => {
@@ -163,75 +213,6 @@ const ProfileScreen = () => {
             styles.menuItem,
             { borderBottomColor: isDarkMode ? '#333' : '#e9ecef' }
           ]}
-          onPress={() => handleMenuPress('我的收藏')}
-        >
-          <View style={styles.menuContent}>
-            <Text style={[
-              styles.menuText,
-              { color: isDarkMode ? '#fff' : '#333' }
-            ]}>我的收藏</Text>
-            <Text style={[
-              styles.menuSubtext,
-              { color: isDarkMode ? '#666' : '#999' }
-            ]}>查看收藏的内容</Text>
-          </View>
-          <Text style={[
-            styles.menuArrow,
-            { color: isDarkMode ? '#666' : '#999' }
-          ]}>›</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[
-            styles.menuItem,
-            { borderBottomColor: isDarkMode ? '#333' : '#e9ecef' }
-          ]}
-          onPress={() => handleMenuPress('我的发布')}
-        >
-          <View style={styles.menuContent}>
-            <Text style={[
-              styles.menuText,
-              { color: isDarkMode ? '#fff' : '#333' }
-            ]}>我的发布</Text>
-            <Text style={[
-              styles.menuSubtext,
-              { color: isDarkMode ? '#666' : '#999' }
-            ]}>管理发布的内容</Text>
-          </View>
-          <Text style={[
-            styles.menuArrow,
-            { color: isDarkMode ? '#666' : '#999' }
-          ]}>›</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[
-            styles.menuItem,
-            { borderBottomColor: isDarkMode ? '#333' : '#e9ecef' }
-          ]}
-          onPress={() => handleMenuPress('设置')}
-        >
-          <View style={styles.menuContent}>
-            <Text style={[
-              styles.menuText,
-              { color: isDarkMode ? '#fff' : '#333' }
-            ]}>设置</Text>
-            <Text style={[
-              styles.menuSubtext,
-              { color: isDarkMode ? '#666' : '#999' }
-            ]}>应用设置和偏好</Text>
-          </View>
-          <Text style={[
-            styles.menuArrow,
-            { color: isDarkMode ? '#666' : '#999' }
-          ]}>›</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[
-            styles.menuItem,
-            { borderBottomColor: isDarkMode ? '#333' : '#e9ecef' }
-          ]}
           onPress={() => handleMenuPress('数据库测试')}
         >
           <View style={styles.menuContent}>
@@ -242,7 +223,7 @@ const ProfileScreen = () => {
             <Text style={[
               styles.menuSubtext,
               { color: isDarkMode ? '#666' : '#999' }
-            ]}>测试数据库操作功能</Text>
+            ]}>测试数据库连接和操作</Text>
           </View>
           <Text style={[
             styles.menuArrow,
@@ -255,53 +236,96 @@ const ProfileScreen = () => {
             styles.menuItem,
             { borderBottomColor: isDarkMode ? '#333' : '#e9ecef' }
           ]}
-          onPress={() => handleMenuPress('获取用户信息')}
+          onPress={toggleWorks}
         >
           <View style={styles.menuContent}>
             <Text style={[
               styles.menuText,
               { color: isDarkMode ? '#fff' : '#333' }
-            ]}>获取用户信息</Text>
+            ]}>我的作品</Text>
             <Text style={[
               styles.menuSubtext,
               { color: isDarkMode ? '#666' : '#999' }
-            ]}>测试getUserById功能</Text>
+            ]}>
+              {showWorks ? '隐藏作品列表' : '查看我的作品'}
+              {userWorks.length > 0 && ` (${userWorks.length})`}
+            </Text>
           </View>
           <Text style={[
             styles.menuArrow,
             { color: isDarkMode ? '#666' : '#999' }
-          ]}>›</Text>
+          ]}>
+            {showWorks ? '▼' : '›'}
+          </Text>
         </TouchableOpacity>
       </View>
 
-      {/* 登录/登出按钮 */}
-      <View style={styles.actionContainer}>
-        {isLoggedIn ? (
-          <TouchableOpacity 
-            style={[styles.logoutButton, { backgroundColor: '#ff6b6b' }]}
-            onPress={handleLogout}
-          >
-            <Text style={styles.buttonText}>退出登录</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity 
-            style={[styles.loginButton, { backgroundColor: '#4A90E2' }]}
-            onPress={() => navigation.navigate('Login')}
-          >
-            <Text style={styles.buttonText}>去登录</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* 底部信息 */}
-      <View style={styles.footer}>
-        <Text style={[
-          styles.footerText,
-          { color: isDarkMode ? '#666' : '#999' }
+      {/* 作品列表 */}
+      {showWorks && (
+        <View style={[
+          styles.worksContainer,
+          { backgroundColor: isDarkMode ? '#1a1a1a' : '#f8f9fa' }
         ]}>
-          FaceGlow v1.0.0
-        </Text>
-      </View>
+          <View style={styles.worksHeader}>
+            <Text style={[
+              styles.worksTitle,
+              { color: isDarkMode ? '#fff' : '#333' }
+            ]}>我的作品</Text>
+          </View>
+
+          {worksLoading ? (
+            <View style={styles.worksLoading}>
+              <Text style={[
+                styles.worksLoadingText,
+                { color: isDarkMode ? '#666' : '#999' }
+              ]}>加载中...</Text>
+            </View>
+          ) : worksError ? (
+            <View style={styles.worksError}>
+              <Text style={[
+                styles.worksErrorText,
+                { color: isDarkMode ? '#ff6b6b' : '#dc3545' }
+              ]}>{worksError}</Text>
+            </View>
+          ) : userWorks.length === 0 ? (
+            <View style={styles.worksEmpty}>
+              <Text style={[
+                styles.worksEmptyText,
+                { color: isDarkMode ? '#666' : '#999' }
+              ]}>暂无作品</Text>
+            </View>
+          ) : (
+            <View style={styles.worksList}>
+              {userWorks.map((work) => (
+                <UserWorkItem
+                  key={work._id}
+                  work={work}
+                  onPress={handleWorkPress}
+                  onLike={handleWorkLike}
+                  onDownload={handleWorkDownload}
+                />
+              ))}
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* 登录/登出按钮 */}
+      {isLoggedIn ? (
+        <TouchableOpacity
+          style={[styles.logoutButton, { backgroundColor: '#dc3545' }]}
+          onPress={handleLogout}
+        >
+          <Text style={styles.buttonText}>退出登录</Text>
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity
+          style={[styles.loginButton, { backgroundColor: '#4A90E2' }]}
+          onPress={() => navigation.navigate('Login')}
+        >
+          <Text style={styles.buttonText}>去登录</Text>
+        </TouchableOpacity>
+      )}
     </ScrollView>
   );
 };
@@ -399,6 +423,50 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 12,
+  },
+  // 作品相关样式
+  worksContainer: {
+    marginHorizontal: 15,
+    marginBottom: 15,
+    borderRadius: 10,
+    padding: 16,
+  },
+  worksHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  worksTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  worksLoading: {
+    padding: 32,
+    alignItems: 'center',
+  },
+  worksLoadingText: {
+    fontSize: 14,
+    fontStyle: 'italic',
+  },
+  worksError: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  worksErrorText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  worksEmpty: {
+    padding: 32,
+    alignItems: 'center',
+  },
+  worksEmptyText: {
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  worksList: {
+    // 作品列表容器
   },
 });
 
