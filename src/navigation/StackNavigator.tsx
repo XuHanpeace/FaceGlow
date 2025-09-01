@@ -10,6 +10,7 @@ import BeforeCreationScreen from '../screens/BeforeCreationScreen';
 import TemplateMarketScreen from '../screens/TemplateMarketScreen';
 import NewProfileScreen from '../screens/NewProfileScreen';
 import TestCenterScreen from '../screens/TestCenterScreen';
+import SelfieGuideScreen from '../screens/SelfieGuideScreen';
 import { RootStackParamList } from '../types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -57,6 +58,15 @@ const StackNavigator = () => {
         component={TestCenterScreen}
         options={{
           headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="SelfieGuide"
+        component={SelfieGuideScreen}
+        options={{
+          headerShown: false,
+          animation: 'slide_from_bottom',
+          animationDuration: 250,
         }}
       />
       <Stack.Screen

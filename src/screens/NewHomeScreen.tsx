@@ -1,11 +1,9 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, StatusBar, SafeAreaView } from 'react-native';
+import React from 'react';
+import { View, StyleSheet, ScrollView, StatusBar, SafeAreaView, TouchableOpacity, Text, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import HomeHeader from '../components/HomeHeader';
-import HomeNavigation, { NavigationItem } from '../components/HomeNavigation';
-import SearchBar from '../components/SearchBar';
 import ContentSection from '../components/ContentSection';
 
 type NewHomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -61,12 +59,7 @@ const mockCommunityTemplates = [
 
 const NewHomeScreen: React.FC = () => {
   const navigation = useNavigation<NewHomeScreenNavigationProp>();
-  const [activeTab, setActiveTab] = useState<NavigationItem>('discover');
 
-  const handleTabPress = (tab: NavigationItem) => {
-    setActiveTab(tab);
-    // 这里可以根据不同的tab加载不同的内容
-  };
 
   const handleTemplatePress = (templateId: string) => {
     // 跳转到换脸前置页
@@ -86,10 +79,7 @@ const NewHomeScreen: React.FC = () => {
     });
   };
 
-  const handleSearchPress = () => {
-    // 处理搜索功能
-    console.log('Search pressed');
-  };
+
 
   const handleUpgradePress = () => {
     // 处理升级功能
@@ -101,10 +91,17 @@ const NewHomeScreen: React.FC = () => {
     navigation.navigate('NewProfile');
   };
 
+  const handleAddSelfiePress = () => {
+    // 跳转到自拍引导页
+    navigation.navigate('SelfieGuide');
+  };
+
   return (
-    
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
+      
+      {/* 只保护顶部的SafeArea */}
+      <SafeAreaView style={styles.safeAreaTop} />
       
       {/* 固定头部 */}
       <View style={styles.fixedHeader}>
@@ -121,12 +118,19 @@ const NewHomeScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <HomeNavigation
-          activeTab={activeTab}
-          onTabPress={handleTabPress}
-        />
+        {/* 我的自拍照模块 */}
+        <View style={styles.selfieModule}>
+          <Text style={styles.selfieTitle}>我的自拍</Text>
+          <View style={styles.selfieContent}>
+            {/* Mock自拍照展示 */}
+              <TouchableOpacity style={styles.addSelfieButton} onPress={handleAddSelfiePress}>
+                <Text style={styles.addIcon}>+</Text>
+              </TouchableOpacity>
+              <Image source={{ uri: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop' }} style={styles.selfieImage} />
+              <Image source={{ uri: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop' }} style={styles.selfieImage} />
 
-        <SearchBar onPress={handleSearchPress} />
+          </View>
+        </View>
 
         <ContentSection
           title="Art Branding"
@@ -144,13 +148,16 @@ const NewHomeScreen: React.FC = () => {
           onViewAllPress={handleViewAllPress}
         />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#000',
+  },
+  safeAreaTop: {
     backgroundColor: '#000',
   },
   fixedHeader: {
@@ -162,6 +169,49 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 50,
+  },
+  selfieModule: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    overflow: 'hidden',
+    padding: 16,
+  },
+  selfieTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 16,
+  },
+  selfieContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 12,
+  },
+  selfieImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  addSelfieButton: {
+      width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(94, 231, 223, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(94, 231, 223, 0.4)',
+    borderStyle: 'dashed',
+  },
+  addIcon: {
+    color: '#5EE7DF',
+    fontSize: 24,
+    fontWeight: 'bold',
   },
 });
 

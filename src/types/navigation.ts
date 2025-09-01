@@ -14,6 +14,7 @@ export type RootStackParamList = {
   Profile: undefined;
   NewProfile: undefined;
   TestCenter: undefined;
+  SelfieGuide: undefined;
   Notifications: undefined;
   Login: undefined;
   Detail: {

@@ -14,11 +14,51 @@ import { RootStackParamList } from '../types/navigation';
 
 type NewProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-type TabType = 'drafts' | 'posts' | 'likes';
+type TabType = 'drafts' | 'posts' | 'selfies';
+
+interface SelfieItem {
+  id: string;
+  imageUrl: string;
+  createdAt: string;
+}
 
 const NewProfileScreen: React.FC = () => {
   const navigation = useNavigation<NewProfileScreenNavigationProp>();
   const [activeTab, setActiveTab] = useState<TabType>('posts');
+
+  // 模拟自拍照数据
+  const mockSelfies: SelfieItem[] = [
+    {
+      id: '1',
+      imageUrl: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=200&h=200&fit=crop',
+      createdAt: '2024-01-15',
+    },
+    {
+      id: '2',
+      imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop',
+      createdAt: '2024-01-10',
+    },
+    {
+      id: '3',
+      imageUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop',
+      createdAt: '2024-01-05',
+    },
+    {
+      id: '4',
+      imageUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop',
+      createdAt: '2024-01-01',
+    },
+    {
+      id: '5',
+      imageUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop',
+      createdAt: '2023-12-28',
+    },
+    {
+      id: '6',
+      imageUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop',
+      createdAt: '2023-12-25',
+    },
+  ];
 
   const handleBackPress = () => {
     navigation.goBack();
@@ -44,9 +84,9 @@ const NewProfileScreen: React.FC = () => {
     console.log('Edit profile pressed');
   };
 
-  const handleAddInstagramPress = () => {
-    // 处理添加Instagram
-    console.log('Add Instagram pressed');
+  const handleAddSelfiePress = () => {
+    // 跳转到自拍引导页
+    navigation.navigate('SelfieGuide');
   };
 
   const handleAddPostPress = () => {
@@ -113,12 +153,12 @@ const NewProfileScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* 添加Instagram */}
-        <TouchableOpacity style={styles.instagramButton} onPress={handleAddInstagramPress}>
+        {/* 添加自拍照 */}
+        <TouchableOpacity style={styles.instagramButton} onPress={handleAddSelfiePress}>
           <View style={styles.instagramIcon}>
-            <Text style={styles.instagramGradient}>📷</Text>
+            <Text style={styles.instagramGradient}>📸</Text>
           </View>
-          <Text style={styles.instagramText}>添加 Instagram</Text>
+          <Text style={styles.instagramText}>添加自拍照</Text>
           <Text style={styles.plusIcon}>+</Text>
         </TouchableOpacity>
 
@@ -141,11 +181,11 @@ const NewProfileScreen: React.FC = () => {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'likes' && styles.activeTab]}
-            onPress={() => handleTabPress('likes')}
+            style={[styles.tab, activeTab === 'selfies' && styles.activeTab]}
+            onPress={() => handleTabPress('selfies')}
           >
-            <Text style={[styles.tabText, activeTab === 'likes' && styles.activeTabText]}>
-              点赞
+            <Text style={[styles.tabText, activeTab === 'selfies' && styles.activeTabText]}>
+              我的自拍
             </Text>
           </TouchableOpacity>
         </View>
@@ -163,9 +203,16 @@ const NewProfileScreen: React.FC = () => {
               <Text style={styles.emptyText}>暂无草稿</Text>
             </View>
           )}
-          {activeTab === 'likes' && (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>暂无点赞</Text>
+          {activeTab === 'selfies' && (
+            <View style={styles.selfiesContainer}>
+              <View style={styles.selfiesGrid}>
+                {mockSelfies.map((selfie) => (
+                  <TouchableOpacity key={selfie.id} style={styles.selfieItem}>
+                    <Image source={{ uri: selfie.imageUrl }} style={styles.selfieImage} />
+                    <Text style={styles.selfieDate}>{selfie.createdAt}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
           )}
         </View>
@@ -402,6 +449,38 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     opacity: 0.6,
+  },
+  selfiesContainer: {
+    flex: 1,
+  },
+  selfiesTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  selfiesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 15,
+  },
+  selfieItem: {
+    alignItems: 'center',
+    width: '30%',
+  },
+  selfieImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 8,
+  },
+  selfieDate: {
+    color: '#fff',
+    fontSize: 12,
+    opacity: 0.7,
+    textAlign: 'center',
   },
 });
 
