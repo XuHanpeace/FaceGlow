@@ -3,7 +3,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StyleSheet, Image, StatusBar, useColorScheme } from 'react-native';
 
-import HomeScreen from '../screens/HomeScreen';
+import NewHomeScreen from '../screens/NewHomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
@@ -35,12 +35,14 @@ const TabNavigator = () => {
           },
           headerShown: false,
         }}
+        initialRouteName="Home"
       >
         <Tab.Screen
           name="Home"
-          component={HomeScreen}
+          component={NewHomeScreen}
           options={{
             tabBarLabel: '',
+            tabBarStyle: { display: 'none' },
             tabBarIcon: ({ focused }) => (
               <Image
                 source={

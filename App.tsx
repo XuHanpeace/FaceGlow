@@ -7,7 +7,7 @@
 
 import React from 'react';
 import {NavigationContainer} from '@react-navigation/native';
-import {SafeAreaView} from 'react-native';
+import {StyleSheet, View, SafeAreaView, StatusBar} from 'react-native';
 import StackNavigator from './src/navigation/StackNavigator';
 import {RootStackParamList} from './src/types/navigation';
 import { ModalProvider } from './src/components/modal';
@@ -21,13 +21,21 @@ declare global {
 function App(): JSX.Element {
   return (
     <ModalProvider>
-      <SafeAreaView style={{flex: 1}}>
+      <StatusBar barStyle="light-content" translucent={true} backgroundColor="transparent" />
+      <View style={styles.container}>
         <NavigationContainer>
           <StackNavigator />
         </NavigationContainer>
-      </SafeAreaView>
+      </View>
     </ModalProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+});
 
 export default App;
