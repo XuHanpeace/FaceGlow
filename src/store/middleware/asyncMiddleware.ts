@@ -39,7 +39,7 @@ interface SelfieItem {
   templateId?: string;
 }
 
-interface Template {
+export interface Template {
   id: string;
   title: string;
   imageUrl: string;

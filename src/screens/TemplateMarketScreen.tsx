@@ -8,10 +8,13 @@ import {
   Image,
   StatusBar,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
+import { useTypedSelector, useAppDispatch } from '../store/hooks';
+import { fetchTemplates } from '../store/middleware/asyncMiddleware';
 
 const { width: screenWidth } = Dimensions.get('window');
 const numColumns = 2;
@@ -20,90 +23,27 @@ const itemWidth = (screenWidth - 60) / numColumns;
 type TemplateMarketScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type TemplateMarketScreenRouteProp = RouteProp<RootStackParamList, 'TemplateMarket'>;
 
-interface Template {
-  id: string;
-  title: string;
-  imageUrl: string;
-  likes: number;
-  isPremium?: boolean;
-}
-
-// 模拟数据
-const mockTemplates: Record<string, Template[]> = {
-  'art-branding': [
-    {
-      id: 'art-1',
-      title: 'Glam AI',
-      imageUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=600&fit=crop',
-      likes: 6000,
-      isPremium: true,
-    },
-    {
-      id: 'art-2',
-      title: 'Glam AI',
-      imageUrl: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400&h=600&fit=crop',
-      likes: 10000,
-      isPremium: true,
-    },
-    {
-      id: 'art-3',
-      title: 'Glam AI',
-      imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=600&fit=crop',
-      likes: 8500,
-      isPremium: true,
-    },
-    {
-      id: 'art-4',
-      title: 'Glam AI',
-      imageUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=600&fit=crop',
-      likes: 7200,
-      isPremium: false,
-    },
-  ],
-  'community': [
-    {
-      id: 'community-1',
-      title: 'Product Showcase',
-      imageUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=600&fit=crop',
-      likes: 3200,
-      isPremium: false,
-    },
-    {
-      id: 'community-2',
-      title: 'Pet Portrait',
-      imageUrl: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=400&h=600&fit=crop',
-      likes: 4500,
-      isPremium: false,
-    },
-    {
-      id: 'community-3',
-      title: 'Lifestyle',
-      imageUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=600&fit=crop',
-      likes: 2800,
-      isPremium: false,
-    },
-    {
-      id: 'community-4',
-      title: 'Portrait',
-      imageUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=600&fit=crop',
-      likes: 3800,
-      isPremium: false,
-    },
-  ],
-};
+// 使用Redux中的Template类型
+import type { Template } from '../store/middleware/asyncMiddleware';
 
 const TemplateMarketScreen: React.FC = () => {
   const navigation = useNavigation<TemplateMarketScreenNavigationProp>();
   const route = useRoute<TemplateMarketScreenRouteProp>();
   const { categoryId, categoryName } = route.params;
-
-  const [templates, setTemplates] = useState<Template[]>([]);
+  
+  const dispatch = useAppDispatch();
+  
+  // 从Redux获取模板数据
+  const templates = useTypedSelector((state) => state.templates.templates[categoryId] || []);
+  const isLoading = useTypedSelector((state) => state.templates.loading);
+  const error = useTypedSelector((state) => state.templates.error);
 
   useEffect(() => {
-    // 根据分类ID加载模板数据
-    const categoryTemplates = mockTemplates[categoryId] || [];
-    setTemplates(categoryTemplates);
-  }, [categoryId]);
+    // 如果该分类的模板数据为空，则发起请求
+    if (templates.length === 0) {
+      dispatch(fetchTemplates({ categoryId }));
+    }
+  }, [categoryId, templates.length, dispatch]);
 
   const handleTemplatePress = (templateId: string) => {
     navigation.navigate('BeforeCreation', {
@@ -150,6 +90,59 @@ const TemplateMarketScreen: React.FC = () => {
       </View>
     </TouchableOpacity>
   );
+
+  // 渲染加载状态
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#000" />
+        
+        {/* 头部 */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+            <Text style={styles.backIcon}>‹</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{categoryName}</Text>
+          <View style={styles.placeholder} />
+        </View>
+
+        {/* 加载状态 */}
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={styles.loadingText}>加载模板中...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  // 渲染错误状态
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#000" />
+        
+        {/* 头部 */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+            <Text style={styles.backIcon}>‹</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{categoryName}</Text>
+          <View style={styles.placeholder} />
+        </View>
+
+        {/* 错误状态 */}
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>加载失败: {error}</Text>
+          <TouchableOpacity 
+            style={styles.retryButton} 
+            onPress={() => dispatch(fetchTemplates({ categoryId }))}
+          >
+            <Text style={styles.retryButtonText}>重试</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -267,6 +260,39 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '500',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: '#fff',
+    fontSize: 16,
+    marginTop: 16,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  errorText: {
+    color: '#ff6b6b',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
