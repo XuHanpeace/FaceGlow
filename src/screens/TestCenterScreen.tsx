@@ -68,7 +68,7 @@ const testItems: TestItem[] = [
     title: 'API 接口测试',
     description: '测试网络请求和API调用',
     icon: '🌐',
-    route: 'Home',
+    route: 'NewHome',
     color: '#50E3C2',
   },
 ];
@@ -82,13 +82,13 @@ const TestCenterScreen: React.FC = () => {
 
   const handleTestPress = (item: TestItem) => {
     if (item.route === 'Detail') {
-      navigation.navigate(item.route, {
+      navigation.navigate('Detail', {
         id: 'test',
         title: item.title,
         content: item.description,
       });
     } else {
-      navigation.navigate(item.route);
+      navigation.navigate(item.route as any);
     }
   };
 

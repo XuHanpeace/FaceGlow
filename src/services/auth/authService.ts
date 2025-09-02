@@ -119,7 +119,6 @@ export class AuthService {
           username: username,
           phone_number: phoneNumber.startsWith('+86') ? phoneNumber : `+86 ${phoneNumber}`,
           name: username, // 默认使用用户名作为昵称
-          locale: 'zh-CN'
         });
       } catch (error) {
         console.warn('Failed to create user info:', error);

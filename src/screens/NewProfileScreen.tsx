@@ -11,6 +11,8 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
+import { useTypedSelector, useAppDispatch } from '../store/hooks';
+import { addSelfie } from '../store/slices/selfieSlice';
 
 type NewProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -24,42 +26,14 @@ interface SelfieItem {
 
 const NewProfileScreen: React.FC = () => {
   const navigation = useNavigation<NewProfileScreenNavigationProp>();
+  const dispatch = useAppDispatch();
   const [activeTab, setActiveTab] = useState<TabType>('posts');
 
-  // 模拟自拍照数据
-  const mockSelfies: SelfieItem[] = [
-    {
-      id: '1',
-      imageUrl: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=200&h=200&fit=crop',
-      createdAt: '2024-01-15',
-    },
-    {
-      id: '2',
-      imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop',
-      createdAt: '2024-01-10',
-    },
-    {
-      id: '3',
-      imageUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop',
-      createdAt: '2024-01-05',
-    },
-    {
-      id: '4',
-      imageUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop',
-      createdAt: '2024-01-01',
-    },
-    {
-      id: '5',
-      imageUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop',
-      createdAt: '2023-12-28',
-    },
-    {
-      id: '6',
-      imageUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop',
-      createdAt: '2023-12-25',
-    },
-  ];
-
+  // 从Redux获取数据
+  const userProfile = useTypedSelector((state) => state.user.profile);
+  const selfies = useTypedSelector((state) => state.selfies.selfies);
+  const isAuthenticated = useTypedSelector((state) => state.auth.isAuthenticated);
+console.log(selfies);
   const handleBackPress = () => {
     navigation.goBack();
   };
@@ -87,6 +61,17 @@ const NewProfileScreen: React.FC = () => {
   const handleAddSelfiePress = () => {
     // 跳转到自拍引导页
     navigation.navigate('SelfieGuide');
+  };
+
+  const handleAddMockSelfie = () => {
+    // 添加模拟自拍照到Redux store
+    const newSelfie = {
+      id: Date.now().toString(),
+      imageUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop',
+      createdAt: new Date().toISOString().split('T')[0],
+      status: 'completed' as const,
+    };
+    dispatch(addSelfie(newSelfie));
   };
 
   const handleAddPostPress = () => {
@@ -146,7 +131,7 @@ const NewProfileScreen: React.FC = () => {
             </View>
           </View>
           <View style={styles.userDetails}>
-            <Text style={styles.username}>User6849a7a2</Text>
+            <Text style={styles.username}>{userProfile?.username || 'User6849a7a2'}</Text>
             <TouchableOpacity style={styles.editButton} onPress={handleEditProfilePress}>
               <Text style={styles.editIcon}>✏️</Text>
             </TouchableOpacity>
@@ -206,12 +191,16 @@ const NewProfileScreen: React.FC = () => {
           {activeTab === 'selfies' && (
             <View style={styles.selfiesContainer}>
               <View style={styles.selfiesGrid}>
-                {mockSelfies.map((selfie) => (
+                {selfies.map((selfie) => (
                   <TouchableOpacity key={selfie.id} style={styles.selfieItem}>
                     <Image source={{ uri: selfie.imageUrl }} style={styles.selfieImage} />
                     <Text style={styles.selfieDate}>{selfie.createdAt}</Text>
                   </TouchableOpacity>
                 ))}
+                {/* 添加测试按钮 */}
+                <TouchableOpacity style={styles.addTestSelfieButton} onPress={handleAddMockSelfie}>
+                  <Text style={styles.addTestSelfieText}>+</Text>
+                </TouchableOpacity>
               </View>
             </View>
           )}
@@ -480,6 +469,23 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     opacity: 0.7,
+    textAlign: 'center',
+  },
+  addTestSelfieButton: {
+    width: '30%',
+    height: 80,
+    backgroundColor: 'rgba(94, 231, 223, 0.2)',
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(94, 231, 223, 0.4)',
+    borderStyle: 'dashed',
+  },
+  addTestSelfieText: {
+    color: '#5EE7DF',
+    fontSize: 32,
+    fontWeight: '600',
     textAlign: 'center',
   },
 });

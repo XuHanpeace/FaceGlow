@@ -1,98 +1,67 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView, StatusBar, SafeAreaView, TouchableOpacity, Text, Image } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  StatusBar,
+  SafeAreaView,
+  TouchableOpacity,
+  Text,
+  Image,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import HomeHeader from '../components/HomeHeader';
 import ContentSection from '../components/ContentSection';
+import { useTypedSelector, useAppDispatch } from '../store/hooks';
+import { setSelectedTemplate } from '../store/slices/templateSlice';
+import { setUploading, setUploadProgress } from '../store/slices/selfieSlice';
 
 type NewHomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-// 模拟数据
-const mockArtBrandingTemplates = [
-  {
-    id: 'art-1',
-    title: 'Glam AI',
-    imageUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=600&fit=crop',
-    likes: 6000,
-    isPremium: true,
-  },
-  {
-    id: 'art-2',
-    title: 'Glam AI',
-    imageUrl: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400&h=600&fit=crop',
-    likes: 10000,
-    isPremium: true,
-  },
-  {
-    id: 'art-3',
-    title: 'Glam AI',
-    imageUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=600&fit=crop',
-    likes: 8500,
-    isPremium: true,
-  },
-];
-
-const mockCommunityTemplates = [
-  {
-    id: 'community-1',
-    title: 'Product Showcase',
-    imageUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=600&fit=crop',
-    likes: 3200,
-    isPremium: false,
-  },
-  {
-    id: 'community-2',
-    title: 'Pet Portrait',
-    imageUrl: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=400&h=600&fit=crop',
-    likes: 4500,
-    isPremium: false,
-  },
-  {
-    id: 'community-3',
-    title: 'Lifestyle',
-    imageUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=600&fit=crop',
-    likes: 2800,
-    isPremium: false,
-  },
-];
-
 const NewHomeScreen: React.FC = () => {
   const navigation = useNavigation<NewHomeScreenNavigationProp>();
+  const dispatch = useAppDispatch();
 
+  // 使用Redux获取数据
+  const balance = useTypedSelector((state) => state.user.profile?.balance || 0);
+  const artBrandingTemplates = useTypedSelector((state) => state.templates.templates['art-branding'] || []);
+  const communityTemplates = useTypedSelector((state) => state.templates.templates['community'] || []);
+  const selfies = useTypedSelector((state) => state.selfies.selfies);
+  const uploading = useTypedSelector((state) => state.selfies.uploading);
+  const uploadProgress = useTypedSelector((state) => state.selfies.uploadProgress);
 
   const handleTemplatePress = (templateId: string) => {
-    // 跳转到换脸前置页
-    navigation.navigate('BeforeCreation', {
-      templateId,
-      templateData: {
-        // 这里可以传递模板数据
-      },
-    });
+    // 从Redux store中找到选中的模板
+    const selectedTemplate = [...artBrandingTemplates, ...communityTemplates]
+      .find(template => template.id === templateId);
+    
+    if (selectedTemplate) {
+      dispatch(setSelectedTemplate(selectedTemplate));
+      navigation.navigate('BeforeCreation', {
+        templateId,
+        templateData: selectedTemplate,
+      });
+    }
   };
 
   const handleViewAllPress = (categoryId: string, categoryName: string) => {
-    // 跳转到模板市场页面
     navigation.navigate('TemplateMarket', {
       categoryId,
       categoryName,
     });
   };
 
-
-
   const handleUpgradePress = () => {
-    // 处理升级功能
-    console.log('Upgrade pressed');
+    navigation.navigate('TestCenter');
   };
 
   const handleProfilePress = () => {
-    // 处理个人页面跳转
     navigation.navigate('NewProfile');
   };
 
   const handleAddSelfiePress = () => {
-    // 跳转到自拍引导页
     navigation.navigate('SelfieGuide');
   };
 
@@ -106,7 +75,7 @@ const NewHomeScreen: React.FC = () => {
       {/* 固定头部 */}
       <View style={styles.fixedHeader}>
         <HomeHeader
-          balance={25}
+          balance={balance}
           onUpgradePress={handleUpgradePress}
           onProfilePress={handleProfilePress}
         />
@@ -122,19 +91,24 @@ const NewHomeScreen: React.FC = () => {
         <View style={styles.selfieModule}>
           <Text style={styles.selfieTitle}>我的自拍</Text>
           <View style={styles.selfieContent}>
-            {/* Mock自拍照展示 */}
-              <TouchableOpacity style={styles.addSelfieButton} onPress={handleAddSelfiePress}>
-                <Text style={styles.addIcon}>+</Text>
-              </TouchableOpacity>
-              <Image source={{ uri: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop' }} style={styles.selfieImage} />
-              <Image source={{ uri: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop' }} style={styles.selfieImage} />
-
+            {/* 从Redux获取自拍照数据 */}
+            <TouchableOpacity style={styles.addSelfieButton} onPress={handleAddSelfiePress}>
+              <Text style={styles.addIcon}>+</Text>
+            </TouchableOpacity>
+            {selfies.slice(0, 3).map((selfie) => (
+              <Image 
+                key={selfie.id} 
+                source={{ uri: selfie.imageUrl }} 
+                style={styles.selfieImage} 
+              />
+            ))}
           </View>
         </View>
 
+        {/* 使用Redux中的模板数据 */}
         <ContentSection
           title="Art Branding"
-          templates={mockArtBrandingTemplates}
+          templates={artBrandingTemplates}
           categoryId="art-branding"
           onTemplatePress={handleTemplatePress}
           onViewAllPress={handleViewAllPress}
@@ -142,7 +116,7 @@ const NewHomeScreen: React.FC = () => {
 
         <ContentSection
           title="Community"
-          templates={mockCommunityTemplates}
+          templates={communityTemplates}
           categoryId="community"
           onTemplatePress={handleTemplatePress}
           onViewAllPress={handleViewAllPress}
@@ -198,7 +172,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   addSelfieButton: {
-      width: 48,
+    width: 48,
     height: 48,
     borderRadius: 24,
     backgroundColor: 'rgba(94, 231, 223, 0.2)',

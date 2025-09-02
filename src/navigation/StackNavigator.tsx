@@ -1,7 +1,5 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import TabNavigator from './TabNavigator';
-import DetailScreen from '../screens/DetailScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import COSUploadTestScreen from '../screens/COSUploadTestScreen';
 import DatabaseTestScreen from '../screens/DatabaseTestScreen';
@@ -22,7 +20,6 @@ const StackNavigator = () => {
         headerShown: false,
       }}
     >
-      <Stack.Screen name="MainTab" component={TabNavigator} />
       <Stack.Screen
         name="NewHome"
         component={NewHomeScreen}
@@ -67,13 +64,6 @@ const StackNavigator = () => {
           headerShown: false,
           animation: 'slide_from_bottom',
           animationDuration: 250,
-        }}
-      />
-      <Stack.Screen
-        name="Detail"
-        component={DetailScreen}
-        options={{
-          headerShown: false,
         }}
       />
       <Stack.Screen

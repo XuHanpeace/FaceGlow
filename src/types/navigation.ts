@@ -1,6 +1,5 @@
 export type RootStackParamList = {
   MainTab: undefined;
-  Home: undefined;
   NewHome: undefined;
   BeforeCreation: {
     templateId: string;

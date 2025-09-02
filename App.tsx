@@ -8,9 +8,11 @@
 import React from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import {StyleSheet, View, SafeAreaView, StatusBar} from 'react-native';
+import { Provider } from 'react-redux';
 import StackNavigator from './src/navigation/StackNavigator';
 import {RootStackParamList} from './src/types/navigation';
 import { ModalProvider } from './src/components/modal';
+import { store } from './src/store';
 
 declare global {
   namespace ReactNavigation {
@@ -20,14 +22,16 @@ declare global {
 
 function App(): JSX.Element {
   return (
-    <ModalProvider>
-      <StatusBar barStyle="light-content" translucent={true} backgroundColor="transparent" />
-      <View style={styles.container}>
-        <NavigationContainer>
-          <StackNavigator />
-        </NavigationContainer>
-      </View>
-    </ModalProvider>
+    <Provider store={store}>
+      <ModalProvider>
+        <StatusBar barStyle="light-content" translucent={true} backgroundColor="transparent" />
+        <View style={styles.container}>
+          <NavigationContainer>
+            <StackNavigator />
+          </NavigationContainer>
+        </View>
+      </ModalProvider>
+    </Provider>
   );
 }
 

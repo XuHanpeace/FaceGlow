@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, useColorScheme } from 'react-native';
-import HeaderSection from '../components/HeaderSection';
 import { userDataService, databaseService } from '../services/database';
 import { userWorkService } from '../services/database/userWorkService';
 import { useAuthState } from '../hooks/useAuthState';
@@ -226,11 +225,6 @@ const DatabaseTestScreen = () => {
       styles.container,
       { backgroundColor: isDarkMode ? '#000' : '#fff' }
     ]}>
-      <HeaderSection
-        title="数据库测试"
-        subtitle="测试数据库操作功能"
-        description="验证用户数据的创建、更新和查询功能是否正常工作。需要先登录。"
-      />
 
       {/* 用户状态显示 */}
       {!isLoggedIn ? (
