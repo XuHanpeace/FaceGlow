@@ -15,11 +15,17 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import * as ImagePicker from 'react-native-image-picker';
 import { PermissionsAndroid, Platform } from 'react-native';
+import { useAppDispatch } from '../store/hooks';
+import { uploadSelfie } from '../store/middleware/asyncMiddleware';
+import { cosService } from '../services/cos/COSService';
+import { userDataService } from '../services/database/userDataService';
+import { authService } from '../services/auth/authService';
 
 type SelfieGuideScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const SelfieGuideScreen: React.FC = () => {
   const navigation = useNavigation<SelfieGuideScreenNavigationProp>();
+  const dispatch = useAppDispatch();
   const [showModal, setShowModal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -140,33 +146,71 @@ const SelfieGuideScreen: React.FC = () => {
       setIsUploading(true);
       setUploadProgress(0);
 
-      // 模拟上传进度
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prev + 10;
-        });
-      }, 200);
+      if (!asset.uri) {
+        throw new Error('图片路径无效');
+      }
 
-      // 模拟上传完成
+      // 1. 上传图片到COS
+      console.log('开始上传图片到COS:', asset.uri);
+      const uploadResult = await cosService.uploadFile(
+        asset.uri,
+        `selfie_${Date.now()}.jpg`,
+        'selfies'
+      );
+
+      if (!uploadResult.success || !uploadResult.url) {
+        throw new Error(uploadResult.error || 'COS上传失败');
+      }
+
+      console.log('COS上传成功:', uploadResult.url);
+      setUploadProgress(50);
+
+      // 2. 调用Redux异步操作上传自拍照
+      console.log('开始调用Redux上传自拍照');
+      const imageData = {
+        uri: asset.uri,
+        type: asset.type || 'image/jpeg',
+        name: asset.fileName || `selfie_${Date.now()}.jpg`,
+      };
+
+      const selfieResult = await dispatch(uploadSelfie({ imageData })).unwrap();
+      console.log('Redux上传自拍照成功:', selfieResult);
+      setUploadProgress(80);
+
+      // 3. 更新用户信息（如果有用户ID）
+      try {
+        const currentUserId = authService.getCurrentUserId();
+        if (currentUserId) {
+          console.log('开始更新用户信息');
+          await userDataService.updateUserSelfie(currentUserId, uploadResult.url);
+          console.log('用户信息更新成功');
+        }
+      } catch (error) {
+        console.warn('更新用户信息失败:', error);
+        // 不影响主流程
+      }
+
+      setUploadProgress(100);
+      
+      // 上传完成后延迟返回主页
       setTimeout(() => {
-        clearInterval(progressInterval);
-        setUploadProgress(100);
-        
-        // 上传完成后延迟返回主页
-        setTimeout(() => {
-          setIsUploading(false);
-          setUploadProgress(0);
-          navigation.navigate('NewHome');
-        }, 500);
-      }, 2000);
+        setIsUploading(false);
+        setUploadProgress(0);
+        Alert.alert(
+          '上传成功',
+          '自拍照上传成功！现在可以使用AI风格了。',
+          [
+            {
+              text: '确定',
+              onPress: () => navigation.navigate('NewHome'),
+            },
+          ]
+        );
+      }, 500);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('上传失败:', error);
-      Alert.alert('上传失败', '图片上传失败，请重试');
+      Alert.alert('上传失败', error.message || '图片上传失败，请重试');
       setIsUploading(false);
       setUploadProgress(0);
     }

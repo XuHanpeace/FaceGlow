@@ -124,6 +124,44 @@ export class UserDataService {
       };
     }
   }
+
+  // 更新用户自拍照信息
+  async updateUserSelfie(uid: string, selfieUrl: string): Promise<DatabaseResponse<{ id: string }>> {
+    try {
+      const response = await databaseService.post<{ id: string }>(
+        `/model/prod/${this.modelName}/update`,
+        {
+          filter: {
+            uid: uid
+          },
+          data: {
+            selfie_url: selfieUrl,
+            updated_at: Date.now(),
+          }
+        }
+      );
+
+      if (!response.success) {
+        throw new DatabaseError(
+          response.error?.message || '更新用户自拍照失败',
+          response.error?.code || 'UPDATE_SELFIE_ERROR'
+        );
+      }
+
+      return {
+        success: true,
+        data: { id: response.data?.id || '' },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: {
+          code: error instanceof DatabaseError ? error.code : 'UPDATE_SELFIE_ERROR',
+          message: error instanceof Error ? error.message : '更新用户自拍照时发生未知错误',
+        },
+      };
+    }
+  }
 }
 
 // 创建用户数据服务实例
