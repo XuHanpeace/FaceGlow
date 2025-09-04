@@ -7,4 +7,10 @@ export * from './auth';
 export * from './navigation';
 
 // 活动相关类型
-export * from './activity';
+export * from './model/activity';
+
+// 用户相关类型
+export * from './model/user';
+
+// 用户作品相关类型
+export * from './model/user_works';
