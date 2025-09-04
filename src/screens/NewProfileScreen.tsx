@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 20,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
   },
   instagramIcon: {
     width: 32,
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
   },
   addPostCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 40,
     alignItems: 'center',
     justifyContent: 'center',

@@ -16,6 +16,8 @@ export type RootStackParamList = {
   SelfieGuide: undefined;
   Notifications: undefined;
   Login: undefined;
+  NewAuth: undefined;
+  Subscription: undefined;
   Detail: {
     id: string;
     title: string;

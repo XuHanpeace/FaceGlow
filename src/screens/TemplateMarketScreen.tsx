@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
   templateItem: {
     width: itemWidth,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   imageContainer: {

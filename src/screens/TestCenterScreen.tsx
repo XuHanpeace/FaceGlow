@@ -48,6 +48,22 @@ const testItems: TestItem[] = [
     color: '#F5A623',
   },
   {
+    id: 'newAuth',
+    title: '新登录注册页面',
+    description: '测试新的手机号验证码登录注册流程',
+    icon: '📱',
+    route: 'NewAuth',
+    color: '#FF6B6B',
+  },
+  {
+    id: 'subscription',
+    title: '苹果订阅支付',
+    description: '测试苹果支付订阅功能',
+    icon: '🍎',
+    route: 'Subscription',
+    color: '#007AFF',
+  },
+  {
     id: 'navigation',
     title: '导航功能测试',
     description: '测试页面导航和路由功能',
@@ -198,7 +214,7 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     padding: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 12,
+    borderRadius: 16,
   },
   description: {
     color: '#fff',
@@ -211,7 +227,7 @@ const styles = StyleSheet.create({
   },
   testCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     borderLeftWidth: 4,
   },
@@ -250,7 +266,7 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     padding: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 12,
+    borderRadius: 16,
   },
   futureTitle: {
     color: '#fff',

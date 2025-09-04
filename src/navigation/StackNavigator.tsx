@@ -9,6 +9,8 @@ import TemplateMarketScreen from '../screens/TemplateMarketScreen';
 import NewProfileScreen from '../screens/NewProfileScreen';
 import TestCenterScreen from '../screens/TestCenterScreen';
 import SelfieGuideScreen from '../screens/SelfieGuideScreen';
+import NewAuthScreen from '../screens/NewAuthScreen';
+import SubscriptionScreen from '../screens/SubscriptionScreen';
 import { RootStackParamList } from '../types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -73,6 +75,24 @@ const StackNavigator = () => {
           headerShown: true,
           headerBackTitle: '返回',
           title: '登录',
+        }}
+      />
+      <Stack.Screen
+        name="NewAuth"
+        component={NewAuthScreen}
+        options={{
+          headerShown: false,
+          animation: 'slide_from_bottom',
+          animationDuration: 250,
+        }}
+      />
+      <Stack.Screen
+        name="Subscription"
+        component={SubscriptionScreen}
+        options={{
+          headerShown: false,
+          animation: 'slide_from_bottom',
+          animationDuration: 250,
         }}
       />
       <Stack.Screen
