@@ -90,7 +90,7 @@ const BeforeCreationScreen: React.FC = () => {
   const handleUseStylePress = async () => {
     try {
       // 检查是否上传过自拍
-      if (selfies.length === 0) {
+      if (selfies.length <= 0) {
         Alert.alert(
           '需要自拍照',
           '使用此风格需要先上传自拍照，是否前往上传？',
@@ -126,10 +126,10 @@ const BeforeCreationScreen: React.FC = () => {
       console.log('开始人脸融合:', fusionParams);
       
       const result = await callFaceFusionCloudFunction({
-        templateId,
-        selfieUrl: latestSelfie.imageUrl,
-        userId: latestSelfie.id,
-      });
+        projectId: 'at_1888958525505814528',
+        modelId: templateId,
+        imageUrl: latestSelfie.imageUrl,
+      }); 
       
       if (result.code === 0 && result.data) {
         // 融合成功

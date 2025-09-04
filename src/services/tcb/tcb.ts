@@ -18,7 +18,7 @@ interface FusionResult {
   FusedImage: string;
 }
 
-export const callFusion = async (params: FusionParams): Promise<GenerateResponse<FusionResult>> => {
+export const callFaceFusionCloudFunction = async (params: FusionParams): Promise<GenerateResponse<FusionResult>> => {
   try {
     console.log('调用人脸融合:', params);
     
@@ -41,38 +41,6 @@ export const callFusion = async (params: FusionParams): Promise<GenerateResponse
     return {
       code: -1,
       message: error.message || '调用失败',
-    };
-  }
-};
-
-// 调用faceFusion云函数
-export const callFaceFusionCloudFunction = async (params: {
-  templateId: string;
-  selfieUrl: string;
-  userId: string;
-}): Promise<GenerateResponse<FusionResult>> => {
-  try {
-    console.log('调用faceFusion云函数:', params);
-    
-    // TODO: 实现faceFusion云函数调用
-    // 这里应该调用CloudBase的faceFusion云函数
-    
-    // 模拟API调用延迟
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    // 模拟返回结果
-    return {
-      code: 0,
-      message: 'success',
-      data: {
-        FusedImage: 'https://example.com/ai-generated-image.jpg'
-      },
-    };
-  } catch (error: any) {
-    console.error('FaceFusion cloud function error:', error);
-    return {
-      code: -1,
-      message: error.message || '云函数调用失败',
     };
   }
 };

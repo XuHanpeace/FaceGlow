@@ -1,4 +1,4 @@
-import { Activity, ActivityType, ActivityStatus, AlbumLevel } from './activity';
+import { Activity, ActivityType, ActivityStatus, AlbumLevel } from './model/activity';
 
 /**
  * 示例活动数据

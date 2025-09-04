@@ -45,7 +45,6 @@ export class DatabaseService {
     // 请求拦截器：添加认证头
     this.axiosInstance.interceptors.request.use(
       (config) => {
-        console.log('frog.config', config);
         // 自动获取当前有效的accessToken
         const currentToken = authService.getCurrentAccessToken();
         if (currentToken) {
