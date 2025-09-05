@@ -18,6 +18,7 @@ export type RootStackParamList = {
   Login: undefined;
   NewAuth: undefined;
   Subscription: undefined;
+  ServiceTest: undefined;
   Detail: {
     id: string;
     title: string;

@@ -159,18 +159,18 @@ export class AuthService {
       // 保存认证信息到本地存储
       this.saveAuthCredentials(credentials);
 
-      // 登录成功后，获取用户信息并更新登录时间
-      try {
-        // 获取用户信息
-        const userInfo = await userDataService.getUserByUid(credentials.uid);
-        if (userInfo.success && userInfo.data) {
-          // 用户存在，更新登录信息
-         console.log('frog.userInfo', userInfo);
-        } 
-      } catch (error) {
-        console.warn('Failed to get/update user info:', error);
-        // 不影响登录流程
-      }
+      // // 登录成功后，获取用户信息并更新登录时间
+      // try {
+      //   // 获取用户信息
+      //   const userInfo = await userDataService.getUserByUid(credentials.uid);
+      //   if (userInfo.success && userInfo.data) {
+      //     // 用户存在，更新登录信息
+      //    console.log('frog.userInfo', userInfo);
+      //   } 
+      // } catch (error) {
+      //   console.warn('Failed to get/update user info:', error);
+      //   // 不影响登录流程
+      // }
 
       return {
         success: true,

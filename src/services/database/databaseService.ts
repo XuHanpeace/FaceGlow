@@ -5,11 +5,39 @@ import { authService } from '../auth/authService';
 // 数据库操作响应接口
 export interface DatabaseResponse<T = any> {
   success: boolean;
+  data?: {
+    record?: T;
+  };
+  error?: {
+    code: string;
+    message: string;
+  };
+}
+
+export interface DatabaseCreateResponse<T> {
+  success: boolean;
   data?: T;
   error?: {
     code: string;
     message: string;
   };
+}
+
+
+interface RequestData {
+  filter?: {
+    where: {
+      [key: string]: {
+        $eq: string | number | boolean
+      }
+    }
+  },
+  data?: any,
+  select?: {
+    [key: string]: boolean
+  },
+  create?: any,
+  update?: any
 }
 
 // 数据库操作错误
@@ -96,9 +124,11 @@ export class DatabaseService {
       const response = await this.axiosInstance.request<T>(config);
       return {
         success: true,
-        data: response.data,
+        ...response.data,
       };
     } catch (error) {
+      console.log('frog.error' + config.url, error);
+
       if (error instanceof DatabaseError) {
         throw error;
       }
@@ -114,7 +144,7 @@ export class DatabaseService {
   }
 
   // GET请求
-  public async get<T>(endpoint: string, params?: any): Promise<DatabaseResponse<T>> {
+  public async get<T>(endpoint: string, params?: RequestData): Promise<DatabaseResponse<T>> {
     return this.request<T>({
       method: 'GET',
       url: endpoint,
@@ -123,7 +153,7 @@ export class DatabaseService {
   }
 
   // POST请求
-  public async post<T>(endpoint: string, data?: any): Promise<DatabaseResponse<T>> {
+  public async post<T>(endpoint: string, data?: RequestData): Promise<DatabaseResponse<T>> {
     return this.request<T>({
       method: 'POST',
       url: endpoint,
@@ -132,7 +162,7 @@ export class DatabaseService {
   }
 
   // PUT请求
-  public async put<T>(endpoint: string, data?: any): Promise<DatabaseResponse<T>> {
+  public async put<T>(endpoint: string, data?: RequestData): Promise<DatabaseResponse<T>> {
     return this.request<T>({
       method: 'PUT',
       url: endpoint,
@@ -151,7 +181,7 @@ export class DatabaseService {
   // UPSERT请求 - 创建或更新单条数据
   public async upsert<T>(
     modelName: string, 
-    filter: any, 
+    filter: RequestData, 
     createData: any,
     updateData: any
   ): Promise<DatabaseResponse<T>> {

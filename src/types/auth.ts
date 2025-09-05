@@ -75,15 +75,4 @@ export const STORAGE_KEYS = {
   USER_INFO: 'userInfo',
 } as const;
 
-// 用户作品接口（基于CloudBase user_works模型）
-export interface UserWork {
-  _id?: string;                   // 文档ID（CloudBase自动生成）
-  uid: string;                    // 用户ID
-  template_id: string;            // 模板ID
-  original_image: string;         // 原始照片URL
-  result_image: string;           // 换脸照片/结果图片URL
-  likes: string;                  // 点赞数（CloudBase中为文本类型）
-  is_public: string;              // 是否公开（CloudBase中为文本类型）
-  download_count: string;         // 下载次数（CloudBase中为文本类型）
-}
 

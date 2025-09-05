@@ -1,5 +1,5 @@
-import { databaseService, DatabaseResponse, DatabaseError } from './databaseService';
-import { UserWork } from '../../types/auth';
+import { databaseService, DatabaseResponse, DatabaseError, DatabaseCreateResponse } from './databaseService';
+import { UserWorkModel } from '../../types/model/user_works';
 
 // 查询用户作品请求参数
 export interface QueryUserWorksRequest {
@@ -14,27 +14,18 @@ export class UserWorkService {
   private readonly modelName = 'user_works'; // 数据模型名称
 
   // 根据用户ID查询作品列表
-  async getUserWorks(query: QueryUserWorksRequest): Promise<DatabaseResponse<UserWork[]>> {
+  async getUserWorks(query: QueryUserWorksRequest): Promise<DatabaseResponse<UserWorkModel>> {
     try {
-      const filter: any = {
-        where: {
-          uid: {
-            $eq: query.uid
-          }
-        }
-      };
-
-      // 添加可选的筛选条件
-      if (query.is_public !== undefined) {
-        filter.where.is_public = query.is_public;
-      }
-
-      console.log('查询用户作品，filter:', filter); // 打印filter到控制台
-
-      const response = await databaseService.post<UserWork[]>(
+      const response = await databaseService.post<UserWorkModel>(
         `/model/prod/${this.modelName}/get`,
         {
-          filter,
+          filter: {
+            where: {
+              uid: {
+                $eq: query.uid
+              }
+            }
+          },
           select: {
             _id: true,
             uid: true,
@@ -57,27 +48,9 @@ export class UserWorkService {
         );
       }
 
-      // 处理返回的数据，确保是数组格式
-      let works: UserWork[] = [];
-      if (response.data && Array.isArray(response.data)) {
-        works = response.data;
-      } else if (response.data && typeof response.data === 'object') {
-        // 如果返回的是单个记录，转换为数组
-        works = [response.data as UserWork];
-      }
-
-      // 应用分页（移除排序，因为CloudBase模型中没有created_at字段）
-      if (query.offset !== undefined && query.limit !== undefined) {
-        works = works.slice(query.offset, query.offset + query.limit);
-      } else if (query.limit !== undefined) {
-        works = works.slice(0, query.limit);
-      }
-
-      console.log('处理后的作品数据:', works); // 打印处理后的数据到控制台
-
       return {
         success: true,
-        data: works,
+        data: response.data,
       };
     } catch (error) {
       console.error('获取用户作品异常:', error); // 打印异常到控制台
@@ -92,13 +65,17 @@ export class UserWorkService {
   }
 
   // 根据作品ID获取单个作品详情
-  async getWorkById(workId: string): Promise<DatabaseResponse<UserWork>> {
+  async getWorkById(workId: string): Promise<DatabaseResponse<UserWorkModel>> {
     try {
-      const response = await databaseService.post<UserWork>(
+      const response = await databaseService.post<UserWorkModel>(
         `/model/prod/${this.modelName}/get`,
         {
           filter: {
-            _id: workId
+            where: {
+              _id: {
+                $eq: workId
+              }
+            }
           }
         }
       );
@@ -126,13 +103,12 @@ export class UserWorkService {
   }
 
   // 创建新作品
-  async createWork(workData: Omit<UserWork, '_id'>): Promise<DatabaseResponse<{ id: string }>> {
+  async createWork(workData: Omit<UserWorkModel, '_id'>): Promise<DatabaseCreateResponse<{ id: string }>> {
     try {
       const createData = {
         ...workData,
         download_count: workData.download_count || '0',
         likes: workData.likes || '0',
-        template_id: workData.template_id,
         uid: workData.uid,
       };
 
@@ -152,7 +128,7 @@ export class UserWorkService {
 
       return {
         success: true,
-        data: { id: response.data?.id || '' },
+        data: response.data as { id: string },
       };
     } catch (error) {
       return {
@@ -205,7 +181,7 @@ export class UserWorkService {
 
       return {
         success: true,
-        data: { id: response.data?.id || '' },
+        data: { id: (response.data as any)?.id || '' },
       };
     } catch (error) {
       return {
@@ -230,7 +206,11 @@ export class UserWorkService {
         `/model/prod/${this.modelName}/upsert`,
         {
           filter: {
-            _id: workId
+            where: {
+              _id: {
+                $eq: workId
+              }
+            }
           },
           create: {
             _id: workId,
@@ -249,7 +229,7 @@ export class UserWorkService {
 
       return {
         success: true,
-        data: { count: response.data?.count || 0 },
+        data: { count: (response.data as any)?.count || 0 },
       };
     } catch (error) {
       return {
@@ -269,7 +249,11 @@ export class UserWorkService {
         `/model/prod/${this.modelName}/upsert`,
         {
           filter: {
-            _id: workId
+            where: {
+              _id: {
+                $eq: workId
+              }
+            }
           },
           create: {
             _id: workId,
@@ -290,7 +274,7 @@ export class UserWorkService {
 
       return {
         success: true,
-        data: { count: response.data?.count || 0 },
+        data: { count: (response.data as any)?.count || 0 },
       };
     } catch (error) {
       return {
@@ -310,7 +294,11 @@ export class UserWorkService {
         `/model/prod/${this.modelName}/upsert`,
         {
           filter: {
-            _id: workId
+            where: {
+              _id: {
+                $eq: workId
+              }
+            }
           },
           create: {
             _id: workId,
@@ -331,7 +319,7 @@ export class UserWorkService {
 
       return {
         success: true,
-        data: { count: response.data?.count || 0 },
+        data: { count: (response.data as any)?.count || 0 },
       };
     } catch (error) {
       return {

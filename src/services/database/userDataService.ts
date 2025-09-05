@@ -48,7 +48,11 @@ export class UserDataService {
         `/model/prod/${this.modelName}/upsert`,
         {
           filter: {
-            uid: userData.uid
+            where: {
+              uid: {
+                $eq: userData.uid
+              }
+            }
           },
           create: createData,
           update: createData  // 如果用户已存在，则更新为相同数据
@@ -64,7 +68,7 @@ export class UserDataService {
 
       return {
         success: true,
-        data: { id: response.data?.id || '' },
+        data: { id: (response.data as any)?.id || '' },
       };
     } catch (error) {
       return {
@@ -126,13 +130,17 @@ export class UserDataService {
   }
 
   // 更新用户自拍照信息
-  async updateUserSelfie(uid: string, selfieUrl: string): Promise<DatabaseResponse<{ id: string }>> {
+  async updateUserSelfie(uid: string, selfieUrl: string): Promise<DatabaseResponse<{ count: number }>> {
     try {
-      const response = await databaseService.post<{ id: string }>(
+      const response = await databaseService.put<{ count: number }>(
         `/model/prod/${this.modelName}/update`,
         {
           filter: {
-            uid: uid
+            where: {
+              uid: {
+                $eq: uid
+              }
+            }
           },
           data: {
             selfie_url: selfieUrl,
@@ -150,7 +158,7 @@ export class UserDataService {
 
       return {
         success: true,
-        data: { id: response.data?.id || '' },
+        data: { count: (response.data as any)?.count || 0 },
       };
     } catch (error) {
       return {

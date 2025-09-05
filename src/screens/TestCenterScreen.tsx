@@ -64,6 +64,14 @@ const testItems: TestItem[] = [
     color: '#007AFF',
   },
   {
+    id: 'serviceTest',
+    title: 'Service单元测试',
+    description: '测试数据库操作完整流程',
+    icon: '🧪',
+    route: 'ServiceTest',
+    color: '#FF6B35',
+  },
+  {
     id: 'navigation',
     title: '导航功能测试',
     description: '测试页面导航和路由功能',
