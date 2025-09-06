@@ -2,21 +2,14 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { loginUser, registerUser, sendVerificationCode, logoutUser } from '../middleware/asyncMiddleware';
 
 export interface AuthState {
-  isAuthenticated: boolean;
-  user: {
-    id: string;
-    username: string;
-    phoneNumber?: string;
-    avatar?: string;
-  } | null;
+  uid: string | null;
   token: string | null;
   loading: boolean;
   error: string | null;
 }
 
 const initialState: AuthState = {
-  isAuthenticated: false,
-  user: null,
+  uid: null,
   token: null,
   loading: false,
   error: null,
@@ -32,31 +25,23 @@ const authSlice = createSlice({
     setError: (state, action: PayloadAction<string | null>) => {
       state.error = action.payload;
     },
-    loginSuccess: (state, action: PayloadAction<{ user: AuthState['user']; token: string }>) => {
-      state.isAuthenticated = true;
-      state.user = action.payload.user;
+    loginSuccess: (state, action: PayloadAction<{ uid: AuthState['uid']; token: string }>) => {
+      state.uid = action.payload.uid;
       state.token = action.payload.token;
       state.loading = false;
       state.error = null;
     },
     loginFailure: (state, action: PayloadAction<string>) => {
-      state.isAuthenticated = false;
-      state.user = null;
+      state.uid = null;
       state.token = null;
       state.loading = false;
       state.error = action.payload;
     },
     logout: (state) => {
-      state.isAuthenticated = false;
-      state.user = null;
+      state.uid = null;
       state.token = null;
       state.loading = false;
       state.error = null;
-    },
-    updateUser: (state, action: PayloadAction<Partial<AuthState['user']>>) => {
-      if (state.user) {
-        state.user = { ...state.user, ...action.payload };
-      }
     },
   },
   extraReducers: (builder) => {
@@ -68,17 +53,14 @@ const authSlice = createSlice({
       })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.isAuthenticated = true;
-        state.user = action.payload.user;
+        state.uid = action.payload.uid;
         state.token = action.payload.token;
         state.error = null;
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
-        state.isAuthenticated = false;
-        state.user = null;
+        state.uid = null;
         state.token = null;
-        state.error = action.payload || '登录失败';
       })
       // 处理注册异步操作
       .addCase(registerUser.pending, (state) => {
@@ -87,15 +69,13 @@ const authSlice = createSlice({
       })
       .addCase(registerUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.isAuthenticated = true;
-        state.user = action.payload.user;
+        state.uid = action.payload.uid;
         state.token = action.payload.token;
         state.error = null;
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.loading = false;
-        state.isAuthenticated = false;
-        state.user = null;
+        state.uid = null;
         state.token = null;
         state.error = action.payload || '注册失败';
       })
@@ -118,8 +98,7 @@ const authSlice = createSlice({
       })
       .addCase(logoutUser.fulfilled, (state) => {
         state.loading = false;
-        state.isAuthenticated = false;
-        state.user = null;
+        state.uid = null;
         state.token = null;
         state.error = null;
       })
@@ -136,7 +115,6 @@ export const {
   loginSuccess,
   loginFailure,
   logout,
-  updateUser,
 } = authSlice.actions;
 
 export default authSlice.reducer;

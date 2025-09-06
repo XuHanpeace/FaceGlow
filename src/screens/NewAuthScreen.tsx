@@ -25,9 +25,12 @@ const NewAuthScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   
   // 状态管理
+  const [loginMode, setLoginMode] = useState<'password' | 'phone'>('password'); // 默认账号密码登录
   const [step, setStep] = useState<'phone' | 'code'>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [isNewUser, setIsNewUser] = useState(false);
@@ -104,9 +107,8 @@ const NewAuthScreen: React.FC = () => {
         
         if (loginResult.success) {
           setIsNewUser(false);
-          Alert.alert('登录成功', '欢迎回来！', [
-            { text: '确定', onPress: () => navigation.navigate('NewHome') }
-          ]);
+          // 登录成功，直接关闭当前页面并返回主页
+          navigation.goBack();
           return;
         }
       } catch (loginError) {
@@ -124,9 +126,8 @@ const NewAuthScreen: React.FC = () => {
         
         if (registerResult.success) {
           setIsNewUser(true);
-          Alert.alert('注册成功', '欢迎加入FaceGlow！', [
-            { text: '确定', onPress: () => navigation.navigate('NewHome') }
-          ]);
+          // 注册成功，直接关闭当前页面并返回主页
+          navigation.goBack();
           return;
         }
       } catch (registerError: any) {
@@ -144,6 +145,40 @@ const NewAuthScreen: React.FC = () => {
     setVerificationCode('');
     setCountdown(0);
     phoneInputRef.current?.focus();
+  };
+
+  // 账号密码登录处理
+  const handlePasswordLogin = async () => {
+    if (!username.trim()) {
+      Alert.alert('用户名不能为空', '请输入用户名');
+      return;
+    }
+    
+    if (!password.trim()) {
+      Alert.alert('密码不能为空', '请输入密码');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      
+      // 调用账号密码登录API
+      const result = await dispatch(loginUser({
+        username: username.trim(),
+        password: password.trim()
+      })).unwrap();
+      
+      if (result.uid && result.token) {
+        // 登录成功，直接关闭当前页面并返回主页
+        navigation.goBack();
+      } else {
+        Alert.alert('登录失败', '用户名或密码错误');
+      }
+    } catch (error: any) {
+      Alert.alert('登录失败', error.message || '登录失败，请重试');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const formatPhoneNumber = (text: string) => {
@@ -171,17 +206,85 @@ const NewAuthScreen: React.FC = () => {
       <View style={styles.content}>
         {/* 标题 */}
         <Text style={styles.title}>
-          {step === 'phone' ? '欢迎使用FaceGlow' : '输入验证码'}
+          {loginMode === 'password' ? '欢迎使用FaceGlow' : (step === 'phone' ? '欢迎使用FaceGlow' : '输入验证码')}
         </Text>
         <Text style={styles.subtitle}>
-          {step === 'phone' 
-            ? '请输入手机号开始体验AI头像创作' 
-            : `验证码已发送至 ${phoneNumber.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')}`
+          {loginMode === 'password' 
+            ? '请输入账号密码登录' 
+            : (step === 'phone' 
+              ? '请输入手机号开始体验AI头像创作' 
+              : `验证码已发送至 ${phoneNumber.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')}`)
           }
         </Text>
 
+        {/* 登录模式切换 */}
+        <View style={styles.modeSwitchContainer}>
+          <TouchableOpacity
+            style={[styles.modeButton, loginMode === 'password' && styles.modeButtonActive]}
+            onPress={() => setLoginMode('password')}
+          >
+            <Text style={[styles.modeButtonText, loginMode === 'password' && styles.modeButtonTextActive]}>
+              账号密码
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.modeButton, loginMode === 'phone' && styles.modeButtonActive]}
+            onPress={() => setLoginMode('phone')}
+          >
+            <Text style={[styles.modeButtonText, loginMode === 'phone' && styles.modeButtonTextActive]}>
+              手机验证码
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 账号密码输入 */}
+        {loginMode === 'password' && (
+          <View style={styles.inputContainer}>
+            <View style={styles.passwordInputWrapper}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="请输入用户名"
+                placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                value={username}
+                onChangeText={setUsername}
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoFocus={true}
+              />
+            </View>
+            
+            <View style={styles.passwordInputWrapper}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="请输入密码"
+                placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={true}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+            
+            <TouchableOpacity
+              style={[
+                styles.loginButton,
+                (!username.trim() || !password.trim() || isLoading) && styles.loginButtonDisabled
+              ]}
+              onPress={handlePasswordLogin}
+              disabled={!username.trim() || !password.trim() || isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.loginButtonText}>登录</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* 手机号输入步骤 */}
-        {step === 'phone' && (
+        {loginMode === 'phone' && step === 'phone' && (
           <View style={styles.inputContainer}>
             <View style={styles.phoneInputWrapper}>
               <Text style={styles.phonePrefix}>+86</Text>
@@ -216,7 +319,7 @@ const NewAuthScreen: React.FC = () => {
         )}
 
         {/* 验证码输入步骤 */}
-        {step === 'code' && (
+        {loginMode === 'phone' && step === 'code' && (
           <View style={styles.inputContainer}>
             <View style={styles.codeInputWrapper}>
               <TextInput
@@ -295,7 +398,7 @@ const NewAuthScreen: React.FC = () => {
       </View>
 
       {/* 底部按钮 */}
-      {step === 'code' && (
+      {loginMode === 'phone' && step === 'code' && (
         <View style={styles.bottomContainer}>
           <TouchableOpacity
             style={[
@@ -358,9 +461,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
     textAlign: 'left',
-    marginBottom: 40,
+    marginBottom: 20,
     opacity: 0.8,
     lineHeight: 22,
+  },
+  modeSwitchContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 40,
+    width: '100%',
+  },
+  modeButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modeButtonActive: {
+    backgroundColor: '#007AFF',
+  },
+  modeButtonText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  modeButtonTextActive: {
+    color: '#fff',
+    fontWeight: '600',
   },
   inputContainer: {
     marginBottom: 40,
@@ -388,6 +518,36 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '500',
+  },
+  passwordInputWrapper: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    width: '100%',
+  },
+  passwordInput: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  loginButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    width: '100%',
+  },
+  loginButtonDisabled: {
+    backgroundColor: '#666',
+  },
+  loginButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   sendCodeButton: {
     backgroundColor: '#FF6B6B',

@@ -9,7 +9,7 @@ import {
   Text,
   Image,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import HomeHeader from '../components/HomeHeader';
@@ -48,6 +48,14 @@ const NewHomeScreen: React.FC = () => {
     console.log('🏃‍♂️ 开始获取活动数据...');
     dispatch(fetchActivities({ pageSize: 10, pageNumber: 1 }));
   }, [dispatch]);
+
+  // 页面获得焦点时刷新数据（登录成功后返回时触发）
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('🔄 页面获得焦点，刷新数据...');
+      dispatch(fetchActivities({ pageSize: 10, pageNumber: 1 }));
+    }, [dispatch])
+  );
 
   const handleAlbumPress = (albumId: string) => {
     // 从activities中找到选中的相册

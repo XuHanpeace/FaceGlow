@@ -45,7 +45,7 @@ export interface Template {
 
 // 用户登录
 export const loginUser = createAsyncThunk<
-  { user: User; token: string },
+  { uid: string; token: string },
   LoginCredentials,
   { rejectValue: string }
 >(
@@ -53,30 +53,8 @@ export const loginUser = createAsyncThunk<
   async (credentials, { rejectWithValue }) => {
     try {
       const result = await authService.loginWithPassword(credentials.username, credentials.password);
-      
       if (result.success && result.data) {
-        const user: User = {
-          uid: result.data.uid,
-          username: credentials.username,
-          phone_number: '15773209147',
-          name: credentials.username,
-          gender: UserGender.MALE,
-          picture: undefined,
-          selfie_url: undefined,
-          selfie_list: [],
-          work_list: [],
-          balance: 25,
-          is_premium: false,
-          premium_expires_at: undefined,
-          preferences: undefined,
-          status: UserStatus.ACTIVE,
-          created_at: Date.now(),
-          updated_at: Date.now(),
-          device_info: undefined,
-          statistics: undefined,
-        };
-        
-        return { user, token: result.data.accessToken };
+        return { uid: result.data.uid,token: result.data.accessToken };
       } else {
         return rejectWithValue(result.error?.message || '登录失败');
       }
@@ -88,7 +66,7 @@ export const loginUser = createAsyncThunk<
 
 // 用户注册
 export const registerUser = createAsyncThunk<
-  { user: User; token: string },
+  { uid: string; token: string },
   RegisterCredentials,
   { rejectValue: string }
 >(
@@ -104,28 +82,7 @@ export const registerUser = createAsyncThunk<
       );
       
       if (result.success && result.data) {
-        const user: User = {
-          uid: result.data.uid,
-          username: credentials.username,
-          phone_number: credentials.phoneNumber,
-          name: credentials.username,
-          gender: UserGender.MALE,
-          picture: undefined,
-          selfie_url: undefined,
-          selfie_list: [],
-          work_list: [],
-          balance: 25,
-          is_premium: false,
-          premium_expires_at: undefined,
-          preferences: undefined,
-          status: UserStatus.ACTIVE,
-          created_at: Date.now(),
-          updated_at: Date.now(),
-          device_info: undefined,
-          statistics: undefined,
-        };
-        
-        return { user, token: result.data.accessToken };
+        return { uid: result.data.uid, token: result.data.accessToken };
       } else {
         return rejectWithValue(result.error?.message || '注册失败');
       }
