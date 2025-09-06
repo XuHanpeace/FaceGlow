@@ -13,7 +13,6 @@ import StackNavigator from './src/navigation/StackNavigator';
 import {RootStackParamList} from './src/types/navigation';
 import { ModalProvider } from './src/components/modal';
 import { store } from './src/store';
-import AuthGuard from './src/components/AuthGuard';
 
 declare global {
   namespace ReactNavigation {
@@ -28,9 +27,7 @@ function App(): JSX.Element {
         <StatusBar barStyle="light-content" translucent={true} backgroundColor="transparent" />
         <View style={styles.container}>
           <NavigationContainer>
-            <AuthGuard>
-              <StackNavigator />
-            </AuthGuard>
+            <StackNavigator />
           </NavigationContainer>
         </View>
       </ModalProvider>

@@ -18,6 +18,7 @@ import { useTypedSelector, useAppDispatch } from '../store/hooks';
 import { fetchActivities } from '../store/slices/activitySlice';
 import { setUploading, setUploadProgress } from '../store/slices/selfieSlice';
 import { useUser, useUserBalance, useUserSelfies } from '../hooks/useUser';
+import { useAuthState } from '../hooks/useAuthState';
 
 type NewHomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -25,11 +26,22 @@ const NewHomeScreen: React.FC = () => {
   const navigation = useNavigation<NewHomeScreenNavigationProp>();
   const dispatch = useAppDispatch();
 
+  // 检查登录状态
+  const { isLoggedIn, isLoading } = useAuthState();
+
   // 使用用户hooks获取数据
   const { selfies } = useUserSelfies();
 
   // 使用Redux获取活动数据
   const activities = useTypedSelector((state) => state.activity.activities);
+
+  // 检查登录状态，未登录时自动跳转到登录页面
+  useEffect(() => {
+    if (!isLoading && !isLoggedIn) {
+      console.log('🔐 检测到未登录状态，自动拉起登录页面');
+      navigation.navigate('NewAuth');
+    }
+  }, [isLoading, isLoggedIn, navigation]);
 
   // 页面初始化时查询活动数据
   useEffect(() => {
