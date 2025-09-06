@@ -19,6 +19,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const StackNavigator = () => {
   return (
     <Stack.Navigator
+      initialRouteName="NewHome"
       screenOptions={{
         headerShown: false,
       }}
