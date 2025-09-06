@@ -1,0 +1,110 @@
+[
+  {
+    "activity_type": "album",
+    "activity_status": "1",
+    "activiy_id": "act_001",
+    "album_id_list": [
+      {
+        "album_id": "album_001",
+        "album_name": "春日写真集",
+        "album_description": "充满春天气息的写真模板合集，适合拍摄清新自然的照片",
+        "album_image": "https://example.com/images/spring_album_cover.jpg",
+        "level": "0",
+        "price": 0,
+        "template_list": [
+          {
+            "template_id": "template_001",
+            "template_url": "https://example.com/templates/spring_template_1.jpg",
+            "template_name": "樱花飞舞",
+            "template_description": "粉色樱花背景，营造浪漫春日氛围"
+          },
+          {
+            "template_id": "template_002",
+            "template_url": "https://example.com/templates/spring_template_2.jpg",
+            "template_name": "绿意盎然",
+            "template_description": "清新绿色背景，展现自然生机"
+          }
+        ]
+      },
+      {
+        "album_id": "album_002",
+        "album_name": "时尚街拍",
+        "album_description": "都市时尚风格模板，适合街拍和时尚写真",
+        "album_image": "https://example.com/images/street_album_cover.jpg",
+        "level": "1",
+        "price": 2999,
+        "template_list": [
+          {
+            "template_id": "template_003",
+            "template_url": "https://example.com/templates/street_template_1.jpg",
+            "template_name": "都市霓虹",
+            "template_description": "霓虹灯背景，营造都市夜生活氛围"
+          },
+          {
+            "template_id": "template_004",
+            "template_url": "https://example.com/templates/street_template_2.jpg",
+            "template_name": "工业风格",
+            "template_description": "工业风背景，展现现代都市魅力"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "activity_type": "album",
+    "activity_status": "0",
+    "activiy_id": "act_002",
+    "album_id_list": [
+      {
+        "album_id": "album_003",
+        "album_name": "VIP专属相册",
+        "album_description": "高端定制相册，提供专业级模板和特效",
+        "album_image": "https://example.com/images/vip_album_cover.jpg",
+        "level": "2",
+        "price": 9999,
+        "template_list": [
+          {
+            "template_id": "template_005",
+            "template_url": "https://example.com/templates/vip_template_1.jpg",
+            "template_name": "奢华金辉",
+            "template_description": "金色奢华背景，营造高端大气氛围"
+          },
+          {
+            "template_id": "template_006",
+            "template_url": "https://example.com/templates/vip_template_2.jpg",
+            "template_name": "钻石光芒",
+            "template_description": "钻石特效背景，展现尊贵品质"
+          },
+          {
+            "template_id": "template_007",
+            "template_url": "https://example.com/templates/vip_template_3.jpg",
+            "template_name": "皇家风范",
+            "template_description": "皇家风格背景，彰显贵族气质"
+          }
+        ]
+      },
+      {
+        "album_id": "album_004",
+        "album_name": "节日庆典",
+        "album_description": "各种节日主题模板，让照片更有节日氛围",
+        "album_image": "https://example.com/images/festival_album_cover.jpg",
+        "level": "0",
+        "price": 0,
+        "template_list": [
+          {
+            "template_id": "template_008",
+            "template_url": "https://example.com/templates/festival_template_1.jpg",
+            "template_name": "新年快乐",
+            "template_description": "红色喜庆背景，营造新年氛围"
+          },
+          {
+            "template_id": "template_009",
+            "template_url": "https://example.com/templates/festival_template_2.jpg",
+            "template_name": "圣诞雪景",
+            "template_description": "雪花飘落背景，营造圣诞氛围"
+          }
+        ]
+      }
+    ]
+  }
+]

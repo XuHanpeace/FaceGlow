@@ -1,13 +1,13 @@
 import { configureStore } from '@reduxjs/toolkit';
 import authSlice from './slices/authSlice';
-import templateSlice from './slices/templateSlice';
+import activitySlice from './slices/activitySlice';
 import selfieSlice from './slices/selfieSlice';
 import userSlice from './slices/userSlice';
 
 export const store = configureStore({
   reducer: {
     auth: authSlice,
-    templates: templateSlice,
+    activity: activitySlice,
     selfies: selfieSlice,
     user: userSlice,
   },

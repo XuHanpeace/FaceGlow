@@ -17,29 +17,17 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { useTypedSelector, useAppDispatch } from '../store/hooks';
 import { callFaceFusionCloudFunction } from '../services/tcb/tcb';
+import { Template } from '../types/model/activity';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 type BeforeCreationScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type BeforeCreationScreenRouteProp = RouteProp<RootStackParamList, 'BeforeCreation'>;
 
-// 模拟模板数据
-const mockTemplateData = {
-  id: 'template-1',
-  title: 'Glam AI Style',
-  images: [
-    'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=200&h=200&fit=crop',
-    'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=800&h=1200&fit=crop',
-    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&h=1200&fit=crop',
-  ],
-  previewImage: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=200&h=200&fit=crop',
-  description: '需要AI头像',
-};
-
 const BeforeCreationScreen: React.FC = () => {
   const navigation = useNavigation<BeforeCreationScreenNavigationProp>();
   const route = useRoute<BeforeCreationScreenRouteProp>();
-  const { templateId, templateData } = route.params;
+  const { albumData } = route.params;
   
   const dispatch = useAppDispatch();
   
@@ -52,8 +40,18 @@ const BeforeCreationScreen: React.FC = () => {
   const scrollViewRef = useRef<ScrollView>(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  // 使用模拟数据，实际应该从API获取
-  const template = mockTemplateData;
+  // 从albumData中获取template数据
+  const album = albumData;
+  const templates = album.template_list || [];
+  
+  // 构建轮播图数据，使用template_list中的template_url
+  const template = {
+    id: album.album_id,
+    title: album.album_name,
+    images: templates.map((t: Template) => t.template_url),
+    previewImage: templates[0]?.template_url || '',
+    description: album.album_description
+  };
 
   useEffect(() => {
     // 自动轮播
@@ -116,10 +114,17 @@ const BeforeCreationScreen: React.FC = () => {
       // 获取最新的自拍照
       const latestSelfie = selfies[0];
       
+      // 获取当前选中的template
+      const currentTemplate = templates[currentImageIndex];
+      if (!currentTemplate) {
+        Alert.alert('错误', '未找到选中的模板');
+        return;
+      }
+
       // 调用人脸融合云函数
       const fusionParams = {
         projectId: 'at_1888958525505814528', // TODO: 从模板数据中获取
-        modelId: templateId,
+        modelId: currentTemplate.template_id,
         imageUrl: latestSelfie.imageUrl,
       };
 
@@ -127,7 +132,7 @@ const BeforeCreationScreen: React.FC = () => {
       
       const result = await callFaceFusionCloudFunction({
         projectId: 'at_1888958525505814528',
-        modelId: templateId,
+        modelId: currentTemplate.template_id,
         imageUrl: latestSelfie.imageUrl,
       }); 
       
@@ -194,7 +199,7 @@ const BeforeCreationScreen: React.FC = () => {
           onScroll={handleImageScroll}
           scrollEventThrottle={16}
         >
-          {template.images.map((imageUrl, index) => (
+          {template.images.map((imageUrl: string, index: number) => (
             <View key={index} style={styles.imageWrapper}>
               <Image
                 source={{ uri: imageUrl }}
@@ -208,7 +213,7 @@ const BeforeCreationScreen: React.FC = () => {
         {/* 图片指示器 */}
         {template.images.length > 1 && (
           <View style={styles.indicatorContainer}>
-            {template.images.map((_, index) => (
+            {template.images.map((_: string, index: number) => (
               <View
                 key={index}
                 style={[
@@ -233,8 +238,7 @@ const BeforeCreationScreen: React.FC = () => {
       {/* 底部信息区域 */}
       <View style={styles.bottomContainer}>
         <View style={styles.descriptionContainer}>
-          <Text style={styles.personIcon}>👤</Text>
-          <Text style={styles.description}>{template.description}</Text>
+          <Text style={styles.description}>{album.album_description || '需要AI头像'}</Text>
         </View>
         
         <TouchableOpacity 
@@ -357,7 +361,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 20,
-    marginLeft: 100,
   },
   personIcon: {
     fontSize: 16,

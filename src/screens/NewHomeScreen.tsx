@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -15,7 +15,7 @@ import { RootStackParamList } from '../types/navigation';
 import HomeHeader from '../components/HomeHeader';
 import ContentSection from '../components/ContentSection';
 import { useTypedSelector, useAppDispatch } from '../store/hooks';
-import { setSelectedTemplate } from '../store/slices/templateSlice';
+import { fetchActivities } from '../store/slices/activitySlice';
 import { setUploading, setUploadProgress } from '../store/slices/selfieSlice';
 import { useUser, useUserBalance, useUserSelfies } from '../hooks/useUser';
 
@@ -26,34 +26,41 @@ const NewHomeScreen: React.FC = () => {
   const dispatch = useAppDispatch();
 
   // 使用用户hooks获取数据
-  const { userInfo, userLoading, userError } = useUser();
-  const { balance, balanceFormatted } = useUserBalance();
-  const { selfies, hasSelfies } = useUserSelfies();
+  const { selfies } = useUserSelfies();
 
-  // 使用Redux获取其他数据
-  const artBrandingTemplates = useTypedSelector((state) => state.templates.templates['art-branding'] || []);
-  const communityTemplates = useTypedSelector((state) => state.templates.templates['community'] || []);
-  const uploading = useTypedSelector((state) => state.selfies.uploading);
-  const uploadProgress = useTypedSelector((state) => state.selfies.uploadProgress);
+  // 使用Redux获取活动数据
+  const activities = useTypedSelector((state) => state.activity.activities);
 
-  const handleTemplatePress = (templateId: string) => {
-    // 从Redux store中找到选中的模板
-    const selectedTemplate = [...artBrandingTemplates, ...communityTemplates]
-      .find(template => template.id === templateId);
+  // 页面初始化时查询活动数据
+  useEffect(() => {
+    console.log('🏃‍♂️ 开始获取活动数据...');
+    dispatch(fetchActivities({ pageSize: 10, pageNumber: 1 }));
+  }, [dispatch]);
+
+  const handleAlbumPress = (albumId: string) => {
+    // 从activities中找到选中的相册
+    let selectedAlbum = null;
     
-    if (selectedTemplate) {
-      dispatch(setSelectedTemplate(selectedTemplate));
+    for (const activity of activities) {
+      const album = activity.album_id_list.find(a => a.album_id === albumId);
+      if (album) {
+        selectedAlbum = album;
+        break;
+      }
+    }
+    
+    if (selectedAlbum) {
+      // 直接传递album数据到BeforeCreation页面
       navigation.navigate('BeforeCreation', {
-        templateId,
-        templateData: selectedTemplate,
+        albumData: selectedAlbum,
       });
     }
   };
 
   const handleViewAllPress = (categoryId: string, categoryName: string) => {
-    navigation.navigate('TemplateMarket', {
-      categoryId,
-      categoryName,
+    navigation.navigate('AlbumMarket', {
+      activityId: categoryId,
+      activityName: categoryName,
     });
   };
 
@@ -68,7 +75,7 @@ const NewHomeScreen: React.FC = () => {
   const handleAddSelfiePress = () => {
     navigation.navigate('SelfieGuide');
   };
-
+console.log(activities);
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
@@ -108,22 +115,17 @@ const NewHomeScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* 使用Redux中的模板数据 */}
-        <ContentSection
-          title="Art Branding"
-          templates={artBrandingTemplates}
-          categoryId="art-branding"
-          onTemplatePress={handleTemplatePress}
-          onViewAllPress={handleViewAllPress}
-        />
-
-        <ContentSection
-          title="Community"
-          templates={communityTemplates}
-          categoryId="community"
-          onTemplatePress={handleTemplatePress}
-          onViewAllPress={handleViewAllPress}
-        />
+        {/* 使用Redux中的活动数据 */}
+        {activities.map((activity, index) => (
+          <ContentSection
+            key={activity.activiy_id}
+            title={activity.activity_title}
+            albums={activity.album_id_list}
+            categoryId={activity.activiy_id}
+            onAlbumPress={handleAlbumPress}
+            onViewAllPress={handleViewAllPress}
+          />
+        ))}
       </ScrollView>
     </View>
   );

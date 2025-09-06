@@ -5,7 +5,7 @@ import COSUploadTestScreen from '../screens/COSUploadTestScreen';
 import DatabaseTestScreen from '../screens/DatabaseTestScreen';
 import NewHomeScreen from '../screens/NewHomeScreen';
 import BeforeCreationScreen from '../screens/BeforeCreationScreen';
-import TemplateMarketScreen from '../screens/TemplateMarketScreen';
+import AlbumMarketScreen from '../screens/AlbumMarketScreen';
 import NewProfileScreen from '../screens/NewProfileScreen';
 import TestCenterScreen from '../screens/TestCenterScreen';
 import SelfieGuideScreen from '../screens/SelfieGuideScreen';
@@ -38,8 +38,8 @@ const StackNavigator = () => {
         }}
       />
       <Stack.Screen
-        name="TemplateMarket"
-        component={TemplateMarketScreen}
+        name="AlbumMarket"
+        component={AlbumMarketScreen}
         options={{
           headerShown: false,
         }}

@@ -1,13 +1,14 @@
+import { Album } from "./model/activity";
+
 export type RootStackParamList = {
   MainTab: undefined;
   NewHome: undefined;
   BeforeCreation: {
-    templateId: string;
-    templateData?: any;
+    albumData: Album;
   };
-  TemplateMarket: {
-    categoryId: string;
-    categoryName: string;
+  AlbumMarket: {
+    activityId: string;
+    activityName: string;
   };
   Settings: undefined;
   Profile: undefined;

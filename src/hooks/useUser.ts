@@ -21,6 +21,7 @@ export const useUser = () => {
       const currentUserId = authService.getCurrentUserId();
       if (currentUserId && !userProfile) {
         console.log('[useUser] 获取用户数据，用户ID:', currentUserId);
+        console.log('[useUser] 获取用户数据，用户Token:', authService.getCurrentAccessToken());
         try {
           await dispatch(fetchUserProfile({ userId: currentUserId })).unwrap();
         } catch (error) {

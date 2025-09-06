@@ -1,28 +1,21 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import TemplateCard from './TemplateCard';
-
-interface Template {
-  id: string;
-  title: string;
-  imageUrl: string;
-  likes: number;
-  isPremium?: boolean;
-}
+import AlbumCard from './AlbumCard';
+import { Album } from '../types/model/activity';
 
 interface ContentSectionProps {
   title: string;
-  templates: Template[];
+  albums: Album[];
   categoryId: string;
-  onTemplatePress: (templateId: string) => void;
+  onAlbumPress: (albumId: string) => void;
   onViewAllPress: (categoryId: string, categoryName: string) => void;
 }
 
 const ContentSection: React.FC<ContentSectionProps> = ({
   title,
-  templates,
+  albums,
   categoryId,
-  onTemplatePress,
+  onAlbumPress,
   onViewAllPress,
 }) => {
   return (
@@ -42,15 +35,11 @@ const ContentSection: React.FC<ContentSectionProps> = ({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {templates.map((template) => (
-          <TemplateCard
-            key={template.id}
-            id={template.id}
-            title={template.title}
-            imageUrl={template.imageUrl}
-            likes={template.likes}
-            isPremium={template.isPremium}
-            onPress={onTemplatePress}
+        {albums.map((album, index) => (
+          <AlbumCard
+            key={index}
+            album={album}
+            onPress={onAlbumPress}
           />
         ))}
       </ScrollView>

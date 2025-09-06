@@ -76,6 +76,8 @@ export interface Activity {
   activity_status: ActivityStatus;
   /** 活动唯一标识 */
   activiy_id: string;
+  /** 活动名称 */
+  activity_title: string;
   /** 活动包含的相册列表 */
   album_id_list: Album[];
 }
@@ -89,7 +91,7 @@ export interface ActivityListResponse {
   /** 响应消息 */
   message: string;
   /** 活动数据 */
-  data: Activity;
+  data: Activity[];
 }
 
 /**

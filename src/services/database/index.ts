@@ -2,3 +2,4 @@
 
 export { userDataService } from './userDataService';
 export { databaseService } from './databaseService';
+export { activityService } from './activityService';

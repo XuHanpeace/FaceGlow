@@ -14,82 +14,106 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { useTypedSelector, useAppDispatch } from '../store/hooks';
-import { fetchTemplates } from '../store/middleware/asyncMiddleware';
+import { fetchActivities } from '../store/slices/activitySlice';
+import { Album } from '../types/model/activity';
 
 const { width: screenWidth } = Dimensions.get('window');
 const numColumns = 2;
 const itemWidth = (screenWidth - 60) / numColumns;
 
-type TemplateMarketScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
-type TemplateMarketScreenRouteProp = RouteProp<RootStackParamList, 'TemplateMarket'>;
+type AlbumMarketScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type AlbumMarketScreenRouteProp = RouteProp<RootStackParamList, 'AlbumMarket'>;
 
-// 使用Redux中的Template类型
-import type { Template } from '../store/middleware/asyncMiddleware';
-
-const TemplateMarketScreen: React.FC = () => {
-  const navigation = useNavigation<TemplateMarketScreenNavigationProp>();
-  const route = useRoute<TemplateMarketScreenRouteProp>();
-  const { categoryId, categoryName } = route.params;
+const AlbumMarketScreen: React.FC = () => {
+  const navigation = useNavigation<AlbumMarketScreenNavigationProp>();
+  const route = useRoute<AlbumMarketScreenRouteProp>();
+  const { activityId, activityName } = route.params;
   
   const dispatch = useAppDispatch();
   
-  // 从Redux获取模板数据
-  const templates = useTypedSelector((state) => state.templates.templates[categoryId] || []);
-  const isLoading = useTypedSelector((state) => state.templates.loading);
-  const error = useTypedSelector((state) => state.templates.error);
+  // 从Redux获取活动数据
+  const activities = useTypedSelector((state) => state.activity.activities);
+  const isLoading = useTypedSelector((state) => state.activity.isLoading);
+  const error = useTypedSelector((state) => state.activity.error);
+
+  // 找到对应的Activity并获取其album列表
+  const currentActivity = activities.find(activity => activity.activiy_id === activityId);
+  const albums: Album[] = currentActivity?.album_id_list || [];
 
   useEffect(() => {
-    // 如果该分类的模板数据为空，则发起请求
-    if (templates.length === 0) {
-      dispatch(fetchTemplates({ categoryId }));
+    // 如果活动数据为空，则发起请求
+    if (activities.length === 0) {
+      dispatch(fetchActivities({ pageSize: 20, pageNumber: 1 }));
     }
-  }, [categoryId, templates.length, dispatch]);
+  }, [activities.length, dispatch]);
 
-  const handleTemplatePress = (templateId: string) => {
-    navigation.navigate('BeforeCreation', {
-      templateId,
-      templateData: {
-        // 这里可以传递模板数据
-      },
-    });
+  const handleAlbumPress = (albumId: string) => {
+    // 找到对应的Album数据
+    const selectedAlbum = albums.find(album => album.album_id === albumId);
+    
+    if (selectedAlbum) {
+      // 直接传递album数据到BeforeCreation页面
+      navigation.navigate('BeforeCreation', {
+        albumData: selectedAlbum,
+      });
+    }
   };
 
   const handleBackPress = () => {
     navigation.goBack();
   };
 
-  const renderTemplateItem = ({ item }: { item: Template }) => (
-    <TouchableOpacity
-      style={styles.templateItem}
-      onPress={() => handleTemplatePress(item.id)}
-      activeOpacity={0.8}
-    >
-      <View style={styles.imageContainer}>
-        <Image
-          source={{ uri: item.imageUrl }}
-          style={styles.templateImage}
-          resizeMode="cover"
-        />
-        {item.isPremium && (
-          <View style={styles.premiumBadge}>
-            <Text style={styles.premiumIcon}>👑</Text>
+  const renderAlbumItem = ({ item }: { item: Album }) => {
+    // 取第一个template作为封面
+    const coverImage = item.template_list[0]?.template_url || item.album_image;
+    
+    // 计算总点赞数（所有template的点赞数之和）
+    const totalLikes = item.template_list.reduce((sum, template) => {
+      return sum + Math.floor(Math.random() * 100);
+    }, 0);
+
+    return (
+      <TouchableOpacity
+        style={styles.albumItem}
+        onPress={() => handleAlbumPress(item.album_id)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.imageContainer}>
+          <Image
+            source={{ uri: coverImage }}
+            style={styles.albumImage}
+            resizeMode="cover"
+          />
+          {item.level !== '0' && (
+            <View style={styles.premiumBadge}>
+              <Text style={styles.premiumIcon}>👑</Text>
+            </View>
+          )}
+          {/* 显示相册内模板数量 */}
+          <View style={styles.templateCountBadge}>
+            <Text style={styles.templateCountText}>
+              {item.template_list.length} 模板
+            </Text>
           </View>
-        )}
-      </View>
-      
-      <View style={styles.itemInfo}>
-        <Text style={styles.itemTitle} numberOfLines={1}>
-          {item.title}
-        </Text>
-        <View style={styles.likesContainer}>
-          <Text style={styles.likesIcon}>❤️</Text>
-          <Text style={styles.likesText}>
-            {item.likes >= 1000 ? `${(item.likes / 1000).toFixed(1)}K` : item.likes}
-          </Text>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+        
+        <View style={styles.itemInfo}>
+          <Text style={styles.itemTitle} numberOfLines={1}>
+            {item.album_name}
+          </Text>
+          <Text style={styles.itemDescription} numberOfLines={2}>
+            {item.album_description}
+          </Text>
+          <View style={styles.likesContainer}>
+            <Text style={styles.likesIcon}>❤️</Text>
+            <Text style={styles.likesText}>
+              {totalLikes >= 1000 ? `${(totalLikes / 1000).toFixed(1)}K` : totalLikes}
+            </Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   // 渲染加载状态
   if (isLoading) {
@@ -102,14 +126,14 @@ const TemplateMarketScreen: React.FC = () => {
           <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
             <Text style={styles.backIcon}>‹</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{categoryName}</Text>
+          <Text style={styles.headerTitle}>{activityName}</Text>
           <View style={styles.placeholder} />
         </View>
 
         {/* 加载状态 */}
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#fff" />
-          <Text style={styles.loadingText}>加载模板中...</Text>
+          <Text style={styles.loadingText}>加载相册中...</Text>
         </View>
       </View>
     );
@@ -126,7 +150,7 @@ const TemplateMarketScreen: React.FC = () => {
           <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
             <Text style={styles.backIcon}>‹</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{categoryName}</Text>
+          <Text style={styles.headerTitle}>{activityName}</Text>
           <View style={styles.placeholder} />
         </View>
 
@@ -135,7 +159,7 @@ const TemplateMarketScreen: React.FC = () => {
           <Text style={styles.errorText}>加载失败: {error}</Text>
           <TouchableOpacity 
             style={styles.retryButton} 
-            onPress={() => dispatch(fetchTemplates({ categoryId }))}
+            onPress={() => dispatch(fetchActivities({ pageSize: 20, pageNumber: 1 }))}
           >
             <Text style={styles.retryButtonText}>重试</Text>
           </TouchableOpacity>
@@ -153,15 +177,15 @@ const TemplateMarketScreen: React.FC = () => {
         <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
           <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{categoryName}</Text>
+        <Text style={styles.headerTitle}>{activityName}</Text>
         <View style={styles.placeholder} />
       </View>
 
-      {/* 模板列表 */}
+      {/* 相册列表 */}
       <FlatList
-        data={templates}
-        renderItem={renderTemplateItem}
-        keyExtractor={(item) => item.id}
+        data={albums}
+        renderItem={renderAlbumItem}
+        keyExtractor={(item) => item.album_id}
         numColumns={numColumns}
         columnWrapperStyle={styles.row}
         contentContainerStyle={styles.listContent}
@@ -213,7 +237,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 15,
   },
-  templateItem: {
+  albumItem: {
     width: itemWidth,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 16,
@@ -224,7 +248,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: itemWidth * 1.5,
   },
-  templateImage: {
+  albumImage: {
     width: '100%',
     height: '100%',
   },
@@ -239,6 +263,20 @@ const styles = StyleSheet.create({
   premiumIcon: {
     fontSize: 12,
   },
+  templateCountBadge: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  templateCountText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '500',
+  },
   itemInfo: {
     padding: 12,
   },
@@ -246,6 +284,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+    marginBottom: 4,
+  },
+  itemDescription: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 12,
     marginBottom: 8,
   },
   likesContainer: {
@@ -296,4 +339,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default TemplateMarketScreen;
+export default AlbumMarketScreen;

@@ -7,6 +7,7 @@ export interface DatabaseResponse<T> {
   success: boolean;
   data?: {
     record?: T;
+    records?: T;
   };
   error?: {
     code: string;
@@ -37,7 +38,11 @@ interface RequestData {
     [key: string]: boolean
   },
   create?: any,
-  update?: any
+  update?: any,
+  // GET请求的查询参数
+  pageSize?: number,
+  pageNumber?: number,
+  getCount?: boolean
 }
 
 // 数据库操作错误
