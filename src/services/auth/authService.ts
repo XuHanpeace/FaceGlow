@@ -223,8 +223,11 @@ export class AuthService {
    */
   async refreshAccessToken(): Promise<AuthResponse> {
     try {
+      console.log('🔄 开始刷新AccessToken...');
+      
       const refreshToken = storage.getString(STORAGE_KEYS.REFRESH_TOKEN);
       if (!refreshToken) {
+        console.log('❌ 刷新失败: 没有可用的刷新令牌');
         return {
           success: false,
           error: {
@@ -234,20 +237,34 @@ export class AuthService {
         };
       }
 
+      console.log('📡 调用CloudBase刷新API...');
+      
       // 调用腾讯云官方刷新API
       const response: CloudBaseAuthResponse = await cloudBaseAuthService.refreshToken(refreshToken);
+
+      console.log('✅ CloudBase刷新API调用成功:', {
+        tokenType: response.token_type,
+        expiresIn: response.expires_in,
+        scope: response.scope,
+        sub: response.sub,
+      });
 
       // 转换为内部格式
       const credentials: AuthCredentials = cloudBaseAuthService.convertToAuthCredentials(response);
 
+      console.log('🔄 更新本地存储的认证信息...');
+
       // 更新本地存储
       this.saveAuthCredentials(credentials);
+
+      console.log('🎉 AccessToken刷新成功!');
 
       return {
         success: true,
         data: credentials,
       };
     } catch (error: any) {
+      console.log('❌ AccessToken刷新失败:', error.message);
       return {
         success: false,
         error: {
@@ -283,19 +300,29 @@ export class AuthService {
    */
   isLoggedIn(): boolean {
     const token = storage.getString(STORAGE_KEYS.ACCESS_TOKEN);
-    // const expiresAt = storage.getString(STORAGE_KEYS.EXPIRES_AT);
+    const expiresAt = storage.getNumber(STORAGE_KEYS.EXPIRES_AT);
     
-    if (!token) {
+    if (!token || !expiresAt) {
+      console.log('❌ 用户未登录: 缺少token或过期时间');
       return false;
     }
 
-    return true;
-
-    /* // const expirationTime = parseInt(expiresAt, 10);
     const currentTime = Date.now();
+    const isExpired = currentTime >= expiresAt;
     
-    // 检查令牌是否过期（提前5分钟认为过期）
-    return currentTime < (expirationTime - 5 * 60 * 1000); */
+    if (isExpired) {
+      console.log('⏰ Token已过期:', {
+        currentTime: new Date(currentTime).toISOString(),
+        expiresAt: new Date(expiresAt).toISOString(),
+        expiredMinutes: Math.round((currentTime - expiresAt) / 60000),
+      });
+      return false;
+    }
+
+    const remainingMinutes = Math.round((expiresAt - currentTime) / 60000);
+    console.log('✅ Token有效，剩余时间:', `${remainingMinutes}分钟`);
+    
+    return true;
   }
 
   /**
@@ -324,21 +351,29 @@ export class AuthService {
    * @param credentials 认证信息
    */
   private saveAuthCredentials(credentials: AuthCredentials): void {
+    console.log('🔐 保存认证信息到本地存储:', {
+      uid: credentials.uid,
+      expiresAt: new Date(credentials.expiresAt).toISOString(),
+      expiresIn: credentials.expiresIn,
+    });
+    
     storage.set(STORAGE_KEYS.ACCESS_TOKEN, credentials.accessToken);
     storage.set(STORAGE_KEYS.REFRESH_TOKEN, credentials.refreshToken);
     storage.set(STORAGE_KEYS.UID, credentials.uid);
-    // storage.set(STORAGE_KEYS.EXPIRES_AT, credentials.expiresAt.toString());
+    storage.set(STORAGE_KEYS.EXPIRES_AT, credentials.expiresAt);
   }
 
   /**
    * 清除本地存储的认证信息
    */
   private clearAuthCredentials(): void {
+    console.log('🗑️ 清除本地存储的认证信息');
     storage.delete(STORAGE_KEYS.ACCESS_TOKEN);
     storage.delete(STORAGE_KEYS.REFRESH_TOKEN);
     storage.delete(STORAGE_KEYS.UID);
-    // storage.delete(STORAGE_KEYS.EXPIRES_AT);
+    storage.delete(STORAGE_KEYS.EXPIRES_AT);
     storage.delete(STORAGE_KEYS.USER_INFO);
+    console.log('✅ 认证信息清除完成');
   }
 
   /**
@@ -346,16 +381,29 @@ export class AuthService {
    * @returns boolean
    */
   isTokenExpiringSoon(): boolean {
-    const expiresAt = storage.getString(STORAGE_KEYS.EXPIRES_AT);
+    const expiresAt = storage.getNumber(STORAGE_KEYS.EXPIRES_AT);
     if (!expiresAt) {
+      console.log('⚠️ Token即将过期检查: 缺少过期时间，认为即将过期');
       return true;
     }
 
-    const expirationTime = parseInt(expiresAt, 10);
     const currentTime = Date.now();
     const thirtyMinutes = 30 * 60 * 1000;
+    const isExpiringSoon = currentTime >= (expiresAt - thirtyMinutes);
+    
+    const remainingMinutes = Math.round((expiresAt - currentTime) / 60000);
+    
+    if (isExpiringSoon) {
+      console.log('⚠️ Token即将过期:', {
+        remainingMinutes,
+        expiresAt: new Date(expiresAt).toISOString(),
+        currentTime: new Date(currentTime).toISOString(),
+      });
+    } else {
+      console.log('✅ Token未即将过期，剩余时间:', `${remainingMinutes}分钟`);
+    }
 
-    return currentTime >= (expirationTime - thirtyMinutes);
+    return isExpiringSoon;
   }
 
   /**
@@ -363,16 +411,66 @@ export class AuthService {
    * @returns Promise<boolean>
    */
   async autoRefreshTokenIfNeeded(): Promise<boolean> {
+    console.log('🔍 检查是否需要自动刷新Token...');
+    
     if (this.isTokenExpiringSoon()) {
+      console.log('🚀 Token即将过期，开始自动刷新...');
       try {
         const result = await this.refreshAccessToken();
-        return result.success;
-      } catch (error) {
-        console.error('Auto token refresh failed:', error);
+        if (result.success) {
+          console.log('✅ 自动刷新Token成功');
+          return true;
+        } else {
+          console.log('❌ 自动刷新Token失败:', result.error?.message);
+          return false;
+        }
+      } catch (error: any) {
+        console.error('❌ 自动刷新Token异常:', error.message);
         return false;
       }
+    } else {
+      console.log('✅ Token未即将过期，无需刷新');
+      return true;
     }
-    return true;
+  }
+
+  /**
+   * 手动检查并刷新token（如果过期）
+   * @returns Promise<AuthResponse>
+   */
+  async checkAndRefreshToken(): Promise<AuthResponse> {
+    console.log('🔍 手动检查Token状态...');
+    
+    if (!this.isLoggedIn()) {
+      console.log('❌ Token无效或已过期，尝试刷新...');
+      return await this.refreshAccessToken();
+    } else {
+      console.log('✅ Token有效，无需刷新');
+      const token = this.getCurrentAccessToken();
+      const uid = this.getCurrentUserId();
+      const expiresAt = storage.getNumber(STORAGE_KEYS.EXPIRES_AT);
+      
+      if (token && uid && expiresAt) {
+        return {
+          success: true,
+          data: {
+            uid,
+            accessToken: token,
+            refreshToken: storage.getString(STORAGE_KEYS.REFRESH_TOKEN) || '',
+            expiresIn: Math.round((expiresAt - Date.now()) / 1000),
+            expiresAt,
+          },
+        };
+      } else {
+        return {
+          success: false,
+          error: {
+            code: 'INVALID_TOKEN_DATA',
+            message: 'Token数据不完整',
+          },
+        };
+      }
+    }
   }
 }
 

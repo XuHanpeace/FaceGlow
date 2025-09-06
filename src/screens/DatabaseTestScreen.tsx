@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, useColorSc
 import { userDataService, databaseService } from '../services/database';
 import { userWorkService } from '../services/database/userWorkService';
 import { useAuthState } from '../hooks/useAuthState';
+import { authService } from '../services/auth';
 
 const DatabaseTestScreen = () => {
   const isDarkMode = useColorScheme() === 'dark';
@@ -220,6 +221,90 @@ const DatabaseTestScreen = () => {
     }
   };
 
+  // 测试Token状态检查
+  const testTokenStatus = async () => {
+    if (!checkUserLogin()) return;
+    
+    setLoading(true);
+    try {
+      addTestResult(`🔍 开始检查Token状态...`);
+      
+      // 检查当前登录状态
+      const isLoggedIn = authService.isLoggedIn();
+      addTestResult(`📊 当前登录状态: ${isLoggedIn ? '✅ 已登录' : '❌ 未登录'}`);
+      
+      // 检查Token是否即将过期
+      const isExpiringSoon = authService.isTokenExpiringSoon();
+      addTestResult(`⏰ Token即将过期检查: ${isExpiringSoon ? '⚠️ 即将过期' : '✅ 未即将过期'}`);
+      
+      // 获取当前Token信息
+      const currentToken = authService.getCurrentAccessToken();
+      const currentUserId = authService.getCurrentUserId();
+      
+      if (currentToken && currentUserId) {
+        addTestResult(`🔑 当前Token: ${currentToken.substring(0, 20)}...`);
+        addTestResult(`👤 当前用户ID: ${currentUserId}`);
+      } else {
+        addTestResult(`❌ 无法获取Token或用户ID`);
+      }
+      
+    } catch (error) {
+      addTestResult(`❌ Token状态检查异常: ${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 测试手动刷新Token
+  const testRefreshToken = async () => {
+    if (!checkUserLogin()) return;
+    
+    setLoading(true);
+    try {
+      addTestResult(`🔄 开始手动刷新Token...`);
+      
+      const result = await authService.checkAndRefreshToken();
+      
+      if (result.success && result.data) {
+        addTestResult(`✅ Token刷新成功!`);
+        addTestResult(`🔑 新Token: ${result.data.accessToken.substring(0, 20)}...`);
+        addTestResult(`⏰ 过期时间: ${new Date(result.data.expiresAt).toLocaleString()}`);
+        addTestResult(`📊 剩余时间: ${Math.round(result.data.expiresIn / 60)}分钟`);
+        addTestResult(`👤 用户ID: ${result.data.uid}`);
+      } else {
+        addTestResult(`❌ Token刷新失败: ${result.error?.message}`);
+      }
+      
+    } catch (error) {
+      addTestResult(`❌ Token刷新异常: ${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 测试自动刷新Token
+  const testAutoRefreshToken = async () => {
+    if (!checkUserLogin()) return;
+    
+    setLoading(true);
+    try {
+      addTestResult(`🤖 开始自动刷新Token检查...`);
+      
+      const result = await authService.autoRefreshTokenIfNeeded();
+      
+      if (result) {
+        addTestResult(`✅ 自动刷新检查完成: Token状态正常`);
+      } else {
+        addTestResult(`❌ 自动刷新检查失败: Token需要手动处理`);
+      }
+      
+    } catch (error) {
+      addTestResult(`❌ 自动刷新检查异常: ${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <ScrollView style={[
       styles.container,
@@ -315,6 +400,39 @@ const DatabaseTestScreen = () => {
           </TouchableOpacity>
         </View>
 
+        <Text style={[
+          styles.sectionTitle,
+          { color: isDarkMode ? '#fff' : '#333', marginTop: 20 }
+        ]}>
+          Token管理测试
+        </Text>
+
+        <View style={styles.buttonGrid}>
+          <TouchableOpacity
+            style={[styles.testButton, { backgroundColor: '#E91E63' }]}
+            onPress={testTokenStatus}
+            disabled={loading || !isLoggedIn}
+          >
+            <Text style={styles.buttonText}>检查Token状态</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.testButton, { backgroundColor: '#FF5722' }]}
+            onPress={testRefreshToken}
+            disabled={loading || !isLoggedIn}
+          >
+            <Text style={styles.buttonText}>手动刷新Token</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.testButton, { backgroundColor: '#795548' }]}
+            onPress={testAutoRefreshToken}
+            disabled={loading || !isLoggedIn}
+          >
+            <Text style={styles.buttonText}>自动刷新检查</Text>
+          </TouchableOpacity>
+        </View>
+
         <TouchableOpacity
           style={[styles.clearButton, { backgroundColor: '#607D8B' }]}
           onPress={clearResults}
@@ -405,6 +523,24 @@ const DatabaseTestScreen = () => {
           { color: isDarkMode ? '#666' : '#999' }
         ]}>
           • 创建测试用户后，后续操作将优先使用测试用户UID
+        </Text>
+        <Text style={[
+          styles.noteText,
+          { color: isDarkMode ? '#666' : '#999' }
+        ]}>
+          • Token管理测试会检查当前Token状态和过期时间
+        </Text>
+        <Text style={[
+          styles.noteText,
+          { color: isDarkMode ? '#666' : '#999' }
+        ]}>
+          • 手动刷新Token会调用CloudBase的refresh API
+        </Text>
+        <Text style={[
+          styles.noteText,
+          { color: isDarkMode ? '#666' : '#999' }
+        ]}>
+          • 自动刷新检查会在Token即将过期时自动刷新
         </Text>
       </View>
     </ScrollView>

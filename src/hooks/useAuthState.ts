@@ -58,16 +58,20 @@ export const useAuthState = () => {
           setIsLoggedIn(true);
         } else {
           // token过期，尝试刷新
+          console.log('⏰ Token已过期，尝试刷新...');
           try {
             const result = await authService.refreshAccessToken();
             if (result.success && result.data) {
+              console.log('✅ Token刷新成功，更新用户状态');
               setUser(result.data);
               setIsLoggedIn(true);
             } else {
+              console.log('❌ Token刷新失败，清除认证数据:', result.error?.message);
               // 刷新失败，清除存储
               clearAuthData();
             }
-          } catch (error) {
+          } catch (error: any) {
+            console.log('❌ Token刷新异常，清除认证数据:', error.message);
             // 刷新失败，清除存储
             clearAuthData();
           }
