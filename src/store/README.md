@@ -72,7 +72,7 @@ interface SelfieState {
 ### User State (用户状态)
 ```typescript
 interface UserState {
-  profile: UserProfile | null;
+  profile: User | null;
   loading: boolean;
   error: string | null;
   preferences: UserPreferences;

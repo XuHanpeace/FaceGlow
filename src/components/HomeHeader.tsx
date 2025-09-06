@@ -3,21 +3,24 @@ import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
+import { useUserAvatar, useUserBalance } from '../hooks/useUser';
 
 type HomeHeaderNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface HomeHeaderProps {
-  balance?: number;
   onUpgradePress?: () => void;
   onProfilePress?: () => void;
 }
 
 const HomeHeader: React.FC<HomeHeaderProps> = ({
-  balance = 25,
   onUpgradePress,
   onProfilePress,
 }) => {
   const navigation = useNavigation<HomeHeaderNavigationProp>();
+  
+  // 使用用户hooks获取数据
+  const { avatarSource, hasAvatar } = useUserAvatar();
+  const { balance, balanceFormatted } = useUserBalance();
 
   const handleProfilePress = () => {
     if (onProfilePress) {
@@ -42,7 +45,7 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
         <View style={styles.balanceInfo}>
           <Text style={styles.balanceLabel}>余额</Text>
           <View style={styles.balanceValue}>
-            <Text style={styles.balanceNumber}>{balance}</Text>
+            <Text style={styles.balanceNumber}>{balanceFormatted}</Text>
             <Text style={styles.balanceIcon}>💰</Text>
           </View>
         </View>
@@ -54,7 +57,11 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
           <Text style={styles.upgradeText}>升级</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.profileButton} onPress={handleProfilePress}>
-          <Text style={styles.profileIcon}>👤</Text>
+          {hasAvatar ? (
+            <Image source={avatarSource} style={styles.profileAvatar} />
+          ) : (
+            <Text style={styles.profileIcon}>👤</Text>
+          )}
         </TouchableOpacity>
       </View>
     </View>
@@ -133,6 +140,11 @@ const styles = StyleSheet.create({
   },
   profileIcon: {
     fontSize: 18,
+  },
+  profileAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
   },
 });
 

@@ -1,5 +1,7 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { authService } from '../../services/auth/authService';
+import { userDataService } from '../../services/database/userDataService';
+import { User, UserGender, UserStatus } from '../../types/model/user';
 
 // 模拟API调用
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -16,17 +18,6 @@ interface RegisterCredentials {
   verificationCode: string;
   verificationId: string;
   password?: string;
-}
-
-interface UserProfile {
-  id: string;
-  username: string;
-  phoneNumber?: string;
-  avatar?: string;
-  balance: number;
-  isPremium: boolean;
-  createdAt: string;
-  lastLoginAt?: string;
 }
 
 interface SelfieItem {
@@ -54,7 +45,7 @@ export interface Template {
 
 // 用户登录
 export const loginUser = createAsyncThunk<
-  { user: UserProfile; token: string },
+  { user: User; token: string },
   LoginCredentials,
   { rejectValue: string }
 >(
@@ -64,15 +55,25 @@ export const loginUser = createAsyncThunk<
       const result = await authService.loginWithPassword(credentials.username, credentials.password);
       
       if (result.success && result.data) {
-        const user: UserProfile = {
-          id: result.data.uid,
+        const user: User = {
+          uid: result.data.uid,
           username: credentials.username,
-          phoneNumber: '15773209147',
-          avatar: undefined,
+          phone_number: '15773209147',
+          name: credentials.username,
+          gender: UserGender.MALE,
+          picture: undefined,
+          selfie_url: undefined,
+          selfie_list: [],
+          work_list: [],
           balance: 25,
-          isPremium: false,
-          createdAt: new Date().toISOString(),
-          lastLoginAt: new Date().toISOString(),
+          is_premium: false,
+          premium_expires_at: undefined,
+          preferences: undefined,
+          status: UserStatus.ACTIVE,
+          created_at: Date.now(),
+          updated_at: Date.now(),
+          device_info: undefined,
+          statistics: undefined,
         };
         
         return { user, token: result.data.accessToken };
@@ -87,7 +88,7 @@ export const loginUser = createAsyncThunk<
 
 // 用户注册
 export const registerUser = createAsyncThunk<
-  { user: UserProfile; token: string },
+  { user: User; token: string },
   RegisterCredentials,
   { rejectValue: string }
 >(
@@ -103,15 +104,25 @@ export const registerUser = createAsyncThunk<
       );
       
       if (result.success && result.data) {
-        const user: UserProfile = {
-          id: result.data.uid,
+        const user: User = {
+          uid: result.data.uid,
           username: credentials.username,
-          phoneNumber: credentials.phoneNumber,
-          avatar: undefined,
+          phone_number: credentials.phoneNumber,
+          name: credentials.username,
+          gender: UserGender.MALE,
+          picture: undefined,
+          selfie_url: undefined,
+          selfie_list: [],
+          work_list: [],
           balance: 25,
-          isPremium: false,
-          createdAt: new Date().toISOString(),
-          lastLoginAt: new Date().toISOString(),
+          is_premium: false,
+          premium_expires_at: undefined,
+          preferences: undefined,
+          status: UserStatus.ACTIVE,
+          created_at: Date.now(),
+          updated_at: Date.now(),
+          device_info: undefined,
+          statistics: undefined,
         };
         
         return { user, token: result.data.accessToken };
@@ -163,29 +174,27 @@ export const logoutUser = createAsyncThunk(
 
 // 获取用户个人信息
 export const fetchUserProfile = createAsyncThunk<
-  UserProfile,
+  User,
   { userId: string },
   { rejectValue: string }
 >(
   'user/fetchUserProfile',
   async ({ userId }, { rejectWithValue }) => {
     try {
-      // 模拟API调用
-      await delay(1000);
+      // 使用真实的API调用获取用户信息
+      const result = await userDataService.getUserByUid(userId);
       
-      // 模拟返回用户信息
-      const userProfile: UserProfile = {
-        id: userId,
-        username: 'User6849a7a2',
-        phoneNumber: '15773209147',
-        avatar: undefined,
-        balance: 25,
-        isPremium: false,
-        createdAt: '2024-01-01',
-        lastLoginAt: new Date().toISOString(),
-      };
-      
-      return userProfile;
+      if (result.success && result.data) {
+        // 检查数据结构，可能是直接返回数据或包装在record中
+        const userData = result.data.record
+        if (userData && userData.username) {
+          return userData;
+        } else {
+          return rejectWithValue('用户数据格式错误');
+        }
+      } else {
+        return rejectWithValue(result.error?.message || '获取用户信息失败');
+      }
     } catch (error: any) {
       return rejectWithValue(error.message || '获取用户信息失败');
     }

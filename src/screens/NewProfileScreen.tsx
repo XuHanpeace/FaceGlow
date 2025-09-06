@@ -13,6 +13,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { useTypedSelector, useAppDispatch } from '../store/hooks';
 import { addSelfie } from '../store/slices/selfieSlice';
+import { useUser, useUserAvatar, useUserSelfies } from '../hooks/useUser';
 
 type NewProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -29,11 +30,13 @@ const NewProfileScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const [activeTab, setActiveTab] = useState<TabType>('posts');
 
-  // 从Redux获取数据
-  const userProfile = useTypedSelector((state) => state.user.profile);
-  const selfies = useTypedSelector((state) => state.selfies.selfies);
+  // 使用用户hooks获取数据
+  const { userInfo, isLoggedIn } = useUser();
+  const { avatarSource, hasAvatar } = useUserAvatar();
+  const { selfies, hasSelfies } = useUserSelfies();
+
+  // 从Redux获取其他数据
   const isAuthenticated = useTypedSelector((state) => state.auth.isAuthenticated);
-console.log(selfies);
   const handleBackPress = () => {
     navigation.goBack();
   };
@@ -127,11 +130,15 @@ console.log(selfies);
         <View style={styles.userInfo}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarIcon}>👤</Text>
+              {hasAvatar ? (
+                <Image source={avatarSource} style={styles.avatarImage} />
+              ) : (
+                <Text style={styles.avatarIcon}>👤</Text>
+              )}
             </View>
           </View>
           <View style={styles.userDetails}>
-            <Text style={styles.username}>{userProfile?.username || 'User6849a7a2'}</Text>
+            <Text style={styles.username}>{userInfo.name || userInfo.username || '未设置用户名'}</Text>
             <TouchableOpacity style={styles.editButton} onPress={handleEditProfilePress}>
               <Text style={styles.editIcon}>✏️</Text>
             </TouchableOpacity>
@@ -191,12 +198,20 @@ console.log(selfies);
           {activeTab === 'selfies' && (
             <View style={styles.selfiesContainer}>
               <View style={styles.selfiesGrid}>
-                {selfies.map((selfie) => (
-                  <TouchableOpacity key={selfie.id} style={styles.selfieItem}>
-                    <Image source={{ uri: selfie.imageUrl }} style={styles.selfieImage} />
-                    <Text style={styles.selfieDate}>{selfie.createdAt}</Text>
-                  </TouchableOpacity>
-                ))}
+                {hasSelfies ? (
+                  selfies.map((selfie) => (
+                    <TouchableOpacity key={selfie.id} style={styles.selfieItem}>
+                      <Image source={selfie.source} style={styles.selfieImage} />
+                    </TouchableOpacity>
+                  ))
+                ) : (
+                  <View style={styles.emptySelfiesState}>
+                    <Text style={styles.emptySelfiesText}>暂无自拍照</Text>
+                    <TouchableOpacity style={styles.addFirstSelfieButton} onPress={handleAddSelfiePress}>
+                      <Text style={styles.addFirstSelfieText}>添加第一张自拍照</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
                 {/* 添加测试按钮 */}
                 <TouchableOpacity style={styles.addTestSelfieButton} onPress={handleAddMockSelfie}>
                   <Text style={styles.addTestSelfieText}>+</Text>
@@ -331,6 +346,11 @@ const styles = StyleSheet.create({
   },
   avatarIcon: {
     fontSize: 24,
+  },
+  avatarImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
   },
   userDetails: {
     flex: 1,
@@ -487,6 +507,28 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  emptySelfiesState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptySelfiesText: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 16,
+  },
+  addFirstSelfieButton: {
+    backgroundColor: '#FF6B35',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  addFirstSelfieText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
 

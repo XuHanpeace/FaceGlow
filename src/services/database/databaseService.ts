@@ -3,7 +3,7 @@ import { CLOUDBASE_CONFIG } from '../../config/cloudbase';
 import { authService } from '../auth/authService';
 
 // 数据库操作响应接口
-export interface DatabaseResponse<T = any> {
+export interface DatabaseResponse<T> {
   success: boolean;
   data?: {
     record?: T;
@@ -14,7 +14,7 @@ export interface DatabaseResponse<T = any> {
   };
 }
 
-export interface DatabaseCreateResponse<T> {
+export interface DatabaseUpdateResponse<T> {
   success: boolean;
   data?: T;
   error?: {
@@ -119,7 +119,7 @@ export class DatabaseService {
   // 通用请求方法
   private async request<T>(
     config: AxiosRequestConfig
-  ): Promise<DatabaseResponse<T>> {
+  ): Promise<T> {
     try {
       const response = await this.axiosInstance.request<T>(config);
       return {
@@ -133,6 +133,7 @@ export class DatabaseService {
         throw error;
       }
 
+      // @ts-ignore
       return {
         success: false,
         error: {
@@ -144,7 +145,7 @@ export class DatabaseService {
   }
 
   // GET请求
-  public async get<T>(endpoint: string, params?: RequestData): Promise<DatabaseResponse<T>> {
+  public async get<T>(endpoint: string, params?: RequestData) {
     return this.request<T>({
       method: 'GET',
       url: endpoint,
@@ -153,7 +154,7 @@ export class DatabaseService {
   }
 
   // POST请求
-  public async post<T>(endpoint: string, data?: RequestData): Promise<DatabaseResponse<T>> {
+  public async post<T>(endpoint: string, data?: RequestData) {
     return this.request<T>({
       method: 'POST',
       url: endpoint,
@@ -162,19 +163,11 @@ export class DatabaseService {
   }
 
   // PUT请求
-  public async put<T>(endpoint: string, data?: RequestData): Promise<DatabaseResponse<T>> {
+  public async put<T>(endpoint: string, data?: RequestData) {
     return this.request<T>({
       method: 'PUT',
       url: endpoint,
       data,
-    });
-  }
-
-  // DELETE请求
-  public async delete<T>(endpoint: string): Promise<DatabaseResponse<T>> {
-    return this.request<T>({
-      method: 'DELETE',
-      url: endpoint,
     });
   }
 
@@ -184,7 +177,7 @@ export class DatabaseService {
     filter: RequestData, 
     createData: any,
     updateData: any
-  ): Promise<DatabaseResponse<T>> {
+  ): Promise<T> {
     return this.request<T>({
       method: 'POST',
       url: `/model/prod/${modelName}/upsert`,

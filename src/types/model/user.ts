@@ -50,8 +50,6 @@ export interface UserPreferences {
  * 对应CloudBase数据库中的users集合
  */
 export interface User {
-  /** 文档ID（CloudBase自动生成） */
-  _id?: string;
   /** 用户唯一标识（来自CloudBase认证） */
   uid: string;
   /** 用户名 */
@@ -84,12 +82,6 @@ export interface User {
   created_at: number;
   /** 更新时间戳 */
   updated_at: number;
-  /** 最后登录时间戳 */
-  last_login_at: number;
-  /** 注册IP地址 */
-  register_ip?: string;
-  /** 最后登录IP地址 */
-  last_login_ip?: string;
   /** 设备信息 */
   device_info?: {
     /** 设备类型 */

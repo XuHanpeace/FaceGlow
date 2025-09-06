@@ -1,15 +1,5 @@
-import { databaseService, DatabaseResponse, DatabaseError } from './databaseService';
-
-// 用户数据模型接口
-export interface UserDocument {
-  _id?: string;                   // 文档ID（CloudBase自动生成）
-  uid: string;                    // 用户唯一标识
-  username: string;               // 用户名
-  phone_number: string;           // 手机号
-  name?: string;                  // 昵称
-  gender?: string;                // 性别
-  picture?: string;               // 头像（CloudBase中的字段名）
-}
+import { databaseService, DatabaseResponse, DatabaseError, DatabaseUpdateResponse } from './databaseService';
+import { User } from '../../types/model/user';
 
 // 创建用户文档请求参数
 export interface CreateUserRequest {
@@ -27,15 +17,34 @@ export interface UpdateLoginInfoRequest {
   last_login_at: number;
 }
 
+// 更新用户数据请求参数（扩展版本）
+export interface UpdateUserDataRequest {
+  uid: string;
+  username?: string;
+  name?: string;
+  selfie_url?: string;
+  selfie_list?: string[];
+  work_list?: string[];
+  balance?: number;
+  picture?: string;
+  gender?: string;
+  is_premium?: boolean;
+  premium_expires_at?: number;
+  status?: string;
+  preferences?: any;
+  device_info?: any;
+  statistics?: any;
+}
+
 // 用户数据服务类
 export class UserDataService {
   private readonly modelName = 'users'; // 数据模型名称
 
   // 创建新用户文档（注册成功后调用）
-  async createUser(userData: CreateUserRequest): Promise<DatabaseResponse<{ id: string }>> {
+  async createUser(userData: CreateUserRequest) {
     try {
       const createData = {
-        uid: userData.uid,         // 来自CloudBase返回的sub字段
+        uid: userData.uid,         // 来自CloudBase返回的sub字段re
         username: userData.username,
         phone_number: userData.phone_number,
         name: userData.name || '',
@@ -44,7 +53,7 @@ export class UserDataService {
       };
 
       // 使用 upsert 接口创建用户文档
-      const response = await databaseService.post<{ id: string }>(
+      const response = await databaseService.post<DatabaseResponse<{ id: string }>>(
         `/model/prod/${this.modelName}/upsert`,
         {
           filter: {
@@ -59,17 +68,24 @@ export class UserDataService {
         }
       );
 
-      if (!response.success) {
-        throw new DatabaseError(
-          response.error?.message || '创建用户失败',
-          response.error?.code || 'CREATE_USER_ERROR'
-        );
+      if (response.data?.record?.id && response.success) {
+        return {
+          success: true,
+          data: {
+            record: {
+              id: response.data.record.id
+            }
+          }
+        };
       }
 
       return {
-        success: true,
-        data: { id: (response.data as any)?.id || '' },
-      };
+        success: false,
+        error: {
+          code: response.error?.code || 'CREATE_USER_ERROR',
+          message: response.error?.message || '创建用户失败',
+        },
+      }
     } catch (error) {
       return {
         success: false,
@@ -82,9 +98,9 @@ export class UserDataService {
   }
 
   // 根据UID获取用户信息
-  async getUserByUid(uid: string): Promise<DatabaseResponse<UserDocument>> {
+  async getUserByUid(uid: string) {
     try {
-      const response = await databaseService.post<UserDocument>(
+      const response = await databaseService.post<DatabaseResponse<User>>(
         `/model/prod/${this.modelName}/get`,
         {
           filter: {
@@ -100,23 +116,34 @@ export class UserDataService {
             phone_number: true,
             picture: true,
             gender: true,
-            avatar_url: true,
-            locale: true,
-            created_at: true,
+            selfie_url: true,
+            selfie_list: true,
+            work_list: true,
+            balance: true,
+            is_premium: true,
+            premium_expires_at: true,
+            status: true,
+            preferences: true,
+            statistics: true,
           }
         }
       );
 
-      if (!response.success) {
-        throw new DatabaseError(
-          response.error?.message || '获取用户信息失败',
-          response.error?.code || 'GET_USER_ERROR'
-        );
+      if (response.data?.record && response.success) {
+        return {
+          success: true,
+          data: {
+            record: response.data.record
+          }
+        };
       }
 
       return {
-        success: true,
-        data: response.data,
+        success: false,
+        error: {
+          code: response.error?.code || 'GET_USER_ERROR',
+          message: response.error?.message || '获取用户信息失败',
+        },
       };
     } catch (error) {
       return {
@@ -129,43 +156,67 @@ export class UserDataService {
     }
   }
 
-  // 更新用户自拍照信息
-  async updateUserSelfie(uid: string, selfieUrl: string): Promise<DatabaseResponse<{ count: number }>> {
+  // 更新用户数据信息（支持多个字段）
+  async updateUserData(userData: UpdateUserDataRequest) {
     try {
-      const response = await databaseService.put<{ count: number }>(
+      // 构建更新数据，只包含非undefined的字段
+      const updateData: any = {
+        updated_at: Date.now(),
+      };
+
+      // 添加需要更新的字段
+      if (userData.username !== undefined) updateData.username = userData.username;
+      if (userData.name !== undefined) updateData.name = userData.name;
+      if (userData.selfie_url !== undefined) updateData.selfie_url = userData.selfie_url;
+      if (userData.selfie_list !== undefined) updateData.selfie_list = userData.selfie_list;
+      if (userData.work_list !== undefined) updateData.work_list = userData.work_list;
+      if (userData.balance !== undefined) updateData.balance = userData.balance;
+      if (userData.picture !== undefined) updateData.picture = userData.picture;
+      if (userData.gender !== undefined) updateData.gender = userData.gender;
+      if (userData.is_premium !== undefined) updateData.is_premium = userData.is_premium;
+      if (userData.premium_expires_at !== undefined) updateData.premium_expires_at = userData.premium_expires_at;
+      if (userData.status !== undefined) updateData.status = userData.status;
+      if (userData.preferences !== undefined) updateData.preferences = userData.preferences;
+      if (userData.device_info !== undefined) updateData.device_info = userData.device_info;
+      if (userData.statistics !== undefined) updateData.statistics = userData.statistics;
+
+      const response = await databaseService.put<DatabaseUpdateResponse<{ count: number }>>(
         `/model/prod/${this.modelName}/update`,
         {
           filter: {
             where: {
               uid: {
-                $eq: uid
+                $eq: userData.uid
               }
             }
           },
-          data: {
-            selfie_url: selfieUrl,
-            updated_at: Date.now(),
-          }
+          data: updateData
         }
       );
 
-      if (!response.success) {
-        throw new DatabaseError(
-          response.error?.message || '更新用户自拍照失败',
-          response.error?.code || 'UPDATE_SELFIE_ERROR'
-        );
+      if (response.data?.count && response.success) {
+        return {
+          success: true,
+          data: {
+            count: response.data.count
+          }
+        };
       }
 
       return {
-        success: true,
-        data: { count: (response.data as any)?.count || 0 },
+        success: false,
+        error: {
+          code: response.error?.code || 'UPDATE_USER_DATA_ERROR',
+          message: response.error?.message || '更新用户数据失败',
+        },
       };
+
     } catch (error) {
       return {
         success: false,
         error: {
-          code: error instanceof DatabaseError ? error.code : 'UPDATE_SELFIE_ERROR',
-          message: error instanceof Error ? error.message : '更新用户自拍照时发生未知错误',
+          code: error instanceof DatabaseError ? error.code : 'UPDATE_USER_DATA_ERROR',
+          message: error instanceof Error ? error.message : '更新用户数据时发生未知错误',
         },
       };
     }

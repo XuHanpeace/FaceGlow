@@ -1,19 +1,9 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { fetchUserProfile, updateUserBalance } from '../middleware/asyncMiddleware';
-
-export interface UserProfile {
-  id: string;
-  username: string;
-  phoneNumber?: string;
-  avatar?: string;
-  balance: number;
-  isPremium: boolean;
-  createdAt: string;
-  lastLoginAt?: string;
-}
+import { User } from '../../types/model/user';
 
 export interface UserState {
-  profile: UserProfile | null;
+  profile: User | null;
   loading: boolean;
   error: string | null;
   preferences: {
@@ -24,16 +14,7 @@ export interface UserState {
 }
 
 const initialState: UserState = {
-  profile: {
-    id: 'user-1',
-    username: 'processdontkill',
-    phoneNumber: '15773209147',
-    avatar: undefined,
-    balance: 25,
-    isPremium: false,
-    createdAt: '2024-01-01',
-    lastLoginAt: new Date().toISOString(),
-  },
+  profile: null, // 初始状态为空，等待从API获取真实数据
   loading: false,
   error: null,
   preferences: {
@@ -53,10 +34,10 @@ const userSlice = createSlice({
     setError: (state, action: PayloadAction<string | null>) => {
       state.error = action.payload;
     },
-    setProfile: (state, action: PayloadAction<UserProfile>) => {
+    setProfile: (state, action: PayloadAction<User>) => {
       state.profile = action.payload;
     },
-    updateProfile: (state, action: PayloadAction<Partial<UserProfile>>) => {
+    updateProfile: (state, action: PayloadAction<Partial<User>>) => {
       if (state.profile) {
         state.profile = { ...state.profile, ...action.payload };
       }
@@ -78,7 +59,7 @@ const userSlice = createSlice({
     },
     setPremium: (state, action: PayloadAction<boolean>) => {
       if (state.profile) {
-        state.profile.isPremium = action.payload;
+        state.profile.is_premium = action.payload;
       }
     },
     updatePreferences: (state, action: PayloadAction<Partial<UserState['preferences']>>) => {

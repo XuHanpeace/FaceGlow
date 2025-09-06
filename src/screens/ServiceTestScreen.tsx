@@ -60,35 +60,54 @@ const ServiceTestScreen: React.FC = () => {
     try {
       // 创建用户单元测试
       updateStepStatus('create_user_only', 'running');
-      const createUserStartTime = Date.now();
 
-      const createUserRequest = {
-        uid: 'test_user_' + Date.now(), // 使用时间戳确保唯一性
-        username: 'test_user_' + Date.now(),
-        phone_number: '13800138000',
-        name: '测试用户',
-        gender: 'male',
-        picture: 'https://example.com/avatar.jpg'
+
+      const loginRequest = {
+        username: 'processdontkill',
+        password: 'thebestinme'
       };
-      
-      
-      console.log(`[创建用户单元测试] 请求数据:`, JSON.stringify(createUserRequest, null, 2));
-      const createUserResult = await userDataService.createUser(createUserRequest);
-      const createUserDuration = Date.now() - createUserStartTime;
-      console.log('[创建用户单元测试] 返回', createUserResult);
+      console.log('[手动登录] 请求数据:', JSON.stringify(loginRequest, null, 2));
 
-      if (createUserResult.success && createUserResult.data) {
-        updateStepStatus('create_user_only', 'success', '用户创建成功', createUserDuration);
-      } else {
-        throw new Error(typeof createUserResult.error === 'string' ? createUserResult.error : '创建用户失败');
+
+      const loginResult = await authService.loginWithPassword(loginRequest.username, loginRequest.password);
+
+      if (loginResult.success && loginResult.data) {
+        const createUserStartTime = Date.now();
+
+        const createUserRequest = {
+          uid: loginResult.data.uid,
+          username: 'test_user_' + Date.now(),
+          phone_number: '13800138000',
+          name: '测试用户',
+          gender: 'male',
+          picture: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop&crop=face'
+        };
+      
+        console.log('[创建用户单元测试] 请求数据:', JSON.stringify(createUserRequest, null, 2));
+        const createUserResult = await userDataService.createUser(createUserRequest);
+        const createUserDuration = Date.now() - createUserStartTime;
+        console.log('[创建用户单元测试] 返回', createUserResult);
+
+        if (createUserResult.success && createUserResult.data) {
+          updateStepStatus('create_user_only', 'success', '用户创建成功', createUserDuration);
+           // 测试完成
+          Alert.alert(
+            '创建用户测试完成',
+            '用户创建单元测试已成功完成！',
+            [{ text: '确定' }]
+          );
+          return;
+        } 
+      updateStepStatus('create_user_only', 'error', '创建用户测试失败');
+         // 测试完成
+        Alert.alert(
+          '创建用户测试失败',
+          '用户创建单元测试已失败！',
+          [{ text: '确定' }]
+        );
       }
 
-      // 测试完成
-      Alert.alert(
-        '创建用户测试完成',
-        '用户创建单元测试已成功完成！',
-        [{ text: '确定' }]
-      );
+     
     } catch (error: any) {
       updateStepStatus('create_user_only', 'error', error.message || '创建用户测试失败');
       Alert.alert(
@@ -162,23 +181,38 @@ const ServiceTestScreen: React.FC = () => {
       updateStepStatus('update_user', 'running');
       const updateUserStartTime = Date.now();
 
-      // 由于updateUser方法未实现，我们使用updateUserSelfie作为示例
+      // 更新用户的多项信息
       const updateUserRequest = {
         uid: loginResult.data.uid,
-        selfieUrl: 'https://example.com/updated_selfie.jpg'
+        username: 'processdontkill',
+        name: 'processdontkill',
+        selfie_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face',
+        selfie_list: [
+          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face',
+          'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop&crop=face',
+          'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face'
+        ],
+        work_list: [
+          'work_' + Date.now() + '_001',
+          'work_' + Date.now() + '_002',
+          'work_' + Date.now() + '_003'
+        ],
+        balance: 250,
+        picture: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop&crop=face'
       };
       console.log('[更新用户信息] 请求数据:', JSON.stringify(updateUserRequest, null, 2));
 
-      const updateUserResult = await userDataService.updateUserSelfie(loginResult.data.uid, updateUserRequest.selfieUrl);
+      // 使用新的updateUserData方法更新用户信息
+      const updateUserResult = await userDataService.updateUserData(updateUserRequest);
       const updateUserDuration = Date.now() - updateUserStartTime;
       console.log('[更新用户信息] 返回', updateUserResult);
 
-             if (updateUserResult.success && updateUserResult.data && (updateUserResult.data as any).count > 0) {
-         updateStepStatus('update_user', 'success', '用户信息更新成功', updateUserDuration);
-       } else {
-         Alert.alert('更新用户信息失败', typeof updateUserResult.error === 'string' ? updateUserResult.error : '更新用户信息失败');
-         return;
-       }
+      if (updateUserResult.success && updateUserResult.data && updateUserResult.data.count > 0) {
+        updateStepStatus('update_user', 'success', `用户信息更新成功: ${updateUserRequest.name}`, updateUserDuration);
+      } else {
+        Alert.alert('更新用户信息失败');
+        return;
+      }
 
       // 步骤4: 创建用户作品
       updateStepStatus('create_work', 'running');
@@ -191,7 +225,7 @@ const ServiceTestScreen: React.FC = () => {
         activity_id: 'test_activity_001',
         activity_title: '测试活动',
         activity_description: '测试活动描述',
-        activity_image: 'https://example.com/activity_image.jpg',
+        activity_image: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=600&h=400&fit=crop',
         album_id: 'test_album_001',
         is_public: '1',
         download_count: '0',
@@ -211,7 +245,7 @@ const ServiceTestScreen: React.FC = () => {
       updateStepStatus('create_work', 'success', '用户作品创建成功', createWorkDuration);
      } else {
       console.log('[创建用户作品] 返回', createWorkResult);
-      Alert.alert('创建用户作品失败', typeof createWorkResult.error === 'string' ? createWorkResult.error : '创建用户作品失败');
+      Alert.alert('创建用户作品失败');
       return;
      }
 
@@ -235,7 +269,7 @@ const ServiceTestScreen: React.FC = () => {
           updateStepStatus('get_works', 'success', `获取到 ${getWorksResult.data.record.likes} 个作品`, getWorksDuration);
        } else {
          console.log('[获取用户作品列表] 返回', getWorksResult);
-         Alert.alert('获取用户作品失败', typeof getWorksResult.error === 'string' ? getWorksResult.error : '获取用户作品失败');
+         Alert.alert('获取用户作品失败');
          return;
        }
 

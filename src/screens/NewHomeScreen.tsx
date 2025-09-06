@@ -17,6 +17,7 @@ import ContentSection from '../components/ContentSection';
 import { useTypedSelector, useAppDispatch } from '../store/hooks';
 import { setSelectedTemplate } from '../store/slices/templateSlice';
 import { setUploading, setUploadProgress } from '../store/slices/selfieSlice';
+import { useUser, useUserBalance, useUserSelfies } from '../hooks/useUser';
 
 type NewHomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -24,11 +25,14 @@ const NewHomeScreen: React.FC = () => {
   const navigation = useNavigation<NewHomeScreenNavigationProp>();
   const dispatch = useAppDispatch();
 
-  // 使用Redux获取数据
-  const balance = useTypedSelector((state) => state.user.profile?.balance || 0);
+  // 使用用户hooks获取数据
+  const { userInfo, userLoading, userError } = useUser();
+  const { balance, balanceFormatted } = useUserBalance();
+  const { selfies, hasSelfies } = useUserSelfies();
+
+  // 使用Redux获取其他数据
   const artBrandingTemplates = useTypedSelector((state) => state.templates.templates['art-branding'] || []);
   const communityTemplates = useTypedSelector((state) => state.templates.templates['community'] || []);
-  const selfies = useTypedSelector((state) => state.selfies.selfies);
   const uploading = useTypedSelector((state) => state.selfies.uploading);
   const uploadProgress = useTypedSelector((state) => state.selfies.uploadProgress);
 
@@ -75,7 +79,6 @@ const NewHomeScreen: React.FC = () => {
       {/* 固定头部 */}
       <View style={styles.fixedHeader}>
         <HomeHeader
-          balance={balance}
           onUpgradePress={handleUpgradePress}
           onProfilePress={handleProfilePress}
         />
@@ -98,7 +101,7 @@ const NewHomeScreen: React.FC = () => {
             {selfies.slice(0, 3).map((selfie) => (
               <Image 
                 key={selfie.id} 
-                source={{ uri: selfie.imageUrl }} 
+                source={selfie.source} 
                 style={styles.selfieImage} 
               />
             ))}

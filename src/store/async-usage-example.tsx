@@ -194,7 +194,7 @@ const AsyncUsageExample: React.FC = () => {
         <h3>用户信息</h3>
         <p>用户名: {userState.profile?.username || '未设置'}</p>
         <p>余额: {userState.profile?.balance || 0}</p>
-        <p>会员状态: {userState.profile?.isPremium ? '会员' : '普通用户'}</p>
+        <p>会员状态: {userState.profile?.is_premium ? '会员' : '普通用户'}</p>
         
         <button onClick={handleFetchUserProfile}>获取用户信息</button>
         <button onClick={handleUpdateBalance}>更新余额</button>
