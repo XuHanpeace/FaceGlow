@@ -36,7 +36,6 @@ const NewProfileScreen: React.FC = () => {
   const { selfies, hasSelfies } = useUserSelfies();
 
   // 从Redux获取其他数据
-  const isAuthenticated = useTypedSelector((state) => state.auth.isAuthenticated);
   const handleBackPress = () => {
     navigation.goBack();
   };

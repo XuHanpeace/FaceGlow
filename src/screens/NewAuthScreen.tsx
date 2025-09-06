@@ -17,12 +17,14 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { useAppDispatch } from '../store/hooks';
 import { sendVerificationCode, loginUser, registerUser } from '../store/middleware/asyncMiddleware';
+import { useAuthState } from '../hooks/useAuthState';
 
 type NewAuthScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const NewAuthScreen: React.FC = () => {
   const navigation = useNavigation<NewAuthScreenNavigationProp>();
   const dispatch = useAppDispatch();
+  const { setAuthData } = useAuthState();
   
   // 状态管理
   const [loginMode, setLoginMode] = useState<'password' | 'phone'>('password'); // 默认账号密码登录
@@ -68,9 +70,9 @@ const NewAuthScreen: React.FC = () => {
 
     try {
       setIsLoading(true);
-      const result = await dispatch(sendVerificationCode({ phone: phoneNumber })).unwrap();
+      const result = await dispatch(sendVerificationCode({ phoneNumber })).unwrap();
       
-      if (result.verification_id) {
+      if (result.verificationId) {
         setStep('code');
         setCountdown(60);
         Alert.alert('验证码已发送', '请查看短信并输入验证码');
@@ -100,13 +102,20 @@ const NewAuthScreen: React.FC = () => {
       // 先尝试登录
       try {
         const loginResult = await dispatch(loginUser({
-          phone: phoneNumber,
-          verificationCode,
-          verificationId: 'temp_verification_id' // TODO: 从sendVerificationCode返回中获取
+          username: phoneNumber, // 使用手机号作为用户名
+          password: verificationCode // 使用验证码作为密码
         })).unwrap();
         
-        if (loginResult.success) {
+        if (loginResult.uid && loginResult.token) {
           setIsNewUser(false);
+          // 更新本地存储的认证数据
+          setAuthData({
+            uid: loginResult.uid,
+            accessToken: loginResult.token,
+            refreshToken: loginResult.token, // 暂时使用相同token
+            expiresIn: 3600, // 1小时
+            expiresAt: Date.now() + 3600000, // 1小时后过期
+          });
           // 登录成功，直接关闭当前页面并返回主页
           navigation.goBack();
           return;
@@ -119,13 +128,22 @@ const NewAuthScreen: React.FC = () => {
       // 尝试注册
       try {
         const registerResult = await dispatch(registerUser({
-          phone: phoneNumber,
+          phoneNumber,
+          username: phoneNumber, // 使用手机号作为用户名
           verificationCode,
           verificationId: 'temp_verification_id' // TODO: 从sendVerificationCode返回中获取
         })).unwrap();
         
-        if (registerResult.success) {
+        if (registerResult.uid && registerResult.token) {
           setIsNewUser(true);
+          // 更新本地存储的认证数据
+          setAuthData({
+            uid: registerResult.uid,
+            accessToken: registerResult.token,
+            refreshToken: registerResult.token, // 暂时使用相同token
+            expiresIn: 3600, // 1小时
+            expiresAt: Date.now() + 3600000, // 1小时后过期
+          });
           // 注册成功，直接关闭当前页面并返回主页
           navigation.goBack();
           return;
@@ -169,6 +187,14 @@ const NewAuthScreen: React.FC = () => {
       })).unwrap();
       
       if (result.uid && result.token) {
+        // 更新本地存储的认证数据
+        setAuthData({
+          uid: result.uid,
+          accessToken: result.token,
+          refreshToken: result.token, // 暂时使用相同token
+          expiresIn: 3600, // 1小时
+          expiresAt: Date.now() + 3600000, // 1小时后过期
+        });
         // 登录成功，直接关闭当前页面并返回主页
         navigation.goBack();
       } else {

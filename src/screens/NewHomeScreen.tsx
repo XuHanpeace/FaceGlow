@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -8,16 +8,17 @@ import {
   TouchableOpacity,
   Text,
   Image,
+  RefreshControl,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import HomeHeader from '../components/HomeHeader';
 import ContentSection from '../components/ContentSection';
+import SelfieModule from '../components/SelfieModule';
 import { useTypedSelector, useAppDispatch } from '../store/hooks';
 import { fetchActivities } from '../store/slices/activitySlice';
-import { setUploading, setUploadProgress } from '../store/slices/selfieSlice';
-import { useUser, useUserBalance, useUserSelfies } from '../hooks/useUser';
+import { useUser } from '../hooks/useUser';
 import { useAuthState } from '../hooks/useAuthState';
 
 type NewHomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -28,20 +29,16 @@ const NewHomeScreen: React.FC = () => {
 
   // 检查登录状态
   const { isLoggedIn, isLoading } = useAuthState();
-
+  
   // 使用用户hooks获取数据
-  const { selfies } = useUserSelfies();
+  const { refreshUserData } = useUser();
 
   // 使用Redux获取活动数据
   const activities = useTypedSelector((state) => state.activity.activities);
-
-  // 检查登录状态，未登录时自动跳转到登录页面
-  useEffect(() => {
-    if (!isLoading && !isLoggedIn) {
-      console.log('🔐 检测到未登录状态，自动拉起登录页面');
-      navigation.navigate('NewAuth');
-    }
-  }, [isLoading, isLoggedIn, navigation]);
+  
+  // 刷新状态
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState(0);
 
   // 页面初始化时查询活动数据
   useEffect(() => {
@@ -52,10 +49,52 @@ const NewHomeScreen: React.FC = () => {
   // 页面获得焦点时刷新数据（登录成功后返回时触发）
   useFocusEffect(
     React.useCallback(() => {
+      const now = Date.now();
+      // 防抖：如果距离上次刷新不到2秒，则跳过
+      if (now - lastRefreshTime < 2000) {
+        console.log('⏰ 距离上次刷新时间太短，跳过本次刷新');
+        return;
+      }
+      
       console.log('🔄 页面获得焦点，刷新数据...');
+      setLastRefreshTime(now);
+      // 只刷新活动数据，避免循环调用
       dispatch(fetchActivities({ pageSize: 10, pageNumber: 1 }));
-    }, [dispatch])
+    }, [dispatch, lastRefreshTime])
   );
+
+  // 下拉刷新函数
+  const onRefresh = useCallback(async () => {
+    const now = Date.now();
+    // 防抖：如果距离上次刷新不到2秒，则跳过
+    if (now - lastRefreshTime < 2000) {
+      console.log('⏰ 距离上次刷新时间太短，跳过本次下拉刷新');
+      return;
+    }
+    
+    // 检查登录状态，如果没有登录态则跳转到登录页面
+    if (!isLoggedIn) {
+      console.log('🔐 检测到未登录状态，跳转到登录页面');
+      navigation.navigate('NewAuth');
+      return;
+    }
+    
+    setRefreshing(true);
+    setLastRefreshTime(now);
+    try {
+      console.log('🔄 开始下拉刷新...');
+      // 同时刷新活动数据和用户数据
+      await Promise.all([
+        dispatch(fetchActivities({ pageSize: 10, pageNumber: 1 })).unwrap(),
+        refreshUserData()
+      ]);
+      console.log('✅ 下拉刷新完成');
+    } catch (error) {
+      console.error('❌ 下拉刷新失败:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [dispatch, refreshUserData, lastRefreshTime, isLoggedIn, navigation]);
 
   const handleAlbumPress = (albumId: string) => {
     // 从activities中找到选中的相册
@@ -95,7 +134,7 @@ const NewHomeScreen: React.FC = () => {
   const handleAddSelfiePress = () => {
     navigation.navigate('SelfieGuide');
   };
-console.log(activities);
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
@@ -116,24 +155,18 @@ console.log(activities);
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#fff"
+            title="下拉刷新"
+            titleColor="#fff"
+          />
+        }
       >
         {/* 我的自拍照模块 */}
-        <View style={styles.selfieModule}>
-          <Text style={styles.selfieTitle}>我的自拍</Text>
-          <View style={styles.selfieContent}>
-            {/* 从Redux获取自拍照数据 */}
-            <TouchableOpacity style={styles.addSelfieButton} onPress={handleAddSelfiePress}>
-              <Text style={styles.addIcon}>+</Text>
-            </TouchableOpacity>
-            {selfies.slice(0, 3).map((selfie) => (
-              <Image 
-                key={selfie.id} 
-                source={selfie.source} 
-                style={styles.selfieImage} 
-              />
-            ))}
-          </View>
-        </View>
+        <SelfieModule onAddSelfiePress={handleAddSelfiePress} />
 
         {/* 使用Redux中的活动数据 */}
         {activities.map((activity, index) => (
@@ -168,49 +201,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 50,
-  },
-  selfieModule: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    overflow: 'hidden',
-    padding: 16,
-  },
-  selfieTitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 16,
-  },
-  selfieContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    gap: 12,
-  },
-  selfieImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-  },
-  addSelfieButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(94, 231, 223, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(94, 231, 223, 0.4)',
-    borderStyle: 'dashed',
-  },
-  addIcon: {
-    color: '#5EE7DF',
-    fontSize: 24,
-    fontWeight: 'bold',
   },
 });
 

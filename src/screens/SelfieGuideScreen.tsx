@@ -9,6 +9,7 @@ import {
   Modal,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -29,12 +30,18 @@ const SelfieGuideScreen: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<ImagePicker.Asset | null>(null);
 
   const screenWidth = Dimensions.get('window').width;
   const screenHeight = Dimensions.get('window').height;
 
   const handleClosePress = () => {
     navigation.goBack();
+  };
+
+  const handleChangePhoto = () => {
+    setShowModal(true);
   };
 
   const handleContinuePress = () => {
@@ -130,8 +137,9 @@ const SelfieGuideScreen: React.FC = () => {
       }
 
       if (result.assets && result.assets[0]) {
-        console.log('选择成功，开始上传流程');
-        await handleImageUpload(result.assets[0]);
+        console.log('选择成功，设置预览照片');
+        setSelectedImage(result.assets[0]);
+        setShowModal(false);
       } else {
         console.log('没有选择到图片');
       }
@@ -141,7 +149,13 @@ const SelfieGuideScreen: React.FC = () => {
     }
   };
 
-  const handleImageUpload = async (asset: ImagePicker.Asset) => {
+  const handleImageUpload = async () => {
+    if (!selectedImage) {
+      Alert.alert('提示', '请先选择一张照片');
+      return;
+    }
+
+    const asset = selectedImage;
     try {
       setIsUploading(true);
       setUploadProgress(0);
@@ -182,7 +196,19 @@ const SelfieGuideScreen: React.FC = () => {
         const currentUserId = authService.getCurrentUserId();
         if (currentUserId) {
           console.log('开始更新用户信息');
-          await userDataService.updateUserSelfie(currentUserId, uploadResult.url);
+          
+          // 获取用户现有数据
+          const userResponse = await userDataService.getUserByUid(currentUserId);
+          const existingSelfieList = userResponse.data?.record?.selfie_list || [];
+          
+          // 将新的自拍URL添加到列表中
+          const updatedSelfieList = [...existingSelfieList, uploadResult.url];
+          
+          await userDataService.updateUserData({
+            uid: currentUserId,
+            selfie_url: uploadResult.url,
+            selfie_list: updatedSelfieList
+          });
           console.log('用户信息更新成功');
         }
       } catch (error) {
@@ -191,6 +217,9 @@ const SelfieGuideScreen: React.FC = () => {
       }
 
       setUploadProgress(100);
+      
+      // 设置上传成功的图片URL
+      setUploadedImageUrl(uploadResult.url);
       
       // 上传完成后延迟返回主页
       setTimeout(() => {
@@ -202,7 +231,7 @@ const SelfieGuideScreen: React.FC = () => {
           [
             {
               text: '确定',
-              onPress: () => navigation.navigate('NewHome'),
+              onPress: () => handleClosePress()
             },
           ]
         );
@@ -230,6 +259,33 @@ const SelfieGuideScreen: React.FC = () => {
         {/* 标题 */}
         <Text style={styles.title}>创作AI头像</Text>
         <Text style={styles.subtitle}>别担心,这是一次性操作</Text>
+
+        {/* 照片预览区域 */}
+        {selectedImage && (
+          <View style={styles.previewContainer}>
+            <Image
+              source={{ uri: selectedImage.uri }}
+              style={styles.previewImage}
+              resizeMode="cover"
+            />
+            <TouchableOpacity style={styles.changePhotoButton} onPress={handleChangePhoto}>
+              <Text style={styles.changePhotoText}>更换自拍</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* 上传成功的照片展示 */}
+        {uploadedImageUrl && (
+          <View style={styles.uploadedImageContainer}>
+            <Text style={styles.uploadedImageTitle}>上传成功！</Text>
+            <Image
+              source={{ uri: uploadedImageUrl }}
+              style={styles.uploadedImage}
+              resizeMode="cover"
+            />
+            <Text style={styles.uploadedImageSubtitle}>您的自拍照已成功上传</Text>
+          </View>
+        )}
 
         {/* 流程说明 */}
         <View style={styles.processContainer}>
@@ -268,20 +324,29 @@ const SelfieGuideScreen: React.FC = () => {
 
       {/* 底部按钮 */}
       <View style={styles.bottomContainer}>
-        <TouchableOpacity
-          style={[styles.continueButton, isUploading && styles.continueButtonDisabled]}
-          onPress={handleContinuePress}
-          disabled={isUploading}
-        >
-          {isUploading ? (
-            <View style={styles.uploadingContainer}>
-              <ActivityIndicator size="small" color="#fff" />
-              <Text style={styles.uploadingText}>上传中 {uploadProgress}%</Text>
-            </View>
-          ) : (
-            <Text style={styles.continueButtonText}>继续</Text>
-          )}
-        </TouchableOpacity>
+        {selectedImage ? (
+          <TouchableOpacity
+            style={[styles.uploadButton, isUploading && styles.uploadButtonDisabled]}
+            onPress={handleImageUpload}
+            disabled={isUploading}
+          >
+            {isUploading ? (
+              <View style={styles.uploadingContainer}>
+                <ActivityIndicator size="small" color="#fff" />
+                <Text style={styles.uploadingText}>上传中 {uploadProgress}%</Text>
+              </View>
+            ) : (
+              <Text style={styles.uploadButtonText}>上传自拍</Text>
+            )}
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={styles.continueButton}
+            onPress={handleContinuePress}
+          >
+            <Text style={styles.continueButtonText}>选择自拍</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* 选择图片来源弹窗 */}
@@ -367,6 +432,65 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     opacity: 0.8,
   },
+  previewContainer: {
+    alignItems: 'center',
+    marginBottom: 30,
+    position: 'relative',
+  },
+  previewImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  changePhotoButton: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  changePhotoText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  uploadedImageContainer: {
+    alignItems: 'center',
+    marginBottom: 30,
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  uploadedImageTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  uploadedImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    marginBottom: 10,
+    borderWidth: 3,
+    borderColor: '#4CAF50',
+  },
+  uploadedImageSubtitle: {
+    fontSize: 14,
+    color: '#fff',
+    opacity: 0.8,
+    textAlign: 'center',
+  },
   processContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -408,19 +532,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 30,
   },
-  previewContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  previewImage: {
-    width: '100%',
-    height: 300,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
   bottomContainer: {
     paddingHorizontal: 20,
     paddingBottom: 40,
@@ -435,6 +546,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#666',
   },
   continueButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  uploadButton: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 25,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  uploadButtonDisabled: {
+    backgroundColor: '#666',
+  },
+  uploadButtonText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',

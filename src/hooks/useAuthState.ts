@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MMKV } from 'react-native-mmkv';
 import { authService } from '../services/auth';
+import { useTypedSelector } from '../store/hooks';
 
 // 创建MMKV存储实例
 const storage = new MMKV();
@@ -26,6 +27,9 @@ export const useAuthState = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // 从Redux获取认证状态
+  const authState = useTypedSelector((state) => state.auth);
 
   // 检查登录状态
   const checkLoginState = async () => {
@@ -116,9 +120,32 @@ export const useAuthState = () => {
     setIsLoggedIn(true);
   };
 
+  // 同步authSlice的状态到本地状态
+  useEffect(() => {
+    if (authState.uid && authState.token) {
+      // 从Redux状态更新本地状态
+      const authUser: AuthUser = {
+        uid: authState.uid,
+        accessToken: authState.token,
+        refreshToken: authState.token, // 暂时使用相同token
+        expiresIn: 3600, // 1小时
+        expiresAt: Date.now() + 3600000, // 1小时后过期
+      };
+      setUser(authUser);
+      setIsLoggedIn(true);
+      setIsLoading(false);
+    } else {
+      // 如果没有Redux状态，检查本地存储
+      checkLoginState();
+    }
+  }, [authState.uid, authState.token]);
+
   // 初始化时检查登录状态
   useEffect(() => {
-    checkLoginState();
+    // 只有在没有Redux状态时才检查本地存储
+    if (!authState.uid && !authState.token) {
+      checkLoginState();
+    }
   }, []);
 
   return {

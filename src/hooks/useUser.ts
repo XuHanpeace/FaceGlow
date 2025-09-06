@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useTypedSelector, useAppDispatch } from '../store/hooks';
 import { fetchUserProfile } from '../store/middleware/asyncMiddleware';
 import { authService } from '../services/auth/authService';
@@ -34,7 +34,7 @@ export const useUser = () => {
   }, [dispatch, userProfile]);
 
   // 手动刷新用户数据
-  const refreshUserData = async () => {
+  const refreshUserData = useCallback(async () => {
     const currentUserId = authService.getCurrentUserId();
     if (currentUserId) {
       try {
@@ -44,7 +44,7 @@ export const useUser = () => {
         throw error;
       }
     }
-  };
+  }, [dispatch]);
 
   // 用户信息计算属性
   const userInfo = {
@@ -149,11 +149,15 @@ export const useUserAvatar = () => {
 export const useUserSelfies = () => {
   const { userInfo, hasSelfies, refreshUserData } = useUser();
 
-  const selfies = userInfo.selfieList.map((url, index) => ({
-    id: `selfie_${index}`,
-    url,
-    source: { uri: url },
-  }));
+  // 倒序显示自拍照，最新的在前面
+  const selfies = userInfo.selfieList
+    .slice()
+    .reverse()
+    .map((url, index) => ({
+      id: `selfie_${index}`,
+      url,
+      source: { uri: url },
+    }));
 
   const addSelfie = async (newSelfieUrl: string) => {
     // 这里可以调用添加自拍的API
