@@ -8,19 +8,33 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useUserSelfies } from '../hooks/useUser';
+import { useNavigation } from '@react-navigation/native';
+import { RootStackParamList } from '../types/navigation';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+type SelfieModuleNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface SelfieModuleProps {
   onAddSelfiePress: () => void;
+  onSelfieSelect?: () => void;
 }
 
-const SelfieModule: React.FC<SelfieModuleProps> = ({ onAddSelfiePress }) => {
-  const { selfies } = useUserSelfies();
+const SelfieModule: React.FC<SelfieModuleProps> = ({ onAddSelfiePress, onSelfieSelect }) => {
+  const navigation = useNavigation<SelfieModuleNavigationProp>();
+  const { selfies, defaultSelfieUrl } = useUserSelfies();
 
   // 最多6个头像（useUserSelfies已经倒序了）
   const displaySelfies = selfies.slice(0, 6);
 
+  const handleSelfiePress = () => {
+    // 点击自拍区域，调用回调函数
+    if (onSelfieSelect) {
+      onSelfieSelect();
+    }
+  };
+
   return (
-    <View style={styles.selfieModule}>
+    <TouchableOpacity style={styles.selfieModule} onPress={handleSelfiePress} activeOpacity={0.8}>
       <Text style={styles.selfieTitle}>我的自拍</Text>
       <ScrollView
         horizontal
@@ -29,20 +43,30 @@ const SelfieModule: React.FC<SelfieModuleProps> = ({ onAddSelfiePress }) => {
         style={styles.selfieScrollView}
       >
         {/* 添加自拍按钮 */}
-        <TouchableOpacity style={styles.addSelfieButton} onPress={onAddSelfiePress}>
+        <TouchableOpacity 
+          style={styles.addSelfieButton} 
+          onPress={(e) => {
+            e.stopPropagation(); // 阻止事件冒泡
+            onAddSelfiePress();
+          }}
+        >
           <Text style={styles.addIcon}>+</Text>
         </TouchableOpacity>
         
         {/* 自拍照列表 */}
         {displaySelfies.map((selfie) => (
-          <Image 
-            key={selfie.id} 
-            source={selfie.source} 
-            style={styles.selfieImage} 
-          />
+          <View key={selfie.id} style={styles.selfieContainer}>
+            <Image 
+              source={selfie.source} 
+              style={[
+                styles.selfieImage,
+                selfie.url === defaultSelfieUrl && styles.defaultSelfieImage
+              ]} 
+            />
+          </View>
         ))}
       </ScrollView>
-    </View>
+    </TouchableOpacity>
   );
 };
 
@@ -88,10 +112,18 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
   },
+  selfieContainer: {
+    position: 'relative',
+    marginRight: 12,
+  },
   selfieImage: {
     width: 48,
     height: 48,
     borderRadius: 24,
+  },
+  defaultSelfieImage: {
+    borderWidth: 3,
+    borderColor: '#5EE7DF',
   },
 });
 

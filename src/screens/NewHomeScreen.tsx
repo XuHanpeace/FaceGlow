@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   Text,
   Image,
-  RefreshControl,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -16,6 +15,7 @@ import { RootStackParamList } from '../types/navigation';
 import HomeHeader from '../components/HomeHeader';
 import ContentSection from '../components/ContentSection';
 import SelfieModule from '../components/SelfieModule';
+import DefaultSelfieSelector from '../components/DefaultSelfieSelector';
 import { useTypedSelector, useAppDispatch } from '../store/hooks';
 import { fetchActivities } from '../store/slices/activitySlice';
 import { useUser } from '../hooks/useUser';
@@ -36,9 +36,8 @@ const NewHomeScreen: React.FC = () => {
   // 使用Redux获取活动数据
   const activities = useTypedSelector((state) => state.activity.activities);
   
-  // 刷新状态
-  const [refreshing, setRefreshing] = useState(false);
-  const [lastRefreshTime, setLastRefreshTime] = useState(0);
+  // 默认自拍选择器状态
+  const [showDefaultSelfieSelector, setShowDefaultSelfieSelector] = useState(false);
 
   // 页面初始化时查询活动数据
   useEffect(() => {
@@ -49,52 +48,17 @@ const NewHomeScreen: React.FC = () => {
   // 页面获得焦点时刷新数据（登录成功后返回时触发）
   useFocusEffect(
     React.useCallback(() => {
-      const now = Date.now();
-      // 防抖：如果距离上次刷新不到2秒，则跳过
-      if (now - lastRefreshTime < 2000) {
-        console.log('⏰ 距离上次刷新时间太短，跳过本次刷新');
-        return;
-      }
-      
       console.log('🔄 页面获得焦点，刷新数据...');
-      setLastRefreshTime(now);
-      // 只刷新活动数据，避免循环调用
-      dispatch(fetchActivities({ pageSize: 10, pageNumber: 1 }));
-    }, [dispatch, lastRefreshTime])
-  );
-
-  // 下拉刷新函数
-  const onRefresh = useCallback(async () => {
-    const now = Date.now();
-    // 防抖：如果距离上次刷新不到2秒，则跳过
-    if (now - lastRefreshTime < 2000) {
-      console.log('⏰ 距离上次刷新时间太短，跳过本次下拉刷新');
-      return;
-    }
-    
-    // 检查登录状态，如果没有登录态则跳转到登录页面
-    if (!isLoggedIn) {
-      console.log('🔐 检测到未登录状态，跳转到登录页面');
-      navigation.navigate('NewAuth');
-      return;
-    }
-    
-    setRefreshing(true);
-    setLastRefreshTime(now);
-    try {
-      console.log('🔄 开始下拉刷新...');
       // 同时刷新活动数据和用户数据
-      await Promise.all([
+      Promise.all([
         dispatch(fetchActivities({ pageSize: 10, pageNumber: 1 })).unwrap(),
         refreshUserData()
-      ]);
-      console.log('✅ 下拉刷新完成');
-    } catch (error) {
-      console.error('❌ 下拉刷新失败:', error);
-    } finally {
-      setRefreshing(false);
-    }
-  }, [dispatch, refreshUserData, lastRefreshTime, isLoggedIn, navigation]);
+      ]).catch(error => {
+        console.error('❌ 页面焦点刷新失败:', error);
+      });
+    }, [dispatch, refreshUserData])
+  );
+
 
   const handleAlbumPress = (albumId: string) => {
     // 从activities中找到选中的相册
@@ -135,6 +99,15 @@ const NewHomeScreen: React.FC = () => {
     navigation.navigate('SelfieGuide');
   };
 
+  const handleSelfieSelect = () => {
+    setShowDefaultSelfieSelector(true);
+  };
+
+  const handleDefaultSelfieSelect = (selfieUrl: string) => {
+    console.log('选择默认自拍:', selfieUrl);
+    setShowDefaultSelfieSelector(false);
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
@@ -155,18 +128,12 @@ const NewHomeScreen: React.FC = () => {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#fff"
-            title="下拉刷新"
-            titleColor="#fff"
-          />
-        }
       >
         {/* 我的自拍照模块 */}
-        <SelfieModule onAddSelfiePress={handleAddSelfiePress} />
+        <SelfieModule 
+          onAddSelfiePress={handleAddSelfiePress} 
+          onSelfieSelect={handleSelfieSelect}
+        />
 
         {/* 使用Redux中的活动数据 */}
         {activities.map((activity, index) => (
@@ -180,6 +147,13 @@ const NewHomeScreen: React.FC = () => {
           />
         ))}
       </ScrollView>
+
+      {/* 默认自拍选择器 */}
+      <DefaultSelfieSelector
+        visible={showDefaultSelfieSelector}
+        onClose={() => setShowDefaultSelfieSelector(false)}
+        onSelect={handleDefaultSelfieSelect}
+      />
     </View>
   );
 };

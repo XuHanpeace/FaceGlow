@@ -6,6 +6,10 @@ export type RootStackParamList = {
   BeforeCreation: {
     albumData: Album;
   };
+  CreationResult: {
+    albumData: Album;
+    selfieUrl: string;
+  };
   AlbumMarket: {
     activityId: string;
     activityName: string;

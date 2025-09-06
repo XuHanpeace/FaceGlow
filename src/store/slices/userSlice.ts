@@ -6,6 +6,7 @@ export interface UserState {
   profile: User | null;
   loading: boolean;
   error: string | null;
+  default_selfie_url: string | null;
   preferences: {
     theme: 'light' | 'dark';
     language: 'zh' | 'en';
@@ -17,6 +18,7 @@ const initialState: UserState = {
   profile: null, // 初始状态为空，等待从API获取真实数据
   loading: false,
   error: null,
+  default_selfie_url: null,
   preferences: {
     theme: 'dark',
     language: 'zh',
@@ -77,6 +79,9 @@ const userSlice = createSlice({
     clearProfile: (state) => {
       state.profile = null;
     },
+    setDefaultSelfie: (state, action: PayloadAction<string | null>) => {
+      state.default_selfie_url = action.payload;
+    },
   },
   extraReducers: (builder) => {
     // 处理获取用户信息异步操作
@@ -127,6 +132,7 @@ export const {
   setLanguage,
   setNotifications,
   clearProfile,
+  setDefaultSelfie,
 } = userSlice.actions;
 
 export default userSlice.reducer;

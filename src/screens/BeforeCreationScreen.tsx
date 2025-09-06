@@ -18,6 +18,7 @@ import { RootStackParamList } from '../types/navigation';
 import { useTypedSelector, useAppDispatch } from '../store/hooks';
 import { callFaceFusionCloudFunction } from '../services/tcb/tcb';
 import { Template } from '../types/model/activity';
+import SelfieSelector from '../components/SelfieSelector';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -37,6 +38,7 @@ const BeforeCreationScreen: React.FC = () => {
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isFusionProcessing, setIsFusionProcessing] = useState(false);
+  const [selectedSelfieUrl, setSelectedSelfieUrl] = useState<string | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
@@ -87,11 +89,11 @@ const BeforeCreationScreen: React.FC = () => {
 
   const handleUseStylePress = async () => {
     try {
-      // 检查是否上传过自拍
-      if (selfies.length <= 0) {
+      // 检查是否选择了自拍
+      if (!selectedSelfieUrl) {
         Alert.alert(
           '需要自拍照',
-          '使用此风格需要先上传自拍照，是否前往上传？',
+          '使用此风格需要先选择自拍照，是否前往上传？',
           [
             {
               text: '取消',
@@ -111,9 +113,6 @@ const BeforeCreationScreen: React.FC = () => {
       // 开始人脸融合处理
       setIsFusionProcessing(true);
       
-      // 获取最新的自拍照
-      const latestSelfie = selfies[0];
-      
       // 获取当前选中的template
       const currentTemplate = templates[currentImageIndex];
       if (!currentTemplate) {
@@ -121,43 +120,13 @@ const BeforeCreationScreen: React.FC = () => {
         return;
       }
 
-      // 调用人脸融合云函数
-      const fusionParams = {
-        projectId: 'at_1888958525505814528', // TODO: 从模板数据中获取
-        modelId: currentTemplate.template_id,
-        imageUrl: latestSelfie.imageUrl,
-      };
+      // 跳转到CreationResult页面
+      navigation.navigate('CreationResult', {
+        albumData: album,
+        selfieUrl: selectedSelfieUrl,
+        
+      });
 
-      console.log('开始人脸融合:', fusionParams);
-      
-      const result = await callFaceFusionCloudFunction({
-        projectId: 'at_1888958525505814528',
-        modelId: currentTemplate.template_id,
-        imageUrl: latestSelfie.imageUrl,
-      }); 
-      
-      if (result.code === 0 && result.data) {
-        // 融合成功
-        Alert.alert(
-          '融合成功',
-          'AI头像生成完成！',
-          [
-            {
-              text: '查看结果',
-              onPress: () => {
-                // TODO: 跳转到结果页面
-                console.log('融合结果:', result.data);
-              },
-            },
-            {
-              text: '确定',
-            },
-          ]
-        );
-      } else {
-        // 融合失败
-        Alert.alert('融合失败', result.message || '生成AI头像失败，请重试');
-      }
     } catch (error: any) {
       console.error('人脸融合失败:', error);
       Alert.alert('错误', error.message || '处理失败，请重试');
@@ -168,6 +137,10 @@ const BeforeCreationScreen: React.FC = () => {
 
   const handleBackPress = () => {
     navigation.goBack();
+  };
+
+  const handleSelfieSelect = (selfieUrl: string) => {
+    setSelectedSelfieUrl(selfieUrl);
   };
 
   return (
@@ -226,12 +199,12 @@ const BeforeCreationScreen: React.FC = () => {
         )}
       </View>
 
-      {/* 预览图片 */}
+      {/* 自拍选择器 */}
       <View style={styles.previewContainer}>
-        <Image
-          source={{ uri: template.previewImage }}
-          style={styles.previewImage}
-          resizeMode="cover"
+        <SelfieSelector
+          selectedSelfieUrl={selectedSelfieUrl || undefined}
+          onSelfieSelect={handleSelfieSelect}
+          size={100}
         />
       </View>
 
@@ -244,16 +217,9 @@ const BeforeCreationScreen: React.FC = () => {
         <TouchableOpacity 
           style={[styles.useStyleButton, (isFusionProcessing || isProcessing) && styles.useStyleButtonDisabled]} 
           onPress={handleUseStylePress}
-          disabled={isFusionProcessing || isProcessing}
+          disabled={isProcessing}
         >
-          {isFusionProcessing ? (
-            <View style={styles.processingContainer}>
-              <ActivityIndicator size="small" color="#fff" />
-              <Text style={styles.processingText}>AI处理中...</Text>
-            </View>
-          ) : (
-            <Text style={styles.useStyleText}>使用风格</Text>
-          )}
+          <Text style={styles.useStyleText}>使用风格</Text>
         </TouchableOpacity>
       </View>
     </View>

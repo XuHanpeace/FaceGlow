@@ -18,6 +18,7 @@ import * as ImagePicker from 'react-native-image-picker';
 import { PermissionsAndroid, Platform } from 'react-native';
 import { useAppDispatch } from '../store/hooks';
 import { uploadSelfie } from '../store/middleware/asyncMiddleware';
+import { useUser } from '../hooks/useUser';
 import { cosService } from '../services/cos/COSService';
 import { userDataService } from '../services/database/userDataService';
 import { authService } from '../services/auth/authService';
@@ -27,6 +28,7 @@ type SelfieGuideScreenNavigationProp = NativeStackNavigationProp<RootStackParamL
 const SelfieGuideScreen: React.FC = () => {
   const navigation = useNavigation<SelfieGuideScreenNavigationProp>();
   const dispatch = useAppDispatch();
+  const { setDefaultSelfieUrl } = useUser();
   const [showModal, setShowModal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -210,6 +212,10 @@ const SelfieGuideScreen: React.FC = () => {
             selfie_list: updatedSelfieList
           });
           console.log('用户信息更新成功');
+          
+          // 设置新上传的自拍为默认自拍（倒序第一张）
+          setDefaultSelfieUrl(uploadResult.url);
+          console.log('设置新自拍为默认自拍:', uploadResult.url);
         }
       } catch (error) {
         console.warn('更新用户信息失败:', error);

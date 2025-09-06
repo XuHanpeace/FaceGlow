@@ -5,6 +5,7 @@ import COSUploadTestScreen from '../screens/COSUploadTestScreen';
 import DatabaseTestScreen from '../screens/DatabaseTestScreen';
 import NewHomeScreen from '../screens/NewHomeScreen';
 import BeforeCreationScreen from '../screens/BeforeCreationScreen';
+import CreationResultScreen from '../screens/CreationResultScreen';
 import AlbumMarketScreen from '../screens/AlbumMarketScreen';
 import NewProfileScreen from '../screens/NewProfileScreen';
 import TestCenterScreen from '../screens/TestCenterScreen';
@@ -34,6 +35,13 @@ const StackNavigator = () => {
       <Stack.Screen
         name="BeforeCreation"
         component={BeforeCreationScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="CreationResult"
+        component={CreationResultScreen}
         options={{
           headerShown: false,
         }}

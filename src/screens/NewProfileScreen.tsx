@@ -33,7 +33,7 @@ const NewProfileScreen: React.FC = () => {
   // 使用用户hooks获取数据
   const { userInfo, isLoggedIn } = useUser();
   const { avatarSource, hasAvatar } = useUserAvatar();
-  const { selfies, hasSelfies } = useUserSelfies();
+  const { selfies, hasSelfies, defaultSelfieUrl } = useUserSelfies();
 
   // 从Redux获取其他数据
   const handleBackPress = () => {
@@ -200,7 +200,13 @@ const NewProfileScreen: React.FC = () => {
                 {hasSelfies ? (
                   selfies.map((selfie) => (
                     <TouchableOpacity key={selfie.id} style={styles.selfieItem}>
-                      <Image source={selfie.source} style={styles.selfieImage} />
+                      <Image 
+                        source={selfie.source} 
+                        style={[
+                          styles.selfieImage,
+                          selfie.url === defaultSelfieUrl && styles.defaultSelfieImage
+                        ]} 
+                      />
                     </TouchableOpacity>
                   ))
                 ) : (
@@ -477,12 +483,17 @@ const styles = StyleSheet.create({
   selfieItem: {
     alignItems: 'center',
     width: '30%',
+    position: 'relative',
   },
   selfieImage: {
     width: 80,
     height: 80,
     borderRadius: 40,
     marginBottom: 8,
+  },
+  defaultSelfieImage: {
+    borderWidth: 3,
+    borderColor: '#5EE7DF',
   },
   selfieDate: {
     color: '#fff',
