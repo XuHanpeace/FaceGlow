@@ -25,7 +25,7 @@ type CreationResultScreenRouteProp = RouteProp<RootStackParamList, 'CreationResu
 const CreationResultScreen: React.FC = () => {
   const navigation = useNavigation<CreationResultScreenNavigationProp>();
   const route = useRoute<CreationResultScreenRouteProp>();
-  const { albumData, selfieUrl } = route.params;
+  const { albumData, selfieUrl, activityId } = route.params;
   
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
     albumData.template_list[0]?.template_id || ''
@@ -33,6 +33,7 @@ const CreationResultScreen: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [fusionResults, setFusionResults] = useState<{ [templateId: string]: string }>({});
   const [showComparison, setShowComparison] = useState(false);
+  const [failedTemplates, setFailedTemplates] = useState<{ [templateId: string]: string }>({});
 
   const selectedTemplate = albumData.template_list.find(
     template => template.template_id === selectedTemplateId
@@ -40,28 +41,49 @@ const CreationResultScreen: React.FC = () => {
 
   const selectedResult = selectedTemplate ? fusionResults[selectedTemplateId] : '';
 
-  // 处理单个模板的换脸（Mock）
+  // 处理单个模板的换脸（真实请求）
   const processTemplate = async (templateId: string) => {
     setIsProcessing(true);
     
     try {
-      console.log(`开始处理模板: ${templateId}`);
+      console.log(`🔄 开始处理模板: ${templateId}`);
+      console.log(`📸 使用自拍: ${selfieUrl}`);
       
-      // 模拟换脸请求延迟
-      await new Promise(resolve => setTimeout(resolve, 2500));
+      // 调用真实的换脸云函数
+      const result = await callFaceFusionCloudFunction({
+        projectId:  activityId,
+        modelId: templateId,
+        imageUrl: selfieUrl,
+      });
       
-      // Mock结果：使用selfieUrl作为换脸结果
-      const mockResult = selfieUrl;
-      
-      setFusionResults(prev => ({
+      if (result.code === 0 && result.data) {
+        console.log(`✅ 模板 ${templateId} 换脸成功`);
+        console.log(`🖼️ 换脸结果: ${result.data.FusedImage}`);
+        
+        setFusionResults(prev => ({
+          ...prev,
+          [templateId]: result.data!.FusedImage
+        }));
+        
+        // 清除失败状态
+        setFailedTemplates(prev => {
+          const newFailed = { ...prev };
+          delete newFailed[templateId];
+          return newFailed;
+        });
+      } else {
+        console.log(`❌ 模板 ${templateId} 换脸失败:`, result.message);
+        setFailedTemplates(prev => ({
+          ...prev,
+          [templateId]: result.message || '换脸处理失败，请重试'
+        }));
+      }
+    } catch (error: any) {
+      console.error('❌ 换脸处理异常:', error);
+      setFailedTemplates(prev => ({
         ...prev,
-        [templateId]: mockResult
+        [templateId]: error.message || '网络请求失败，请重试'
       }));
-      
-      console.log(`模板 ${templateId} 处理成功`);
-    } catch (error) {
-      console.error('换脸处理失败:', error);
-      Alert.alert('处理失败', '模板处理失败，请重试');
     } finally {
       setIsProcessing(false);
     }
@@ -137,8 +159,8 @@ const CreationResultScreen: React.FC = () => {
       {isProcessing && (
         <View style={styles.globalLoadingOverlay}>
           <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>AI 创作中</Text>
-            <Text style={styles.loadingSubtext}>请稍候</Text>
+            <Text style={styles.loadingText}>🎨 美颜换换正在认真创作中</Text>
+            <Text style={styles.loadingSubtext}>✨ 请稍候，马上就好啦</Text>
           </View>
         </View>
       )}
@@ -153,22 +175,64 @@ const CreationResultScreen: React.FC = () => {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.templateList}
           >
-            {albumData.template_list.map((template) => (
-              <TouchableOpacity
-                key={template.template_id}
-                style={[
-                  styles.templateItem,
-                  selectedTemplateId === template.template_id && styles.selectedTemplateItem
-                ]}
-                onPress={() => handleTemplateSelect(template.template_id)}
-              >
-                <Image
-                  source={{ uri: template.template_url }}
-                  style={styles.templateImage}
-                  resizeMode="cover"
-                />
-              </TouchableOpacity>
-            ))}
+            {albumData.template_list.map((template) => {
+              const isFailed = failedTemplates[template.template_id];
+              const isCurrentProcessing = isProcessing && selectedTemplateId === template.template_id;
+              
+              return (
+                <TouchableOpacity
+                  key={template.template_id}
+                  style={[
+                    styles.templateItem,
+                    selectedTemplateId === template.template_id && styles.selectedTemplateItem,
+                    isFailed && styles.failedTemplateItem
+                  ]}
+                  onPress={() => handleTemplateSelect(template.template_id)}
+                >
+                  <Image
+                    source={{ uri: template.template_url }}
+                    style={[
+                      styles.templateImage,
+                      isFailed && styles.failedTemplateImage
+                    ]}
+                    resizeMode="cover"
+                  />
+                  
+                  {/* 失败状态提示 */}
+                  {isFailed && (
+                    <View style={styles.failedOverlay}>
+                      <Text style={styles.failedText}>😔 小脸有点害羞，再试一次吧</Text>
+                      <TouchableOpacity
+                        style={styles.retryButton}
+                        onPress={() => {
+                          // 1. 先清除失败状态
+                          setFailedTemplates(prev => {
+                            const newFailed = { ...prev };
+                            delete newFailed[template.template_id];
+                            return newFailed;
+                          });
+                          
+                          // 2. 设置选中状态
+                          setSelectedTemplateId(template.template_id);
+                          
+                          // 3. 最后处理模板
+                          processTemplate(template.template_id);
+                        }}
+                      >
+                        <Text style={styles.retryText}>✨ 再来一次</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                  
+                  {/* 处理中状态 */}
+                  {isCurrentProcessing && (
+                    <View style={styles.processingOverlay}>
+                      <Text style={styles.processingText}>🎨 AI正在认真创作中...</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         </View>
 
@@ -287,6 +351,58 @@ const styles = StyleSheet.create({
     width: 90,
     height: 140, // 9:14 比例
     borderRadius: 12,
+  },
+  failedTemplateItem: {
+    borderColor: '#FF6B6B',
+    borderWidth: 1.5,
+  },
+  failedTemplateImage: {
+    opacity: 0.6,
+  },
+  failedOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  failedText: {
+    color: '#FF6B6B',
+    fontSize: 11,
+    fontWeight: '500',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  retryButton: {
+    backgroundColor: '#FF6B6B',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  retryText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  processingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  processingText: {
+    color: '#5EE7DF',
+    fontSize: 12,
+    fontWeight: '600',
   },
   actionButtonsContainer: {
     flexDirection: 'row',

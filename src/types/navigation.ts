@@ -5,10 +5,12 @@ export type RootStackParamList = {
   NewHome: undefined;
   BeforeCreation: {
     albumData: Album;
+    activityId: string;
   };
   CreationResult: {
     albumData: Album;
     selfieUrl: string;
+    activityId: string;
   };
   AlbumMarket: {
     activityId: string;

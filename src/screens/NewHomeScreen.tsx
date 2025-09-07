@@ -63,19 +63,22 @@ const NewHomeScreen: React.FC = () => {
   const handleAlbumPress = (albumId: string) => {
     // 从activities中找到选中的相册
     let selectedAlbum = null;
+    let activityId = null;
     
     for (const activity of activities) {
       const album = activity.album_id_list.find(a => a.album_id === albumId);
       if (album) {
         selectedAlbum = album;
+        activityId = activity.activiy_id;
         break;
       }
     }
     
-    if (selectedAlbum) {
-      // 直接传递album数据到BeforeCreation页面
+    if (selectedAlbum && activityId) {
+      // 直接传递album数据和activityId到BeforeCreation页面
       navigation.navigate('BeforeCreation', {
         albumData: selectedAlbum,
+        activityId: activityId,
       });
     }
   };

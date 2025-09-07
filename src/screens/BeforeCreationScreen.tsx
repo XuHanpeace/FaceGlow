@@ -28,7 +28,7 @@ type BeforeCreationScreenRouteProp = RouteProp<RootStackParamList, 'BeforeCreati
 const BeforeCreationScreen: React.FC = () => {
   const navigation = useNavigation<BeforeCreationScreenNavigationProp>();
   const route = useRoute<BeforeCreationScreenRouteProp>();
-  const { albumData } = route.params;
+  const { albumData, activityId } = route.params;
   
   const dispatch = useAppDispatch();
   
@@ -124,7 +124,7 @@ const BeforeCreationScreen: React.FC = () => {
       navigation.navigate('CreationResult', {
         albumData: album,
         selfieUrl: selectedSelfieUrl,
-        
+        activityId: activityId,
       });
 
     } catch (error: any) {
