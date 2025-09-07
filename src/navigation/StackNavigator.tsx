@@ -13,6 +13,7 @@ import SelfieGuideScreen from '../screens/SelfieGuideScreen';
 import NewAuthScreen from '../screens/NewAuthScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
 import ServiceTestScreen from '../screens/ServiceTestScreen';
+import UserWorkPreviewScreen from '../screens/UserWorkPreviewScreen';
 import { RootStackParamList } from '../types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -108,6 +109,13 @@ const StackNavigator = () => {
       <Stack.Screen
         name="ServiceTest"
         component={ServiceTestScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="UserWorkPreview"
+        component={UserWorkPreviewScreen}
         options={{
           headerShown: false,
         }}

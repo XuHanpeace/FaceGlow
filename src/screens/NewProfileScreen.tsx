@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
   ScrollView,
   StatusBar,
   Image,
-  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -15,7 +14,10 @@ import { RootStackParamList } from '../types/navigation';
 import { useTypedSelector, useAppDispatch } from '../store/hooks';
 import { addSelfie } from '../store/slices/selfieSlice';
 import { useUser, useUserAvatar, useUserSelfies } from '../hooks/useUser';
-import { useUserWorks } from '../hooks/useUserWorks';
+import { userWorkService } from '../services/database/userWorkService';
+import { UserWorkModel } from '../types/model/user_works';
+import { useAuthState } from '../hooks/useAuthState';
+import UserWorkCard from '../components/UserWorkCard';
 
 type NewProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -36,7 +38,11 @@ const NewProfileScreen: React.FC = () => {
   const { userInfo, isLoggedIn } = useUser();
   const { avatarSource, hasAvatar } = useUserAvatar();
   const { selfies, hasSelfies, defaultSelfieUrl } = useUserSelfies();
-  const { formattedWorks, loading: worksLoading, error: worksError, statistics, fetchUserWorks } = useUserWorks();
+  
+  // 用户作品状态
+  const [userWorks, setUserWorks] = useState<UserWorkModel[]>([]);
+  const [worksLoading, setWorksLoading] = useState(false);
+  const { user } = useAuthState();
 
   // 从Redux获取其他数据
   const handleBackPress = () => {
@@ -64,19 +70,16 @@ const NewProfileScreen: React.FC = () => {
   };
 
   const handleAddSelfiePress = () => {
+    if (!isLoggedIn) {
+      navigation.navigate('NewAuth');
+      return;
+    }
     // 跳转到自拍引导页
     navigation.navigate('SelfieGuide');
   };
 
   const handleAddMockSelfie = () => {
-    // 添加模拟自拍照到Redux store
-    const newSelfie = {
-      id: Date.now().toString(),
-      imageUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop',
-      createdAt: new Date().toISOString().split('T')[0],
-      status: 'completed' as const,
-    };
-    dispatch(addSelfie(newSelfie));
+
   };
 
   const handleAddPostPress = () => {
@@ -86,7 +89,49 @@ const NewProfileScreen: React.FC = () => {
 
   const handleTabPress = (tab: TabType) => {
     setActiveTab(tab);
+    if (tab === 'works') {
+      fetchUserWorks();
+    }
   };
+
+  const handleWorkPress = (work: UserWorkModel) => {
+    navigation.navigate('UserWorkPreview', { work });
+  };
+
+  // 获取用户作品
+  const fetchUserWorks = async () => {
+    if (!user?.uid) {
+      console.log('❌ 用户未登录，无法获取作品');
+      return;
+    }
+
+    setWorksLoading(true);
+    try {
+      console.log('🔄 开始获取用户作品...');
+      const result = await userWorkService.getUserWorks({ uid: user.uid });
+      
+      if (result.success && result.data) {
+        const works = Array.isArray(result.data.records) ? result.data.records : [];
+        console.log('✅ 获取用户作品成功:', works.length, '个作品');
+        setUserWorks(works);
+      } else {
+        console.log('❌ 获取用户作品失败:', result.error?.message);
+        setUserWorks([]);
+      }
+    } catch (error: any) {
+      console.error('❌ 获取用户作品异常:', error);
+      setUserWorks([]);
+    } finally {
+      setWorksLoading(false);
+    }
+  };
+
+  // 组件加载时获取用户作品
+  useEffect(() => {
+    if (isLoggedIn && user?.uid) {
+      fetchUserWorks();
+    }
+  }, [isLoggedIn, user?.uid]);
 
   return (
     <View style={styles.container}>
@@ -186,50 +231,35 @@ const NewProfileScreen: React.FC = () => {
 
         {/* 内容区域 */}
         <View style={styles.contentArea}>
-          {activeTab === 'works' && (
-            <View style={styles.worksContainer}>
-              {worksLoading ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color="#5EE7DF" />
-                  <Text style={styles.loadingText}>加载作品中...</Text>
-                </View>
-              ) : worksError ? (
-                <View style={styles.errorState}>
-                  <Text style={styles.errorText}>加载失败: {worksError}</Text>
-                  <TouchableOpacity style={styles.retryButton} onPress={fetchUserWorks}>
-                    <Text style={styles.retryText}>重试</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : formattedWorks.length > 0 ? (
-                <View style={styles.worksGrid}>
-                  {formattedWorks.map((work) => (
-                    <TouchableOpacity key={work.id} style={styles.workItem}>
-                      <Image source={{ uri: work.coverImage }} style={styles.workImage} />
-                      <View style={styles.workInfo}>
-                        <Text style={styles.workTitle} numberOfLines={1}>
-                          {work.title}
-                        </Text>
-                        <View style={styles.workStats}>
-                          <Text style={styles.workStat}>❤️ {work.likes}</Text>
-                          <Text style={styles.workStat}>📥 {work.downloads}</Text>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              ) : (
-                <View style={styles.emptyState}>
-                  <Text style={styles.emptyText}>暂无作品</Text>
-                  <Text style={styles.emptySubtext}>开始创作你的第一个作品吧！</Text>
-                </View>
-              )}
-            </View>
-          )}
           {activeTab === 'posts' && (
             <TouchableOpacity style={styles.addPostCard} onPress={handleAddPostPress}>
               <Text style={styles.addPostIcon}>+</Text>
               <Text style={styles.addPostText}>添加帖子</Text>
             </TouchableOpacity>
+          )}
+          {activeTab === 'works' && (
+            <View style={styles.worksContainer}>
+              {worksLoading ? (
+                <View style={styles.loadingContainer}>
+                  <Text style={styles.loadingText}>🎨 正在加载作品...</Text>
+                </View>
+              ) : userWorks.length > 0 ? (
+                <View style={styles.worksGrid}>
+                  {userWorks.map((work) => (
+                    <UserWorkCard
+                      key={work._id}
+                      work={work}
+                      onPress={handleWorkPress}
+                    />
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyText}>🎨 还没有作品哦</Text>
+                  <Text style={styles.emptySubText}>快去创作你的第一个作品吧～</Text>
+                </View>
+              )}
+            </View>
           )}
           {activeTab === 'selfies' && (
             <View style={styles.selfiesContainer}>
@@ -470,7 +500,7 @@ const styles = StyleSheet.create({
   },
   contentArea: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 20
   },
   addPostCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -501,7 +531,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     opacity: 0.6,
   },
-  emptySubtext: {
+  emptySubText: {
     color: '#fff',
     fontSize: 14,
     opacity: 0.4,
@@ -510,41 +540,6 @@ const styles = StyleSheet.create({
   worksContainer: {
     flex: 1,
   },
-  worksGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  workItem: {
-    width: '48%',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 12,
-  },
-  workImage: {
-    width: '100%',
-    height: 120,
-    backgroundColor: '#333',
-  },
-  workInfo: {
-    padding: 12,
-  },
-  workTitle: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  workStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  workStat: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 12,
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -552,32 +547,39 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
   },
   loadingText: {
-    color: '#5EE7DF',
+    color: '#fff',
     fontSize: 16,
-    marginTop: 12,
+    opacity: 0.6,
   },
-  errorState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
+  worksGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
   },
-  errorText: {
-    color: '#FF6B6B',
-    fontSize: 16,
-    marginBottom: 16,
-    textAlign: 'center',
+  workItem: {
+    width: '48%',
+    marginBottom: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    overflow: 'hidden',
   },
-  retryButton: {
-    backgroundColor: '#FF6B6B',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
+  workImage: {
+    width: '100%',
+    height: 120,
   },
-  retryText: {
+  workInfo: {
+    padding: 12,
+  },
+  workTitle: {
     color: '#fff',
     fontSize: 14,
     fontWeight: '500',
+    marginBottom: 4,
+  },
+  workDate: {
+    color: '#fff',
+    fontSize: 12,
+    opacity: 0.6,
   },
   selfiesContainer: {
     flex: 1,

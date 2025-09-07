@@ -15,6 +15,10 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { ImageComparison } from '../components/ImageComparison';
 import { callFaceFusionCloudFunction } from '../services/tcb/tcb';
+import { userWorkService } from '../services/database/userWorkService';
+import { useAuthState } from '../hooks/useAuthState';
+import { UserWorkModel, ResultData } from '../types/model/user_works';
+import { authService } from '../services/auth/authService';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -26,6 +30,7 @@ const CreationResultScreen: React.FC = () => {
   const navigation = useNavigation<CreationResultScreenNavigationProp>();
   const route = useRoute<CreationResultScreenRouteProp>();
   const { albumData, selfieUrl, activityId } = route.params;
+  const { user } = useAuthState();
   
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
     albumData.template_list[0]?.template_id || ''
@@ -101,22 +106,91 @@ const CreationResultScreen: React.FC = () => {
     navigation.goBack();
   };
 
-  const handleSavePress = () => {
-    Alert.alert(
-      '保存作品',
-      '作品已保存到本地相册',
-      [
-        { text: '确定', onPress: () => console.log('作品已保存') }
-      ]
-    );
+  const handleSavePress = async () => {
+    const userId = authService.getCurrentUserId();
+    if (!userId) {
+      Alert.alert('😔 保存失败', '小主，请先登录后再保存作品哦～');
+      return;
+    }
+
+    // 检查是否有任何换脸结果
+    const hasAnyResults = Object.keys(fusionResults).length > 0;
+    if (!hasAnyResults) {
+      Alert.alert('😅 保存失败', '小主，请先完成换脸后再保存作品吧～');
+      return;
+    }
+
+    try {
+      // 构建结果数据 - 包含所有已完成的换脸结果
+      const resultData: ResultData[] = [];
+      
+      // 遍历所有模板，收集已完成的换脸结果
+      albumData.template_list.forEach(template => {
+        const fusionResult = fusionResults[template.template_id];
+        if (fusionResult) {
+          resultData.push({
+            template_id: template.template_id,
+            template_image: template.template_url,
+            result_image: fusionResult,
+          });
+        }
+      });
+      
+      // 如果没有换脸结果，提示用户
+      if (resultData.length === 0) {
+        Alert.alert('😅 保存失败', '小主，还没有完成任何换脸，请先完成换脸后再保存吧～');
+        return;
+      }
+
+      // 构建用户作品数据
+      const workData: Omit<UserWorkModel, '_id'> = {
+        uid: userId,
+        activity_id: activityId,
+        activity_title: albumData.album_name, // 使用相册名称作为活动标题
+        activity_description: albumData.album_description,
+        activity_image: albumData.album_image,
+        album_id: albumData.album_id,
+        likes: '0',
+        is_public: '1', // 默认公开
+        download_count: '0',
+        result_data: resultData,
+        ext_data: JSON.stringify({
+          selfie_url: selfieUrl,
+          completed_templates: resultData.map(r => r.template_id),
+          total_templates: albumData.template_list.length,
+          fusion_time: Date.now(),
+        }),
+        created_at: Date.now(),
+        updated_at: Date.now(),
+      };
+
+      console.log('🔄 开始保存用户作品:', workData);
+
+      const result = await userWorkService.createWork(workData);
+
+      if (result.success) {
+        Alert.alert(
+          '🎉 保存成功',
+          `太棒了！已保存 ${resultData.length} 个换脸作品到云端，可以在个人中心查看哦～`,
+          [
+            { text: '✨ 好的', onPress: () => console.log('作品保存成功') }
+          ]
+        );
+      } else {
+        Alert.alert('😢 保存失败', result.error?.message || '哎呀，保存作品失败了，再试一次吧～');
+      }
+    } catch (error: any) {
+      console.error('❌ 保存作品异常:', error);
+      Alert.alert('😱 保存失败', error.message || '哎呀，保存作品时出错了，再试一次吧～');
+    }
   };
 
   const handleSharePress = () => {
     Alert.alert(
-      '分享作品',
-      '分享功能开发中...',
+      '🚀 分享作品',
+      '分享功能正在开发中，敬请期待哦～',
       [
-        { text: '确定' }
+        { text: '✨ 好的' }
       ]
     );
   };

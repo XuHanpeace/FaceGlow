@@ -99,6 +99,10 @@ const NewHomeScreen: React.FC = () => {
   };
 
   const handleAddSelfiePress = () => {
+    if (!isLoggedIn) {
+      navigation.navigate('NewAuth');
+      return;
+    }
     navigation.navigate('SelfieGuide');
   };
 

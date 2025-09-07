@@ -19,6 +19,7 @@ import { useTypedSelector, useAppDispatch } from '../store/hooks';
 import { callFaceFusionCloudFunction } from '../services/tcb/tcb';
 import { Template } from '../types/model/activity';
 import SelfieSelector from '../components/SelfieSelector';
+import { useAuthState } from '../hooks/useAuthState';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -31,6 +32,9 @@ const BeforeCreationScreen: React.FC = () => {
   const { albumData, activityId } = route.params;
   
   const dispatch = useAppDispatch();
+  
+  // 检查登录状态
+  const { isLoggedIn } = useAuthState();
   
   // 从Redux获取用户自拍照数据
   const selfies = useTypedSelector((state) => state.selfies.selfies);
@@ -89,18 +93,35 @@ const BeforeCreationScreen: React.FC = () => {
 
   const handleUseStylePress = async () => {
     try {
+      // 检查登录状态
+      if (!isLoggedIn) {
+        Alert.alert(
+          '😔 需要登录',
+          '小主，使用AI创作功能需要先登录哦～',
+          [
+            {
+              text: '✨ 去登录',
+              onPress: () => {
+                navigation.navigate('NewAuth');
+              },
+            },
+          ]
+        );
+        return;
+      }
+
       // 检查是否选择了自拍
       if (!selectedSelfieUrl) {
         Alert.alert(
-          '需要自拍照',
-          '使用此风格需要先选择自拍照，是否前往上传？',
+          '😅 需要自拍照',
+          '小主，使用此风格需要先选择自拍照，是否前往上传？',
           [
             {
               text: '取消',
               style: 'cancel',
             },
             {
-              text: '去上传',
+              text: '✨ 去上传',
               onPress: () => {
                 navigation.navigate('SelfieGuide');
               },

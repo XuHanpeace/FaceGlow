@@ -16,27 +16,24 @@ export class UserWorkService {
   // 根据用户ID查询作品列表
   async getUserWorks(query: QueryUserWorksRequest) {
     try {
-      const response = await databaseService.post<DatabaseResponse<UserWorkModel>>(
-        `/model/prod/${this.modelName}/get`,
-        {
-          filter: {
-            where: {
-              uid: {
-                $eq: query.uid
-              }
-            }
-          },
-          select: {
-            _id: true,
-            uid: true,
-            template_id: true,
-            original_image: true,
-            result_image: true,
-            likes: true,
-            is_public: true,
-            download_count: true
+      // 构建查询参数
+      const params = new URLSearchParams();
+      params.append('pageSize', (query.limit || 20).toString());
+      params.append('pageNumber', '1');
+      params.append('getCount', 'true');
+      
+      // 添加过滤条件
+      params.append('filter', JSON.stringify({
+        where: {
+          uid: {
+            $eq: query.uid
           }
         }
+      }));
+
+      // 使用GET请求到list端点
+      const response = await databaseService.get<DatabaseResponse<UserWorkModel>>(
+        `/model/prod/${this.modelName}/list?${params.toString()}`
       );
 
       console.log('查询用户作品响应:', response); // 打印响应到控制台
