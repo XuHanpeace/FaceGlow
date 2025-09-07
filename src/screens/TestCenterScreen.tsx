@@ -70,31 +70,7 @@ const testItems: TestItem[] = [
     icon: '🧪',
     route: 'ServiceTest',
     color: '#FF6B35',
-  },
-  {
-    id: 'navigation',
-    title: '导航功能测试',
-    description: '测试页面导航和路由功能',
-    icon: '🧭',
-    route: 'Detail',
-    color: '#9013FE',
-  },
-  {
-    id: 'ui',
-    title: 'UI 组件测试',
-    description: '测试各种UI组件和样式',
-    icon: '🎨',
-    route: 'Settings',
-    color: '#FF6B9D',
-  },
-  {
-    id: 'api',
-    title: 'API 接口测试',
-    description: '测试网络请求和API调用',
-    icon: '🌐',
-    route: 'NewHome',
-    color: '#50E3C2',
-  },
+  }
 ];
 
 const TestCenterScreen: React.FC = () => {

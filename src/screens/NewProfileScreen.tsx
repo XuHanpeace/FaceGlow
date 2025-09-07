@@ -7,6 +7,7 @@ import {
   ScrollView,
   StatusBar,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -14,10 +15,11 @@ import { RootStackParamList } from '../types/navigation';
 import { useTypedSelector, useAppDispatch } from '../store/hooks';
 import { addSelfie } from '../store/slices/selfieSlice';
 import { useUser, useUserAvatar, useUserSelfies } from '../hooks/useUser';
+import { useUserWorks } from '../hooks/useUserWorks';
 
 type NewProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-type TabType = 'drafts' | 'posts' | 'selfies';
+type TabType = 'works' | 'posts' | 'selfies';
 
 interface SelfieItem {
   id: string;
@@ -28,12 +30,13 @@ interface SelfieItem {
 const NewProfileScreen: React.FC = () => {
   const navigation = useNavigation<NewProfileScreenNavigationProp>();
   const dispatch = useAppDispatch();
-  const [activeTab, setActiveTab] = useState<TabType>('posts');
+  const [activeTab, setActiveTab] = useState<TabType>('works');
 
   // 使用用户hooks获取数据
   const { userInfo, isLoggedIn } = useUser();
   const { avatarSource, hasAvatar } = useUserAvatar();
   const { selfies, hasSelfies, defaultSelfieUrl } = useUserSelfies();
+  const { formattedWorks, loading: worksLoading, error: worksError, statistics, fetchUserWorks } = useUserWorks();
 
   // 从Redux获取其他数据
   const handleBackPress = () => {
@@ -156,11 +159,11 @@ const NewProfileScreen: React.FC = () => {
         {/* 导航标签 */}
         <View style={styles.tabContainer}>
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'drafts' && styles.activeTab]}
-            onPress={() => handleTabPress('drafts')}
+            style={[styles.tab, activeTab === 'works' && styles.activeTab]}
+            onPress={() => handleTabPress('works')}
           >
-            <Text style={[styles.tabText, activeTab === 'drafts' && styles.activeTabText]}>
-              草稿
+            <Text style={[styles.tabText, activeTab === 'works' && styles.activeTabText]}>
+              我的作品
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -183,16 +186,50 @@ const NewProfileScreen: React.FC = () => {
 
         {/* 内容区域 */}
         <View style={styles.contentArea}>
+          {activeTab === 'works' && (
+            <View style={styles.worksContainer}>
+              {worksLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color="#5EE7DF" />
+                  <Text style={styles.loadingText}>加载作品中...</Text>
+                </View>
+              ) : worksError ? (
+                <View style={styles.errorState}>
+                  <Text style={styles.errorText}>加载失败: {worksError}</Text>
+                  <TouchableOpacity style={styles.retryButton} onPress={fetchUserWorks}>
+                    <Text style={styles.retryText}>重试</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : formattedWorks.length > 0 ? (
+                <View style={styles.worksGrid}>
+                  {formattedWorks.map((work) => (
+                    <TouchableOpacity key={work.id} style={styles.workItem}>
+                      <Image source={{ uri: work.coverImage }} style={styles.workImage} />
+                      <View style={styles.workInfo}>
+                        <Text style={styles.workTitle} numberOfLines={1}>
+                          {work.title}
+                        </Text>
+                        <View style={styles.workStats}>
+                          <Text style={styles.workStat}>❤️ {work.likes}</Text>
+                          <Text style={styles.workStat}>📥 {work.downloads}</Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyText}>暂无作品</Text>
+                  <Text style={styles.emptySubtext}>开始创作你的第一个作品吧！</Text>
+                </View>
+              )}
+            </View>
+          )}
           {activeTab === 'posts' && (
             <TouchableOpacity style={styles.addPostCard} onPress={handleAddPostPress}>
               <Text style={styles.addPostIcon}>+</Text>
               <Text style={styles.addPostText}>添加帖子</Text>
             </TouchableOpacity>
-          )}
-          {activeTab === 'drafts' && (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>暂无草稿</Text>
-            </View>
           )}
           {activeTab === 'selfies' && (
             <View style={styles.selfiesContainer}>
@@ -463,6 +500,84 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     opacity: 0.6,
+  },
+  emptySubtext: {
+    color: '#fff',
+    fontSize: 14,
+    opacity: 0.4,
+    marginTop: 8,
+  },
+  worksContainer: {
+    flex: 1,
+  },
+  worksGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  workItem: {
+    width: '48%',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  workImage: {
+    width: '100%',
+    height: 120,
+    backgroundColor: '#333',
+  },
+  workInfo: {
+    padding: 12,
+  },
+  workTitle: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  workStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  workStat: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 12,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    color: '#5EE7DF',
+    fontSize: 16,
+    marginTop: 12,
+  },
+  errorState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  errorText: {
+    color: '#FF6B6B',
+    fontSize: 16,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#FF6B6B',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  retryText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
   },
   selfiesContainer: {
     flex: 1,
