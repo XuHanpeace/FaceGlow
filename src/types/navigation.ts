@@ -26,7 +26,9 @@ export type RootStackParamList = {
   Login: undefined;
   NewAuth: undefined;
   Subscription: undefined;
+  CoinPurchase: undefined;
   ServiceTest: undefined;
+  SubscriptionTest: undefined;
   UserWorkPreview: {
     work: UserWorkModel;
   };

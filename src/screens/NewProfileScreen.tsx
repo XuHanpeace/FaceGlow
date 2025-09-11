@@ -52,11 +52,13 @@ const NewProfileScreen: React.FC = () => {
   const handleGiftPress = () => {
     // 处理礼物功能
     console.log('Gift pressed');
+    navigation.navigate('TestCenter')
   };
-
+               
   const handleSharePress = () => {
     // 处理分享功能
     console.log('Share pressed');
+    navigation.navigate('TestCenter')
   };
 
   const handleContactsPress = () => {
@@ -284,10 +286,6 @@ const NewProfileScreen: React.FC = () => {
                     </TouchableOpacity>
                   </View>
                 )}
-                {/* 添加测试按钮 */}
-                <TouchableOpacity style={styles.addTestSelfieButton} onPress={handleAddMockSelfie}>
-                  <Text style={styles.addTestSelfieText}>+</Text>
-                </TouchableOpacity>
               </View>
             </View>
           )}
@@ -618,22 +616,20 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     textAlign: 'center',
   },
-  addTestSelfieButton: {
-    width: '30%',
-    height: 80,
-    backgroundColor: 'rgba(94, 231, 223, 0.2)',
-    borderRadius: 40,
-    justifyContent: 'center',
+  testCenterButton: {
+    marginTop: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(94, 231, 223, 0.4)',
-    borderStyle: 'dashed',
   },
-  addTestSelfieText: {
-    color: '#5EE7DF',
-    fontSize: 32,
-    fontWeight: '600',
-    textAlign: 'center',
+  testCenterButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
   },
   emptySelfiesState: {
     flex: 1,

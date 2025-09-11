@@ -22,12 +22,16 @@ App Store Connect App ID: [应用在App Store Connect中的ID]
 
 ### 2.1 创建应用内购买项目
 
-#### 订阅产品配置
+#### 订阅产品配置（自动续费会员）
 | 产品ID | 产品名称 | 价格 | 订阅周期 | 状态 |
 |--------|----------|------|----------|------|
-| `com.faceglow.weekly` | 周付会员 | ¥19.9 | 每周 | 待审核 |
-| `com.faceglow.monthly` | 月付会员 | ¥68 | 每月 | 待审核 |
-| `com.faceglow.yearly` | 年付会员 | ¥588 | 每年 | 待审核 |
+| `com.digitech.faceglow.subscription.monthly` | 会员(月) | HK$128 | 每月 | 元数据丢失 |
+| `com.digitech.faceglow.subscription.yearly` | 会员(年) | HK$288 | 每年 | 元数据丢失 |
+
+#### 应用内购买产品配置（消耗型金币）
+| 产品ID | 产品名称 | 金币数量 | 价格 | 状态 |
+|--------|----------|----------|------|------|
+| `com.digitech.faceglow.coinspack` | Face Coins (100+) | 100+ | HK$6 | 元数据丢失 |
 
 #### 配置步骤
 1. 登录 [App Store Connect](https://appstoreconnect.apple.com)
@@ -36,7 +40,7 @@ App Store Connect App ID: [应用在App Store Connect中的ID]
 4. 点击"+"创建新的购买项目
 5. 选择"自动续期订阅"
 6. 填写产品信息：
-   - **产品 ID**: 如 `com.faceglow.weekly`
+   - **产品 ID**: 如 `com.digitech.meiyanhuanhuan.subscription.weekly`
    - **参考名称**: 如 "周付会员"
    - **产品名称**: 如 "FaceGlow 周付会员"
    - **描述**: 详细描述订阅内容
@@ -47,10 +51,12 @@ App Store Connect App ID: [应用在App Store Connect中的ID]
 ```
 订阅组名称: FaceGlow Premium
 订阅组 ID: 20912345
-包含产品:
-- com.faceglow.weekly
-- com.faceglow.monthly  
-- com.faceglow.yearly
+包含订阅产品:
+- com.digitech.faceglow.subscription.monthly  
+- com.digitech.faceglow.subscription.yearly
+
+包含金币产品:
+- com.digitech.faceglow.coinspack
 ```
 
 ### 2.3 本地化配置

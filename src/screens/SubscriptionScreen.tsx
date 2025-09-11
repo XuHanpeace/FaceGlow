@@ -14,65 +14,78 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { NativeModules } from 'react-native';
+import { subscriptionManager } from '../services/subscriptionManager';
+import { subscriptionDataService } from '../services/subscriptionDataService';
+import { useAuthState } from '../hooks/useAuthState';
+import { subscriptionPlans, subscriptionConfig, SubscriptionPlan } from '../config/subscriptionConfig';
 
 const { ApplePayModule } = NativeModules;
 
 type SubscriptionScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-interface SubscriptionPlan {
-  id: string;
-  title: string;
-  price: string;
-  originalPrice?: string;
-  period: string;
-  description: string;
-  isPopular?: boolean;
-  isBestValue?: boolean;
-  savePercent?: string;
-  weeklyPrice?: string;
-  productId: string;
-}
+// 错误消息处理函数
+const getSubscriptionErrorMessage = (errorCode: string, errorMessage: string): string => {
+  switch (errorCode) {
+    case 'purchase_cancelled':
+      return '您取消了订阅，如需订阅请重新选择套餐';
+    case 'payment_not_allowed':
+      return '设备不允许进行支付，请检查设备设置';
+    case 'payment_invalid':
+      return '支付信息无效，请重试';
+    case 'client_invalid':
+      return '客户端无效，请重新启动应用';
+    case 'product_not_available':
+      return '产品暂不可用，请稍后再试';
+    case 'network_connection_failed':
+      return '网络连接失败，请检查网络设置';
+    case 'cloud_service_denied':
+      return '云服务权限被拒绝，请检查设置';
+    case 'cloud_service_revoked':
+      return '云服务被撤销，请联系客服';
+    default:
+      return errorMessage || '订阅失败，请重试';
+  }
+};
 
-const subscriptionPlans: SubscriptionPlan[] = [
-  {
-    id: 'weekly',
-    title: 'Weekly',
-    price: 'HK$58',
-    period: 'week',
-    description: '体验AI头像创作',
-    productId: 'com.faceglow.weekly',
-  },
-  {
-    id: 'yearly',
-    title: 'Yearly',
-    price: 'HK$288',
-    originalPrice: 'HK$3016',
-    period: 'year',
-    description: '最优惠的选择',
-    isBestValue: true,
-    savePercent: '90%',
-    weeklyPrice: 'HK$5.52',
-    productId: 'com.faceglow.yearly',
-  },
-];
 
 const SubscriptionScreen: React.FC = () => {
   const navigation = useNavigation<SubscriptionScreenNavigationProp>();
+  const { user } = useAuthState();
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [availableProducts, setAvailableProducts] = useState<any[]>([]);
-
+  const [availablePlans, setAvailablePlans] = useState<SubscriptionPlan[]>([]);
   useEffect(() => {
     // 初始化时获取可用产品
     fetchAvailableProducts();
+    loadAvailablePlans();
   }, []);
+
+  const loadAvailablePlans = async () => {
+    try {
+      const plans = await subscriptionManager.getAvailableSubscriptionPlans();
+      // 将manager的plan转换为本地plan格式
+      const localPlans = subscriptionPlans.map(plan => {
+        const managerPlan = plans.find(p => p.id === plan.id);
+        return {
+          ...plan,
+          canPurchase: managerPlan?.canPurchase ?? true,
+          isActive: managerPlan?.isActive ?? false,
+        };
+      });
+      setAvailablePlans(localPlans);
+    } catch (error) {
+      console.error('加载订阅计划失败:', error);
+      // 使用默认计划
+      setAvailablePlans(subscriptionPlans.map(plan => ({ ...plan, canPurchase: true, isActive: false })));
+    }
+  };
 
   const fetchAvailableProducts = async () => {
     try {
       const products = await ApplePayModule.getAvailableProducts([
-        'com.faceglow.weekly',
-        'com.faceglow.monthly',
-        'com.faceglow.yearly',
+        'com.digitech.faceglow.subscribe.monthly',
+        'com.digitech.faceglow.subscribe.yearly',
       ]);
       setAvailableProducts(products);
       console.log('可用产品:', products);
@@ -95,6 +108,13 @@ const SubscriptionScreen: React.FC = () => {
       return;
     }
 
+    // 检查是否允许购买
+    const canPurchase = await subscriptionManager.canPurchaseProduct(selectedPlan.productId);
+    if (!canPurchase.canPurchase) {
+      Alert.alert('无法购买', canPurchase.reason || '您已有有效订阅');
+      return;
+    }
+
     try {
       setIsLoading(true);
       
@@ -102,21 +122,52 @@ const SubscriptionScreen: React.FC = () => {
       const result = await ApplePayModule.purchaseProduct(selectedPlan.productId);
       
       if (result.success) {
+        // 更新用户数据库中的订阅信息
+        if (user?.uid) {
+          const subscriptionType = subscriptionDataService.parseSubscriptionType(selectedPlan.productId);
+          if (subscriptionType) {
+            const expirationDate = subscriptionDataService.calculateExpirationDate(subscriptionType);
+            
+            const updateSuccess = await subscriptionDataService.handleSubscriptionSuccess(
+              user.uid,
+              {
+                subscriptionType,
+                productId: selectedPlan.productId,
+                expirationDate,
+              }
+            );
+
+            if (updateSuccess) {
+              console.log('用户订阅数据已更新到数据库');
+            } else {
+              console.error('用户订阅数据更新失败');
+            }
+          }
+        }
+
         Alert.alert(
           '订阅成功',
           `恭喜您成功订阅${selectedPlan.title}！`,
           [
             {
               text: '确定',
-              onPress: () => navigation.navigate('NewHome'),
+              onPress: () => {
+                // 重新加载订阅状态
+                loadAvailablePlans();
+                navigation.navigate('NewHome');
+              },
             },
           ]
         );
       } else {
-        Alert.alert('订阅失败', result.error || '支付失败，请重试');
+        // 根据错误类型显示不同提示
+        const errorMessage = getSubscriptionErrorMessage(result.errorCode, result.error);
+        Alert.alert('订阅失败', errorMessage);
       }
     } catch (error: any) {
-      Alert.alert('订阅失败', error.message || '支付过程中出现错误');
+      // 根据错误类型显示不同提示
+      const errorMessage = getSubscriptionErrorMessage(error.code, error.message);
+      Alert.alert('订阅失败', errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -154,32 +205,30 @@ const SubscriptionScreen: React.FC = () => {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* 介绍区域 */}
         <View style={styles.introSection}>
-          <Text style={styles.introTitle}>Join Glam Pro</Text>
+          <Text style={styles.introTitle}>{subscriptionConfig.title}</Text>
         </View>
 
         {/* 功能列表 */}
         <View style={styles.featuresSection}>
-          <Text style={styles.featureText}>• Priority access to all AI features</Text>
-          <Text style={styles.featureText}>• Advanced editing tools</Text>
-          <Text style={styles.featureText}>• Unlock 400+ AI styles</Text>
-          <Text style={styles.featureText}>• New filters every day</Text>
-          <Text style={styles.featureText}>• High resolution</Text>
-          <Text style={styles.featureText}>• No watermarks</Text>
-          <Text style={styles.featureText}>• 100 PRO photos daily</Text>
-          <Text style={styles.featureText}>• 3000 bonus coins for videos</Text>
+          {subscriptionConfig.features.map((feature, index) => (
+            <Text key={index} style={styles.featureText}>{feature}</Text>
+          ))}
         </View>
 
         {/* 订阅方案 */}
+
         <View style={styles.plansContainer}>
-          {subscriptionPlans.map((plan) => (
+          {availablePlans.map((plan) => (
             <TouchableOpacity
               key={plan.id}
               style={[
                 styles.planCard,
                 selectedPlan?.id === plan.id && styles.planCardSelected,
                 plan.isBestValue && styles.planCardBestValue,
+                !plan.canPurchase && styles.planCardDisabled,
               ]}
-              onPress={() => handlePlanSelect(plan)}
+              onPress={() => plan.canPurchase && handlePlanSelect(plan)}
+              disabled={!plan.canPurchase}
             >
               {plan.savePercent && (
                 <View style={styles.saveBadge}>
@@ -199,24 +248,6 @@ const SubscriptionScreen: React.FC = () => {
               </View>
             </TouchableOpacity>
           ))}
-        </View>
-
-        {/* 其他链接 */}
-        <View style={styles.linksSection}>
-          <TouchableOpacity style={styles.linkButton}>
-            <Text style={styles.linkText}>See all plans</Text>
-          </TouchableOpacity>
-          <View style={styles.legalLinks}>
-            <TouchableOpacity style={styles.legalLink}>
-              <Text style={styles.legalLinkText}>条款</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.legalLink}>
-              <Text style={styles.legalLinkText}>隐私</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.legalLink} onPress={handleRestorePurchases}>
-              <Text style={styles.legalLinkText}>恢复</Text>
-            </TouchableOpacity>
-          </View>
         </View>
 
 
@@ -239,7 +270,7 @@ const SubscriptionScreen: React.FC = () => {
             </View>
           ) : (
             <Text style={styles.subscribeButtonText}>
-              Continue
+              {selectedPlan ? `订阅 ${selectedPlan.title}` : '选择套餐'}
             </Text>
           )}
         </TouchableOpacity>
@@ -373,7 +404,7 @@ const styles = StyleSheet.create({
   planFeatures: {
     gap: 8,
   },
-  featureText: {
+  weeklyPrice: {
     color: 'rgba(255, 255, 255, 0.9)',
     fontSize: 14,
   },
@@ -432,6 +463,22 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.7)',
     fontSize: 14,
     textDecorationLine: 'underline',
+  },
+  planCardDisabled: {
+    opacity: 0.5,
+    backgroundColor: '#f5f5f5',
+  },
+  statusContainer: {
+    backgroundColor: '#f8f9fa',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  statusText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
   },
 });
 

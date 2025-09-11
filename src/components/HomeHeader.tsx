@@ -32,7 +32,7 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
   };
 
   const handleUpgradePress = () => {
-    navigation.navigate('TestCenter');
+    navigation.navigate('Subscription');
   };
 
   return (
@@ -42,13 +42,16 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
         <View style={styles.freeBadge}>
           <Text style={styles.freeText}>免费</Text>
         </View>
-        <View style={styles.balanceInfo}>
-          <Text style={styles.balanceLabel}>余额</Text>
+        <TouchableOpacity 
+          style={styles.balanceInfo}
+          onPress={() => navigation.navigate('CoinPurchase')}
+        >
+          <Text style={styles.balanceLabel}>美美币</Text>
           <View style={styles.balanceValue}>
             <Text style={styles.balanceNumber}>{balanceFormatted}</Text>
             <Text style={styles.balanceIcon}>💰</Text>
           </View>
-        </View>
+        </TouchableOpacity>
       </View>
 
       {/* 右侧按钮区域 */}

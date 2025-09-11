@@ -11,10 +11,12 @@
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
 		245563D7274B02A878A37B53 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
-		365D68962E5B05C800CF6564 /* NativeCOS.m in Sources */ = {isa = PBXBuildFile; fileRef = 365D68952E5B05C800CF6564 /* NativeCOS.m */; };
+		365D68962E5B05C800CF6564 /* MyCrossPlatformApp/NativeCOS.m in Sources */ = {isa = PBXBuildFile; fileRef = 365D68952E5B05C800CF6564 /* MyCrossPlatformApp/NativeCOS.m */; };
 		365F1FB72D1710BA00177D30 /* NativeNavigation.m in Sources */ = {isa = PBXBuildFile; fileRef = 365F1FB62D1710BA00177D30 /* NativeNavigation.m */; };
 		3B94B787621A6B31C4C854CA /* libPods-MyCrossPlatformApp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 10278244A061B92D4FE9BDFE /* libPods-MyCrossPlatformApp.a */; };
+		3CB74E8F2E707E1800AB5C28 /* ApplePayModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 3CB74E8E2E707E1800AB5C28 /* ApplePayModule.m */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		ED297164215061F000B7C4FE /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ED297163215061F000B7C4FE /* StoreKit.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -29,12 +31,15 @@
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = MyCrossPlatformApp/Info.plist; sourceTree = "<group>"; };
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = MyCrossPlatformApp/main.m; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = MyCrossPlatformApp/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		365D68952E5B05C800CF6564 /* NativeCOS.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MyCrossPlatformApp/NativeCOS.m; sourceTree = "<group>"; };
-		365D68972E5B05DC00CF6564 /* NativeCOS.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MyCrossPlatformApp/NativeCOS.h; sourceTree = "<group>"; };
+		365D68952E5B05C800CF6564 /* MyCrossPlatformApp/NativeCOS.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MyCrossPlatformApp/NativeCOS.m; sourceTree = "<group>"; };
+		365D68972E5B05DC00CF6564 /* MyCrossPlatformApp/NativeCOS.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MyCrossPlatformApp/NativeCOS.h; sourceTree = "<group>"; };
 		365F1FB52D1710BA00177D30 /* NativeNavigation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NativeNavigation.h; sourceTree = "<group>"; };
 		365F1FB62D1710BA00177D30 /* NativeNavigation.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NativeNavigation.m; sourceTree = "<group>"; };
+		3CB74E8D2E707E1800AB5C28 /* ApplePayModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ApplePayModule.h; sourceTree = "<group>"; };
+		3CB74E8E2E707E1800AB5C28 /* ApplePayModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ApplePayModule.m; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = MyCrossPlatformApp/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		ED297163215061F000B7C4FE /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 		FCCD03451E9C47D362B6D5DD /* Pods-MyCrossPlatformApp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MyCrossPlatformApp.debug.xcconfig"; path = "Target Support Files/Pods-MyCrossPlatformApp/Pods-MyCrossPlatformApp.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -44,6 +49,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				3B94B787621A6B31C4C854CA /* libPods-MyCrossPlatformApp.a in Frameworks */,
+				ED297164215061F000B7C4FE /* StoreKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -102,8 +108,10 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
-				365D68972E5B05DC00CF6564 /* NativeCOS.h */,
-				365D68952E5B05C800CF6564 /* NativeCOS.m */,
+				3CB74E8D2E707E1800AB5C28 /* ApplePayModule.h */,
+				3CB74E8E2E707E1800AB5C28 /* ApplePayModule.m */,
+				365D68972E5B05DC00CF6564 /* MyCrossPlatformApp/NativeCOS.h */,
+				365D68952E5B05C800CF6564 /* MyCrossPlatformApp/NativeCOS.m */,
 				13B07FAE1A68108700A75B9A /* MyCrossPlatformApp */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				00E356EF1AD99517003FC87E /* MyCrossPlatformAppTests */,
@@ -226,9 +234,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-MyCrossPlatformApp/Pods-MyCrossPlatformApp-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-MyCrossPlatformApp/Pods-MyCrossPlatformApp-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -265,9 +277,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-MyCrossPlatformApp/Pods-MyCrossPlatformApp-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-MyCrossPlatformApp/Pods-MyCrossPlatformApp-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -281,9 +297,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3CB74E8F2E707E1800AB5C28 /* ApplePayModule.m in Sources */,
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
-				365D68962E5B05C800CF6564 /* NativeCOS.m in Sources */,
+				365D68962E5B05C800CF6564 /* MyCrossPlatformApp/NativeCOS.m in Sources */,
 				365F1FB72D1710BA00177D30 /* NativeNavigation.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -313,8 +330,8 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
-				PRODUCT_NAME = MyCrossPlatformApp;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.digitech.faceglow";
+				PRODUCT_NAME = FaceGlow;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -342,8 +359,8 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
-				PRODUCT_NAME = MyCrossPlatformApp;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.digitech.faceglow";
+				PRODUCT_NAME = FaceGlow;
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
 			};
@@ -418,10 +435,7 @@
 					"-DFOLLY_CFG_NO_COROUTINES=1",
 					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
 				);
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
@@ -490,10 +504,7 @@
 					"-DFOLLY_CFG_NO_COROUTINES=1",
 					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
 				);
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				USE_HERMES = true;

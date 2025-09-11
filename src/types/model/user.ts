@@ -68,12 +68,16 @@ export interface User {
   selfie_list?: string[];
   /** 作品列表（作品ID数组，关联到user_works表） */
   work_list?: string[];
-  /** 用户余额（分） */
+  /** 用户余额（金币数量） */
   balance: number;
   /** 是否VIP用户 */
   is_premium: boolean;
   /** VIP到期时间戳 */
   premium_expires_at?: number;
+  /** 会员类型 */
+  subscription_type?: 'monthly' | 'yearly' | null;
+  /** 会员产品ID */
+  subscription_product_id?: string;
   /** 用户偏好设置 */
   preferences?: UserPreferences;
   /** 用户状态 */

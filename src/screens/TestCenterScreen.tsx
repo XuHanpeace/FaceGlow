@@ -57,11 +57,19 @@ const testItems: TestItem[] = [
   },
   {
     id: 'subscription',
-    title: '苹果订阅支付',
+    title: '会员订阅',
     description: '测试苹果支付订阅功能',
-    icon: '🍎',
+    icon: '👑',
     route: 'Subscription',
     color: '#007AFF',
+  },
+  {
+    id: 'coinPurchase',
+    title: '金币购买',
+    description: '测试应用内购买金币功能',
+    icon: '🪙',
+    route: 'CoinPurchase',
+    color: '#FFD700',
   },
   {
     id: 'serviceTest',
@@ -70,7 +78,7 @@ const testItems: TestItem[] = [
     icon: '🧪',
     route: 'ServiceTest',
     color: '#FF6B35',
-  }
+  },
 ];
 
 const TestCenterScreen: React.FC = () => {

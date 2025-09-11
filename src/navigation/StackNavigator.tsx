@@ -12,7 +12,9 @@ import TestCenterScreen from '../screens/TestCenterScreen';
 import SelfieGuideScreen from '../screens/SelfieGuideScreen';
 import NewAuthScreen from '../screens/NewAuthScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
+import CoinPurchaseScreen from '../screens/CoinPurchaseScreen';
 import ServiceTestScreen from '../screens/ServiceTestScreen';
+import SubscriptionTestScreen from '../screens/SubscriptionTestScreen';
 import UserWorkPreviewScreen from '../screens/UserWorkPreviewScreen';
 import { RootStackParamList } from '../types/navigation';
 
@@ -107,8 +109,24 @@ const StackNavigator = () => {
         }}
       />
       <Stack.Screen
+        name="CoinPurchase"
+        component={CoinPurchaseScreen}
+        options={{
+          headerShown: false,
+          animation: 'slide_from_bottom',
+          animationDuration: 250,
+        }}
+      />
+      <Stack.Screen
         name="ServiceTest"
         component={ServiceTestScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="SubscriptionTest"
+        component={SubscriptionTestScreen}
         options={{
           headerShown: false,
         }}

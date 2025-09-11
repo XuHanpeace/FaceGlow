@@ -48,15 +48,15 @@ RCT_EXPORT_METHOD(purchaseProduct:(NSString *)productIdentifier
         return;
     }
     
-    // 获取产品信息
-    NSSet *productSet = [NSSet setWithObject:productIdentifier];
-    SKProductsRequest *request = [[SKProductsRequest alloc] initWithProductIdentifiers:productSet];
-    request.delegate = self;
-    
     // 保存回调和产品ID
     self.resolveBlock = resolve;
     self.rejectBlock = reject;
     self.pendingProductId = productIdentifier;
+    
+    // 获取产品信息
+    NSSet *productSet = [NSSet setWithObject:productIdentifier];
+    SKProductsRequest *request = [[SKProductsRequest alloc] initWithProductIdentifiers:productSet];
+    request.delegate = self;
     
     [request start];
 }
@@ -105,8 +105,13 @@ RCT_EXPORT_METHOD(checkSubscriptionStatus:(RCTPromiseResolveBlock)resolve
         if (product) {
             SKPayment *payment = [SKPayment paymentWithProduct:product];
             [[SKPaymentQueue defaultQueue] addPayment:payment];
+            // 不清除回调，等待购买完成
         } else {
-            self.rejectBlock(@"product_not_found", @"产品不存在", nil);
+            if (self.rejectBlock) {
+                self.rejectBlock(@"product_not_found", @"产品不存在", nil);
+                self.resolveBlock = nil;
+                self.rejectBlock = nil;
+            }
         }
         
         self.pendingProductId = nil;
@@ -123,11 +128,12 @@ RCT_EXPORT_METHOD(checkSubscriptionStatus:(RCTPromiseResolveBlock)resolve
             }];
         }
         
-        self.resolveBlock(products);
+        if (self.resolveBlock) {
+            self.resolveBlock(products);
+            self.resolveBlock = nil;
+            self.rejectBlock = nil;
+        }
     }
-    
-    self.resolveBlock = nil;
-    self.rejectBlock = nil;
 }
 
 - (void)request:(SKRequest *)request didFailWithError:(NSError *)error {
@@ -194,7 +200,50 @@ RCT_EXPORT_METHOD(checkSubscriptionStatus:(RCTPromiseResolveBlock)resolve
     [[SKPaymentQueue defaultQueue] finishTransaction:transaction];
     
     if (self.rejectBlock) {
-        self.rejectBlock(@"purchase_failed", transaction.error.localizedDescription, transaction.error);
+        // 根据错误类型分类处理
+        NSString *errorCode;
+        NSString *errorMessage;
+        
+        switch (transaction.error.code) {
+            case SKErrorPaymentCancelled:
+                errorCode = @"purchase_cancelled";
+                errorMessage = @"用户取消了购买";
+                break;
+            case SKErrorPaymentNotAllowed:
+                errorCode = @"payment_not_allowed";
+                errorMessage = @"设备不允许进行支付";
+                break;
+            case SKErrorPaymentInvalid:
+                errorCode = @"payment_invalid";
+                errorMessage = @"支付信息无效";
+                break;
+            case SKErrorClientInvalid:
+                errorCode = @"client_invalid";
+                errorMessage = @"客户端无效";
+                break;
+            case SKErrorStoreProductNotAvailable:
+                errorCode = @"product_not_available";
+                errorMessage = @"产品不可用";
+                break;
+            case SKErrorCloudServicePermissionDenied:
+                errorCode = @"cloud_service_denied";
+                errorMessage = @"云服务权限被拒绝";
+                break;
+            case SKErrorCloudServiceNetworkConnectionFailed:
+                errorCode = @"network_connection_failed";
+                errorMessage = @"网络连接失败";
+                break;
+            case SKErrorCloudServiceRevoked:
+                errorCode = @"cloud_service_revoked";
+                errorMessage = @"云服务被撤销";
+                break;
+            default:
+                errorCode = @"purchase_failed";
+                errorMessage = transaction.error.localizedDescription ?: @"支付失败";
+                break;
+        }
+        
+        self.rejectBlock(errorCode, errorMessage, transaction.error);
         self.resolveBlock = nil;
         self.rejectBlock = nil;
     }
