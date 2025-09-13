@@ -20,6 +20,7 @@ const initialState: ActivityState = {
 const defaultActivities: Activity[] = [
   {
     activiy_id: 'activity_001',
+    activity_title: '艺术风格活动',
     activity_type: ActivityType.ALBUM,
     activity_status: ActivityStatus.ACTIVE,
     album_id_list: [
@@ -35,13 +36,15 @@ const defaultActivities: Activity[] = [
             template_id: 'template_001',
             template_url: 'https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=400&h=400&fit=crop',
             template_name: '艺术风格模板1',
-            template_description: '经典艺术风格'
+            template_description: '经典艺术风格',
+            price: 10
           },
           {
             template_id: 'template_002',
             template_url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=400&fit=crop',
             template_name: '艺术风格模板2',
-            template_description: '现代艺术风格'
+            template_description: '现代艺术风格',
+            price: 15
           }
         ]
       }
@@ -49,6 +52,7 @@ const defaultActivities: Activity[] = [
   },
   {
     activiy_id: 'activity_002',
+    activity_title: '社区精选活动',
     activity_type: ActivityType.ALBUM,
     activity_status: ActivityStatus.ACTIVE,
     album_id_list: [
@@ -64,13 +68,15 @@ const defaultActivities: Activity[] = [
             template_id: 'template_003',
             template_url: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=400&h=400&fit=crop',
             template_name: '社区精选模板1',
-            template_description: '社区热门模板'
+            template_description: '社区热门模板',
+            price: 20
           },
           {
             template_id: 'template_004',
             template_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop',
             template_name: '社区精选模板2',
-            template_description: '用户推荐模板'
+            template_description: '用户推荐模板',
+            price: 25
           }
         ]
       }
@@ -81,7 +87,7 @@ const defaultActivities: Activity[] = [
 // 异步获取活动数据
 export const fetchActivities = createAsyncThunk(
   'activity/fetchActivities',
-  async (params?: { pageSize?: number; pageNumber?: number }) => {
+  async (params?: { page_size?: number; page_number?: number }) => {
     try {
       console.log('🚀 开始获取活动数据...');
       const response = await activityService.getActivities(params);

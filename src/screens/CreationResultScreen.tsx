@@ -16,6 +16,7 @@ import { RootStackParamList } from '../types/navigation';
 import { ImageComparison } from '../components/ImageComparison';
 import { callFaceFusionCloudFunction } from '../services/tcb/tcb';
 import { userWorkService } from '../services/database/userWorkService';
+import { balanceService } from '../services/balanceService';
 import { useAuthState } from '../hooks/useAuthState';
 import { UserWorkModel, ResultData } from '../types/model/user_works';
 import { authService } from '../services/auth/authService';
@@ -54,6 +55,31 @@ const CreationResultScreen: React.FC = () => {
       console.log(`🔄 开始处理模板: ${templateId}`);
       console.log(`📸 使用自拍: ${selfieUrl}`);
       
+      // 获取当前模板的价格
+      const currentTemplate = albumData.template_list.find(t => t.template_id === templateId);
+      const templatePrice = currentTemplate?.price || 0;
+      
+      // 检查用户余额是否充足
+      if (user?.uid && templatePrice > 0) {
+        const balanceCheck = await balanceService.checkBalance(user.uid, templatePrice);
+        
+        if (!balanceCheck.sufficient) {
+          setIsProcessing(false);
+          Alert.alert(
+            '💎 余额不足',
+            `换脸需要${templatePrice}金币，当前余额${balanceCheck.currentBalance}金币\n是否前往充值？`,
+            [
+              { text: '取消', style: 'cancel' },
+              { 
+                text: '去充值', 
+                onPress: () => navigation.navigate('CoinPurchase')
+              }
+            ]
+          );
+          return;
+        }
+      }
+      
       // 调用真实的换脸云函数
       const result = await callFaceFusionCloudFunction({
         projectId:  activityId,
@@ -64,6 +90,30 @@ const CreationResultScreen: React.FC = () => {
       if (result.code === 0 && result.data) {
         console.log(`✅ 模板 ${templateId} 换脸成功`);
         console.log(`🖼️ 换脸结果: ${result.data.FusedImage}`);
+        
+        // 扣除用户金币
+        if (user?.uid && templatePrice > 0) {
+          const deductResult = await balanceService.deductBalance({
+            userId: user.uid,
+            amount: templatePrice,
+            description: `AI换脸消费 - ${currentTemplate?.template_name || '模板'}`,
+            relatedId: `fusion_${templateId}_${Date.now()}`,
+            metadata: {
+              fusion: {
+                template_id: templateId,
+                activity_id: activityId,
+                result_url: result.data.FusedImage
+              }
+            }
+          });
+
+          if (!deductResult.success) {
+            console.error('扣除金币失败:', deductResult.error);
+            // 即使扣除金币失败，也显示换脸结果，但记录错误
+          } else {
+            console.log(`💰 已扣除${templatePrice}金币，当前余额: ${deductResult.newBalance}`);
+          }
+        }
         
         setFusionResults(prev => ({
           ...prev,

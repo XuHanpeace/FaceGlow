@@ -1,4 +1,5 @@
 import { userDataService } from './database/userDataService';
+import { transactionService } from './database/transactionService';
 import { User } from '../types/model/user';
 
 export interface SubscriptionUpdateData {
@@ -49,6 +50,35 @@ class SubscriptionDataService {
       
       if (result.success) {
         console.log('用户订阅数据更新成功');
+        
+        // 创建交易记录
+        const transactionResult = await transactionService.createTransaction({
+          user_id: uid,
+          transaction_type: 'subscription',
+          coin_amount: 0, // 订阅不涉及金币变动
+          payment_method: 'apple_pay',
+          description: `订阅${subscriptionData.subscriptionType === 'monthly' ? '月会员' : '年会员'}`,
+          apple_transaction_id: subscriptionData.productId,
+          apple_product_id: subscriptionData.productId,
+          metadata: {
+            subscription: {
+              plan_type: subscriptionData.subscriptionType,
+              expiration_date: subscriptionData.expirationDate.getTime(),
+            }
+          }
+        });
+
+        if (transactionResult.success) {
+          // 更新交易状态为已完成
+          await transactionService.updateTransactionStatus(
+            transactionResult.data!._id,
+            'completed'
+          );
+          console.log('订阅交易记录创建成功');
+        } else {
+          console.error('订阅交易记录创建失败:', transactionResult.error);
+        }
+        
         return true;
       } else {
         console.error('用户订阅数据更新失败:', result.error);
@@ -93,6 +123,37 @@ class SubscriptionDataService {
       
       if (result.success) {
         console.log('用户金币数据更新成功');
+        
+        // 创建交易记录
+        const transactionResult = await transactionService.createTransaction({
+          user_id: uid,
+          transaction_type: 'coin_purchase',
+          coin_amount: coinsAmount,
+          balance_before: currentUser.balance || 0,
+          balance_after: newCoinsAmount,
+          payment_method: 'apple_pay',
+          description: `购买${coinsAmount}金币`,
+          apple_product_id: 'com.digitech.faceglow.assets.coins',
+          metadata: {
+            coin_package: {
+              package_id: 'coins_pack',
+              package_name: 'Face Coins',
+              bonus_coins: 0
+            }
+          }
+        });
+
+        if (transactionResult.success) {
+          // 更新交易状态为已完成
+          await transactionService.updateTransactionStatus(
+            transactionResult.data!._id,
+            'completed'
+          );
+          console.log('金币购买交易记录创建成功');
+        } else {
+          console.error('金币购买交易记录创建失败:', transactionResult.error);
+        }
+        
         return true;
       } else {
         console.error('用户金币数据更新失败:', result.error);

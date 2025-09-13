@@ -44,6 +44,8 @@ export interface Template {
   template_name: string;
   /** 模板描述 */
   template_description: string;
+  /** 模板价格（金币） */
+  price: number;
 }
 
 /**
