@@ -19,6 +19,7 @@ export class CloudBaseAuthService {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        'x-device-id': CLOUDBASE_CONFIG.DEVICE_ID,
       },
     });
   }
@@ -91,13 +92,21 @@ export class CloudBaseAuthService {
    */
   async refreshToken(refreshToken: string): Promise<CloudBaseAuthResponse> {
     try {
+      console.log('🔄 调用CloudBase刷新Token API...');
+      
       const response: AxiosResponse<CloudBaseAuthResponse> = await this.axiosInstance.post(
         CLOUDBASE_CONFIG.AUTH_API.ENDPOINTS.REFRESH,
-        { refresh_token: refreshToken }
+        {
+          client_id: CLOUDBASE_CONFIG.CLIENT_ID,
+          grant_type: "refresh_token",
+          refresh_token: refreshToken
+        }
       );
 
+      console.log('✅ CloudBase刷新Token API调用成功');
       return response.data;
     } catch (error: any) {
+      console.error('❌ CloudBase刷新Token API调用失败:', error);
       if (error.response?.data) {
         throw new Error(error.response.data.error_description || error.response.data.error || '令牌刷新失败');
       }

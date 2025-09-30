@@ -305,6 +305,37 @@ const DatabaseTestScreen = () => {
     }
   };
 
+  // 测试修复后的Refresh Token实现
+  const testFixedRefreshToken = async () => {
+    if (!checkUserLogin()) return;
+    
+    setLoading(true);
+    try {
+      addTestResult(`🔧 测试修复后的Refresh Token实现...`);
+      addTestResult(`📡 API端点: /auth/v1/token`);
+      addTestResult(`🔑 包含参数: client_id, grant_type, refresh_token`);
+      addTestResult(`📱 包含请求头: x-device-id`);
+      
+      const result = await authService.checkAndRefreshToken();
+      
+      if (result.success && result.data) {
+        addTestResult(`✅ 修复后的Refresh Token测试成功!`);
+        addTestResult(`🔑 新Token: ${result.data.accessToken.substring(0, 20)}...`);
+        addTestResult(`⏰ 过期时间: ${new Date(result.data.expiresAt).toLocaleString()}`);
+        addTestResult(`📊 剩余时间: ${Math.round(result.data.expiresIn / 60)}分钟`);
+        addTestResult(`👤 用户ID: ${result.data.uid}`);
+        addTestResult(`🎉 符合CloudBase官方规范!`);
+      } else {
+        addTestResult(`❌ 修复后的Refresh Token测试失败: ${result.error?.message}`);
+      }
+      
+    } catch (error) {
+      addTestResult(`❌ 修复后的Refresh Token测试异常: ${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <ScrollView style={[
       styles.container,
@@ -430,6 +461,14 @@ const DatabaseTestScreen = () => {
             disabled={loading || !isLoggedIn}
           >
             <Text style={styles.buttonText}>自动刷新检查</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.testButton, { backgroundColor: '#9C27B0' }]}
+            onPress={testFixedRefreshToken}
+            disabled={loading || !isLoggedIn}
+          >
+            <Text style={styles.buttonText}>测试修复后的Refresh Token</Text>
           </TouchableOpacity>
         </View>
 

@@ -10,12 +10,25 @@ const generateClientId = (): string => {
   return result;
 };
 
+// 生成设备ID
+const generateDeviceId = (): string => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < 32; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
+
 export const CLOUDBASE_CONFIG = {
   // 环境ID - 请替换为您的实际环境ID
   ENV_ID: 'startup-2gn33jt0ca955730',
   
   // 随机生成的客户端ID
   CLIENT_ID: generateClientId(),
+  
+  // 随机生成的设备ID
+  DEVICE_ID: generateDeviceId(),
   
   // API配置
   API: {
@@ -41,7 +54,7 @@ export const CLOUDBASE_CONFIG = {
       SIGNUP: '/auth/v1/signup',           // 用户注册
       LOGIN: '/auth/v1/signin',             // 用户登录
       ANONYMOUS: '/auth/v1/anonymous',     // 匿名登录
-      REFRESH: '/auth/v1/refresh',         // 刷新令牌
+      REFRESH: '/auth/v1/token',           // 刷新令牌
       LOGOUT: '/auth/v1/logout',           // 用户登出
       PROFILE: '/auth/v1/profile',         // 获取用户信息
       SEND_VERIFICATION: '/auth/v1/verification',  // 发送验证码
