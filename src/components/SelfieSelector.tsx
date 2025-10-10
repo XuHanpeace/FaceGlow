@@ -14,6 +14,7 @@ import { useUserSelfies } from '../hooks/useUser';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { authService } from '../services/auth/authService';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -49,9 +50,19 @@ const SelfieSelector: React.FC<SelfieSelectorProps> = ({
     }
   }, [selfies, currentSelectedSelfie, onSelfieSelect, defaultSelfieUrl]);
 
-  const handleSelfiePress = () => {
+  const handleSelfiePress = async () => {
     if (selfies.length === 0) {
-      // 没有自拍，直接跳转到自拍引导页
+      // 没有自拍，检查登录态后跳转到自拍引导页
+      const authResult = await authService.requireRealUser();
+      
+      if (!authResult.success) {
+        if (authResult.error?.code === 'ANONYMOUS_USER' || 
+            authResult.error?.code === 'NOT_LOGGED_IN') {
+              navigation.navigate('NewAuth') 
+        }
+        return;
+      }
+      
       navigation.navigate('SelfieGuide');
     } else {
       // 有自拍，显示选择面板
@@ -72,8 +83,20 @@ const SelfieSelector: React.FC<SelfieSelectorProps> = ({
     }
   };
 
-  const handleAddSelfie = () => {
+  const handleAddSelfie = async () => {
     setShowPanel(false);
+    
+    // 检查登录态
+    const authResult = await authService.requireRealUser();
+    
+    if (!authResult.success) {
+      if (authResult.error?.code === 'ANONYMOUS_USER' || 
+          authResult.error?.code === 'NOT_LOGGED_IN') {
+            navigation.navigate('NewAuth') 
+      }
+      return;
+    }
+    
     navigation.navigate('SelfieGuide');
   };
 

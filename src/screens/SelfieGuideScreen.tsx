@@ -42,11 +42,33 @@ const SelfieGuideScreen: React.FC = () => {
     navigation.goBack();
   };
 
-  const handleChangePhoto = () => {
+  const handleChangePhoto = async () => {
+    // 检查是否是真实用户
+    const authResult = await authService.requireRealUser();
+    
+    if (!authResult.success) {
+      if (authResult.error?.code === 'ANONYMOUS_USER' || 
+          authResult.error?.code === 'NOT_LOGGED_IN') {
+            navigation.navigate('NewAuth') 
+      }
+      return;
+    }
+    
     setShowModal(true);
   };
 
-  const handleContinuePress = () => {
+  const handleContinuePress = async () => {
+    // 检查是否是真实用户
+    const authResult = await authService.requireRealUser();
+    
+    if (!authResult.success) {
+      if (authResult.error?.code === 'ANONYMOUS_USER' || 
+          authResult.error?.code === 'NOT_LOGGED_IN') {
+            navigation.navigate('NewAuth') 
+      }
+      return;
+    }
+    
     setShowModal(true);
   };
 

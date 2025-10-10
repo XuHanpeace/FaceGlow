@@ -1,5 +1,6 @@
 import { databaseService, DatabaseResponse, DatabaseError } from './databaseService';
 import { Activity, ActivityQueryParams, ActivityListResponse } from '../../types/model/activity';
+import { authService } from '../auth/authService';
 
 // 活动数据服务类
 export class ActivityService {
@@ -8,8 +9,21 @@ export class ActivityService {
   // 获取活动列表
   async getActivities(params?: ActivityQueryParams): Promise<ActivityListResponse> {
     try {
+      // 确保有有效的登录态（没有则自动匿名登录）
+      const authResult = await authService.ensureAuthenticated();
+      if (!authResult.success) {
+        console.error('❌ 确保登录态失败:', authResult.error);
+        return {
+          code: 401,
+          message: '认证失败',
+          data: []
+        };
+      }
+      
+      console.log('✅ 登录态确认成功，开始获取活动数据');
+      
       // 构建查询参数
-      const queryParams: any = {};
+      const queryParams: Record<string, string | number | boolean> = {};
       
       // 添加分页参数
       if (params?.page_size) {

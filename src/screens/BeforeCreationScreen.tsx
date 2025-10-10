@@ -20,6 +20,7 @@ import { callFaceFusionCloudFunction } from '../services/tcb/tcb';
 import { Template } from '../types/model/activity';
 import SelfieSelector from '../components/SelfieSelector';
 import { useAuthState } from '../hooks/useAuthState';
+import { authService } from '../services/auth/authService';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -93,20 +94,13 @@ const BeforeCreationScreen: React.FC = () => {
 
   const handleUseStylePress = async () => {
     try {
-      // 检查登录状态
-      if (!isLoggedIn) {
-        Alert.alert(
-          '😔 需要登录',
-          '小主，使用AI创作功能需要先登录哦～',
-          [
-            {
-              text: '✨ 去登录',
-              onPress: () => {
-                navigation.navigate('NewAuth');
-              },
-            },
-          ]
-        );
+      // 检查是否是真实用户
+      const authResult = await authService.requireRealUser();
+      
+      if (!authResult.success) {
+        if (authResult.error?.code === 'ANONYMOUS_USER' || authResult.error?.code === 'NOT_LOGGED_IN') {
+              navigation.navigate('NewAuth');
+        }
         return;
       }
 
@@ -122,8 +116,14 @@ const BeforeCreationScreen: React.FC = () => {
             },
             {
               text: '✨ 去上传',
-              onPress: () => {
-                navigation.navigate('SelfieGuide');
+              onPress: async () => {
+                // 再次确认真实用户（防止用户登出）
+                const uploadAuthResult = await authService.requireRealUser();
+                if (uploadAuthResult.success) {
+                  navigation.navigate('SelfieGuide');
+                } else {
+                  Alert.alert('提示', '请先登录');
+                }
               },
             },
           ]

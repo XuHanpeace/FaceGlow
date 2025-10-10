@@ -193,20 +193,42 @@ export class AuthService {
    */
   async anonymousLogin(): Promise<AuthResponse> {
     try {
+      console.log('🎭 执行匿名登录...');
+      
       // 调用腾讯云官方匿名登录API
       const response: CloudBaseAuthResponse = await cloudBaseAuthService.anonymousLogin();
+
+      console.log('📊 匿名登录响应:', {
+        scope: response.scope,
+        sub: response.sub,
+        token_type: response.token_type
+      });
+
+      // 确保匿名登录响应有正确的scope
+      if (response.scope !== 'anonymous') {
+        console.log('⚠️ 匿名登录响应缺少scope=anonymous，手动设置');
+        response.scope = 'anonymous';
+      }
 
       // 转换为内部格式
       const credentials: AuthCredentials = cloudBaseAuthService.convertToAuthCredentials(response);
 
+      console.log('🔄 转换后的credentials:', {
+        isAnonymous: credentials.isAnonymous,
+        uid: credentials.uid
+      });
+
       // 保存认证信息到本地存储
       this.saveAuthCredentials(credentials);
+
+      console.log('✅ 匿名登录成功并保存');
 
       return {
         success: true,
         data: credentials,
       };
     } catch (error: any) {
+      console.error('❌ 匿名登录失败:', error);
       return {
         success: false,
         error: {
@@ -237,7 +259,14 @@ export class AuthService {
         };
       }
 
-      console.log('📡 调用CloudBase刷新API...');
+      // 保存刷新前的匿名用户状态
+      const wasAnonymous = this.isAnonymous();
+      const storedIsAnonymous = storage.getBoolean(STORAGE_KEYS.IS_ANONYMOUS);
+      console.log('📡 调用CloudBase刷新API...', { 
+        wasAnonymous, 
+        storedIsAnonymous,
+        hasRefreshToken: !!refreshToken 
+      });
       
       // 调用腾讯云官方刷新API
       const response: CloudBaseAuthResponse = await cloudBaseAuthService.refreshToken(refreshToken);
@@ -252,7 +281,14 @@ export class AuthService {
       // 转换为内部格式
       const credentials: AuthCredentials = cloudBaseAuthService.convertToAuthCredentials(response);
 
-      console.log('🔄 更新本地存储的认证信息...');
+      // 如果原来是匿名用户，刷新后保持匿名状态
+      // 检查存储中的原始值，因为isAnonymous()可能返回undefined
+      if (storedIsAnonymous === true || (wasAnonymous === true && !credentials.isAnonymous)) {
+        console.log('⚠️ 检测到匿名用户刷新token，保持匿名状态');
+        credentials.isAnonymous = true;
+      }
+
+      console.log('🔄 更新本地存储的认证信息...', { isAnonymous: credentials.isAnonymous });
 
       // 更新本地存储
       this.saveAuthCredentials(credentials);
@@ -295,15 +331,29 @@ export class AuthService {
   }
 
   /**
-   * 检查用户是否已登录
+   * 检查用户是否已登录（仅真实用户，不包括匿名用户）
    * @returns boolean
    */
   isLoggedIn(): boolean {
     const token = storage.getString(STORAGE_KEYS.ACCESS_TOKEN);
     const expiresAt = storage.getNumber(STORAGE_KEYS.EXPIRES_AT);
+    const isAnonymous = storage.getBoolean(STORAGE_KEYS.IS_ANONYMOUS);
+    
+    console.log('🔍 isLoggedIn 检查:', { 
+      hasToken: !!token, 
+      hasExpiresAt: !!expiresAt,
+      isAnonymous,
+      rawIsAnonymous: storage.getBoolean(STORAGE_KEYS.IS_ANONYMOUS)
+    });
     
     if (!token || !expiresAt) {
       console.log('❌ 用户未登录: 缺少token或过期时间');
+      return false;
+    }
+
+    // 如果是匿名用户，返回 false
+    if (isAnonymous === true) {
+      console.log('❌ 当前是匿名用户，不算真实登录');
       return false;
     }
 
@@ -320,9 +370,27 @@ export class AuthService {
     }
 
     const remainingMinutes = Math.round((expiresAt - currentTime) / 60000);
-    console.log('✅ Token有效，剩余时间:', `${remainingMinutes}分钟`);
+    console.log('✅ 真实用户已登录，剩余时间:', `${remainingMinutes}分钟`, { isAnonymous });
     
     return true;
+  }
+
+  /**
+   * 检查是否有有效的认证态（包括匿名用户）
+   * @returns boolean
+   */
+  hasValidAuth(): boolean {
+    const token = storage.getString(STORAGE_KEYS.ACCESS_TOKEN);
+    const expiresAt = storage.getNumber(STORAGE_KEYS.EXPIRES_AT);
+    
+    if (!token || !expiresAt) {
+      return false;
+    }
+
+    const currentTime = Date.now();
+    const isExpired = currentTime >= expiresAt;
+    
+    return !isExpired;
   }
 
   /**
@@ -339,7 +407,8 @@ export class AuthService {
    * @returns string | null
    */
   getCurrentAccessToken(): string | null {
-    if (!this.isLoggedIn()) {
+    // 使用 hasValidAuth 检查，包括匿名用户
+    if (!this.hasValidAuth()) {
       return null;
     }
     const token = storage.getString(STORAGE_KEYS.ACCESS_TOKEN);
@@ -355,12 +424,34 @@ export class AuthService {
       uid: credentials.uid,
       expiresAt: new Date(credentials.expiresAt).toISOString(),
       expiresIn: credentials.expiresIn,
+      isAnonymous: credentials.isAnonymous,
     });
     
     storage.set(STORAGE_KEYS.ACCESS_TOKEN, credentials.accessToken);
     storage.set(STORAGE_KEYS.REFRESH_TOKEN, credentials.refreshToken);
     storage.set(STORAGE_KEYS.UID, credentials.uid);
     storage.set(STORAGE_KEYS.EXPIRES_AT, credentials.expiresAt);
+    
+    // 确保匿名标记被正确保存
+    const isAnonymousValue = credentials.isAnonymous === true;
+    storage.set(STORAGE_KEYS.IS_ANONYMOUS, isAnonymousValue);
+    
+    console.log('💾 存储详情:', {
+      accessToken: !!credentials.accessToken,
+      refreshToken: !!credentials.refreshToken,
+      uid: credentials.uid,
+      expiresAt: credentials.expiresAt,
+      isAnonymousStored: isAnonymousValue,
+      storageKey: STORAGE_KEYS.IS_ANONYMOUS
+    });
+    
+    // 立即验证存储是否成功
+    const storedIsAnonymous = storage.getBoolean(STORAGE_KEYS.IS_ANONYMOUS);
+    console.log('✅ 存储验证:', {
+      expected: isAnonymousValue,
+      actual: storedIsAnonymous,
+      match: isAnonymousValue === storedIsAnonymous
+    });
   }
 
   /**
@@ -373,6 +464,7 @@ export class AuthService {
     storage.delete(STORAGE_KEYS.UID);
     storage.delete(STORAGE_KEYS.EXPIRES_AT);
     storage.delete(STORAGE_KEYS.USER_INFO);
+    storage.delete(STORAGE_KEYS.IS_ANONYMOUS);
     console.log('✅ 认证信息清除完成');
   }
 
@@ -471,6 +563,191 @@ export class AuthService {
         };
       }
     }
+  }
+
+  /**
+   * 检查当前用户是否是匿名用户
+   * @returns boolean
+   */
+  isAnonymous(): boolean {
+    const isAnonymousValue = storage.getBoolean(STORAGE_KEYS.IS_ANONYMOUS);
+    console.log('🔍 检查匿名用户状态:', { 
+      isAnonymous: isAnonymousValue,
+      storageValue: isAnonymousValue 
+    });
+    return isAnonymousValue === true;
+  }
+
+  /**
+   * 检查当前用户是否是真实用户（非匿名）
+   * @returns boolean
+   */
+  isRealUser(): boolean {
+    // isLoggedIn() 已经排除了匿名用户，所以直接返回
+    return this.isLoggedIn();
+  }
+
+  /**
+   * 确保有有效的登录态（如果没有则自动匿名登录）
+   * ⚠️ 注意：此方法允许匿名登录，仅用于不需要真实用户的场景（如浏览activity）
+   * @returns Promise<AuthResponse>
+   */
+  async ensureAuthenticated(): Promise<AuthResponse> {
+    console.log('🔐 确保登录态（允许匿名）...');
+    
+    // 检查是否已经有有效的认证态（包括匿名用户）
+    if (this.hasValidAuth()) {
+      console.log('✅ 已有有效认证态');
+      const token = this.getCurrentAccessToken();
+      const uid = this.getCurrentUserId();
+      const expiresAt = storage.getNumber(STORAGE_KEYS.EXPIRES_AT);
+      const isAnonymous = this.isAnonymous();
+      
+      console.log('🔍 检查现有认证态:', { token: !!token, uid, isAnonymous });
+      
+      // 如果token存在但没有明确的匿名标记，或者被错误标记为非匿名，强制重新匿名登录
+      if (token && uid && expiresAt && (isAnonymous === undefined || isAnonymous === false)) {
+        console.log('⚠️ 检测到错误的匿名状态，强制重新匿名登录', { isAnonymous });
+        this.debugClearAllAuth();
+      } else if (token && uid && expiresAt) {
+        return {
+          success: true,
+          data: {
+            uid,
+            accessToken: token,
+            refreshToken: storage.getString(STORAGE_KEYS.REFRESH_TOKEN) || '',
+            expiresIn: Math.round((expiresAt - Date.now()) / 1000),
+            expiresAt,
+            isAnonymous,
+          },
+        };
+      }
+    }
+    
+    // 尝试刷新token
+    const refreshToken = storage.getString(STORAGE_KEYS.REFRESH_TOKEN);
+    if (refreshToken) {
+      console.log('🔄 尝试刷新token...');
+      const refreshResult = await this.refreshAccessToken();
+      if (refreshResult.success) {
+        console.log('✅ Token刷新成功');
+        return refreshResult;
+      }
+      console.log('⚠️ Token刷新失败，尝试匿名登录...');
+    }
+    
+    // 没有登录态或刷新失败，进行匿名登录
+    console.log('🎭 执行匿名登录...');
+    
+    // 调试：清除所有认证数据确保干净的匿名登录
+    this.debugClearAllAuth();
+    
+    return await this.anonymousLogin();
+  }
+
+  /**
+   * 调试方法：打印当前存储状态
+   */
+  debugStorageState(): void {
+    console.log('🔍 存储状态调试:', {
+      accessToken: !!storage.getString(STORAGE_KEYS.ACCESS_TOKEN),
+      refreshToken: !!storage.getString(STORAGE_KEYS.REFRESH_TOKEN),
+      uid: storage.getString(STORAGE_KEYS.UID),
+      expiresAt: storage.getNumber(STORAGE_KEYS.EXPIRES_AT),
+      isAnonymous: storage.getBoolean(STORAGE_KEYS.IS_ANONYMOUS),
+      storageKeys: Object.values(STORAGE_KEYS)
+    });
+  }
+
+  /**
+   * 临时调试方法：清除所有认证数据
+   */
+  debugClearAllAuth(): void {
+    console.log('🧹 清除所有认证数据...');
+    this.clearAuthCredentials();
+    console.log('✅ 认证数据已清除');
+  }
+
+  /**
+   * 要求真实用户登录（不允许匿名用户）
+   * 如果当前是匿名用户或未登录，返回失败
+   * @returns Promise<AuthResponse>
+   */
+  async requireRealUser(): Promise<AuthResponse> {
+    console.log('👤 检查真实用户登录态...');
+    
+    // 调试存储状态
+    this.debugStorageState();
+    
+    // 检查是否是匿名用户
+    if (this.isAnonymous()) {
+      console.log('❌ 当前是匿名用户，需要真实用户登录');
+      return {
+        success: false,
+        error: {
+          code: 'ANONYMOUS_USER',
+          message: '此功能需要登录账号',
+        },
+      };
+    }
+    
+    // 检查是否已登录（isLoggedIn 已经排除了匿名用户）
+    if (!this.isLoggedIn()) {
+      console.log('❌ 用户未登录');
+      return {
+        success: false,
+        error: {
+          code: 'NOT_LOGGED_IN',
+          message: '请先登录',
+        },
+      };
+    }
+    
+    // 尝试刷新token（如果即将过期）
+    if (this.isTokenExpiringSoon()) {
+      console.log('🔄 Token即将过期，尝试刷新...');
+      const refreshResult = await this.refreshAccessToken();
+      if (refreshResult.success) {
+        console.log('✅ Token刷新成功');
+        return refreshResult;
+      }
+      console.log('⚠️ Token刷新失败');
+      return {
+        success: false,
+        error: {
+          code: 'TOKEN_REFRESH_FAILED',
+          message: '登录已过期，请重新登录',
+        },
+      };
+    }
+    
+    // 返回当前真实用户的登录态
+    console.log('✅ 真实用户登录态有效');
+    const token = this.getCurrentAccessToken();
+    const uid = this.getCurrentUserId();
+    const expiresAt = storage.getNumber(STORAGE_KEYS.EXPIRES_AT);
+    
+    if (token && uid && expiresAt) {
+      return {
+        success: true,
+        data: {
+          uid,
+          accessToken: token,
+          refreshToken: storage.getString(STORAGE_KEYS.REFRESH_TOKEN) || '',
+          expiresIn: Math.round((expiresAt - Date.now()) / 1000),
+          expiresAt,
+          isAnonymous: false,
+        },
+      };
+    }
+    
+    return {
+      success: false,
+      error: {
+        code: 'INVALID_AUTH_STATE',
+        message: '登录状态异常',
+      },
+    };
   }
 }
 

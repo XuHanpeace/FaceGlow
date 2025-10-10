@@ -53,7 +53,7 @@ export const CLOUDBASE_CONFIG = {
     ENDPOINTS: {
       SIGNUP: '/auth/v1/signup',           // 用户注册
       LOGIN: '/auth/v1/signin',             // 用户登录
-      ANONYMOUS: '/auth/v1/anonymous',     // 匿名登录
+      ANONYMOUS: '/auth/v1/signin/anonymously',     // 匿名登录
       REFRESH: '/auth/v1/token',           // 刷新令牌
       LOGOUT: '/auth/v1/logout',           // 用户登出
       PROFILE: '/auth/v1/profile',         // 获取用户信息
@@ -94,6 +94,7 @@ export const CLOUDBASE_CONFIG = {
       USER_INFO: 'userInfo',
       VERIFICATION_ID: 'verificationId',  // 验证码ID
       VERIFICATION_EXPIRES_AT: 'verificationExpiresAt', // 验证码过期时间
+      DEVICE_ID: 'deviceId', // 设备ID（用于匿名登录）
     },
   },
 } as const;

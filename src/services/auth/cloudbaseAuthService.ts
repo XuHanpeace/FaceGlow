@@ -1,9 +1,39 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import { MMKV } from 'react-native-mmkv';
 import { getCloudbaseConfig } from '../../config/cloudbase';
 import { CloudBaseAuthResponse, RegisterRequest, LoginRequest, AuthCredentials } from '../../types/auth';
 
 // 获取腾讯云开发配置
 const CLOUDBASE_CONFIG = getCloudbaseConfig();
+
+// 创建MMKV存储实例
+const storage = new MMKV();
+
+/**
+ * 生成设备ID
+ */
+function generateDeviceId(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < 32; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+/**
+ * 获取或生成设备ID（缓存到本地）
+ */
+function getOrCreateDeviceId(): string {
+  const cachedDeviceId = storage.getString(CLOUDBASE_CONFIG.STORAGE.KEYS.DEVICE_ID);
+  if (cachedDeviceId) {
+    return cachedDeviceId;
+  }
+  
+  const newDeviceId = generateDeviceId();
+  storage.set(CLOUDBASE_CONFIG.STORAGE.KEYS.DEVICE_ID, newDeviceId);
+  return newDeviceId;
+}
 
 /**
  * 腾讯云官方认证服务
@@ -19,7 +49,6 @@ export class CloudBaseAuthService {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'x-device-id': CLOUDBASE_CONFIG.DEVICE_ID,
       },
     });
   }
@@ -72,12 +101,23 @@ export class CloudBaseAuthService {
    */
   async anonymousLogin(): Promise<CloudBaseAuthResponse> {
     try {
+      const deviceId = getOrCreateDeviceId();
+      console.log('🔑 匿名登录使用设备ID:', deviceId);
+      
       const response: AxiosResponse<CloudBaseAuthResponse> = await this.axiosInstance.post(
-        CLOUDBASE_CONFIG.AUTH_API.ENDPOINTS.ANONYMOUS
+        CLOUDBASE_CONFIG.AUTH_API.ENDPOINTS.ANONYMOUS,
+        {},
+        {
+          headers: {
+            'x-device-id': deviceId,
+          }
+        }
       );
 
+      console.log('✅ 匿名登录成功:', response.data);
       return response.data;
     } catch (error: any) {
+      console.error('❌ 匿名登录失败:', error.response?.data || error.message);
       if (error.response?.data) {
         throw new Error(error.response.data.error_description || error.response.data.error || '匿名登录失败');
       }
@@ -167,12 +207,22 @@ export class CloudBaseAuthService {
    * @returns AuthCredentials
    */
   convertToAuthCredentials(response: CloudBaseAuthResponse): AuthCredentials {
+    const isAnonymous = response.scope === 'anonymous';
+    
+    console.log('🔄 convertToAuthCredentials 转换:', {
+      originalScope: response.scope,
+      isAnonymous,
+      uid: response.sub,
+      tokenType: response.token_type
+    });
+    
     return {
       uid: response.sub,
       accessToken: response.access_token,
       refreshToken: response.refresh_token,
       expiresIn: response.expires_in,
       expiresAt: Date.now() + (response.expires_in * 1000),
+      isAnonymous,
     };
   }
 }

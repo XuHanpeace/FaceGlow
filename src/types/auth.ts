@@ -16,6 +16,7 @@ export interface AuthCredentials {
   refreshToken: string;
   expiresIn: number;
   expiresAt: number; // 计算得出的过期时间戳
+  isAnonymous?: boolean; // 是否是匿名用户
 }
 
 // 发送验证码请求参数
@@ -73,6 +74,7 @@ export const STORAGE_KEYS = {
   UID: 'uid',
   EXPIRES_AT: 'expiresAt',
   USER_INFO: 'userInfo',
+  IS_ANONYMOUS: 'isAnonymous', // 是否是匿名用户
 } as const;
 
 

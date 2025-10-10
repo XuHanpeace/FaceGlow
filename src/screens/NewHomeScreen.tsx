@@ -20,6 +20,8 @@ import { useTypedSelector, useAppDispatch } from '../store/hooks';
 import { fetchActivities } from '../store/slices/activitySlice';
 import { useUser } from '../hooks/useUser';
 import { useAuthState } from '../hooks/useAuthState';
+import { authService } from '../services/auth/authService';
+import { Alert } from 'react-native';
 
 type NewHomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -98,11 +100,20 @@ const NewHomeScreen: React.FC = () => {
     navigation.navigate('NewProfile');
   };
 
-  const handleAddSelfiePress = () => {
-    if (!isLoggedIn) {
-      navigation.navigate('NewAuth');
+  const handleAddSelfiePress = async () => {
+    // 检查是否是真实用户
+    const authResult = await authService.requireRealUser();
+    
+    if (!authResult.success) {
+      // 如果是匿名用户或未登录，提示需要登录
+      if (authResult.error?.code === 'ANONYMOUS_USER' || 
+          authResult.error?.code === 'NOT_LOGGED_IN') {
+            navigation.navigate('NewAuth') 
+      }
       return;
     }
+    
+    // 真实用户，跳转到自拍引导页
     navigation.navigate('SelfieGuide');
   };
 
