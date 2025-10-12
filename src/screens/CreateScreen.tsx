@@ -7,7 +7,7 @@ const CreateScreen = () => {
   return (
     <View style={[
       styles.container,
-      { backgroundColor: colorScheme === 'dark' ? '#000000' : '#FFFFFF' }
+      { backgroundColor: colorScheme === 'dark' ? '#131313' : '#FFFFFF' }
     ]}>
       <Text style={[
         styles.text,

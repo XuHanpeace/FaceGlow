@@ -145,35 +145,15 @@ const NewProfileScreen: React.FC = () => {
           <Text style={styles.backIcon}>✕</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>简介</Text>
-        <View style={styles.headerActions}>
+        <View style={styles.placeholder} />
+        {/* <View style={styles.headerActions}>
           <TouchableOpacity style={styles.actionButton} onPress={handleGiftPress}>
             <Text style={styles.giftIcon}>🎁</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={handleSharePress}>
-            <Text style={styles.shareIcon}>📤</Text>
-          </TouchableOpacity>
-        </View>
+        </View> */}
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* 绿色横幅 */}
-        <View style={styles.greenBanner}>
-          <View style={styles.bannerContent}>
-            <View style={styles.bannerImageContainer}>
-              <Image
-                source={{ uri: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=60&h=60&fit=crop' }}
-                style={styles.bannerImage}
-              />
-            </View>
-            <View style={styles.bannerText}>
-              <Text style={styles.bannerTitle}>查看您的联系人创作</Text>
-              <Text style={styles.bannerSubtitle}>添加好友以解锁</Text>
-            </View>
-            <TouchableOpacity style={styles.bannerArrow} onPress={handleContactsPress}>
-              <Text style={styles.arrowIcon}>{'>'}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
 
         {/* 用户信息 */}
         <View style={styles.userInfo}>
@@ -298,7 +278,7 @@ const NewProfileScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#131313',
   },
   header: {
     flexDirection: 'row',
@@ -330,6 +310,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  placeholder: {
+    width: 10,
+  },
   actionButton: {
     width: 32,
     height: 32,
@@ -347,6 +330,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    paddingTop: 20,
   },
   greenBanner: {
     backgroundColor: '#4CAF50',

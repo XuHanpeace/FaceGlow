@@ -178,13 +178,13 @@ const NewHomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#131313',
   },
   safeAreaTop: {
-    backgroundColor: '#000',
+    backgroundColor: '#131313',
   },
   fixedHeader: {
-    backgroundColor: '#000',
+    backgroundColor: '#131313',
     zIndex: 10,
   },
   scrollView: {

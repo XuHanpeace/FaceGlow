@@ -433,7 +433,7 @@ const CreationResultScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#131313',
   },
   floatingBackButton: {
     position: 'absolute',
@@ -497,7 +497,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   bottomContainer: {
-    backgroundColor: '#000',
+    backgroundColor: '#131313',
     paddingHorizontal: 20,
     paddingBottom: 40,
   },

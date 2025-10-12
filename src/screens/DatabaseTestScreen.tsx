@@ -339,7 +339,7 @@ const DatabaseTestScreen = () => {
   return (
     <ScrollView style={[
       styles.container,
-      { backgroundColor: isDarkMode ? '#000' : '#fff' }
+      { backgroundColor: isDarkMode ? '#131313' : '#fff' }
     ]}>
 
       {/* 用户状态显示 */}

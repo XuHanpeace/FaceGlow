@@ -209,7 +209,7 @@ const COSUploadTestScreen: React.FC = () => {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: isDarkMode ? '#000' : '#fff' }]}>
+    <ScrollView style={[styles.container, { backgroundColor: isDarkMode ? '#131313' : '#fff' }]}>
       <View style={styles.header}>
         <Text style={[styles.title, { color: isDarkMode ? '#fff' : '#000' }]}>
           COS图片上传验证
