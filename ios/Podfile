@@ -38,6 +38,11 @@ target 'MyCrossPlatformApp' do
         
         # 以下部分是关键！排除模拟器的 arm64 架构，这是 React Native 的常见配置
         config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64'
+        
+        # 生成dSYM文件配置
+        config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf-with-dsym'
+        config.build_settings['GCC_GENERATE_DEBUGGING_SYMBOLS'] = 'YES'
+        config.build_settings['STRIP_INSTALLED_PRODUCT'] = 'NO'
       end
     end
 
@@ -48,6 +53,17 @@ target 'MyCrossPlatformApp' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+    
+    # 修复Hermes dSYM问题
+    installer.pods_project.targets.each do |target|
+      if target.name == 'hermes-engine'
+        target.build_configurations.each do |config|
+          config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf-with-dsym'
+          config.build_settings['GCC_GENERATE_DEBUGGING_SYMBOLS'] = 'YES'
+          config.build_settings['STRIP_INSTALLED_PRODUCT'] = 'NO'
+        end
+      end
+    end
   end
 
   pod 'SocketRocket', '= 0.7.1'
