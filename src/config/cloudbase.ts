@@ -83,6 +83,12 @@ export const CLOUDBASE_CONFIG = {
     VERIFICATION_CODE_EXPIRY: 10 * 60 * 1000, // 验证码过期时间（10分钟）
   },
   
+  // 微信配置
+  WECHAT: {
+    APP_ID: 'wx_your_app_id_here', // TODO: 替换为你的微信AppId
+    UNIVERSAL_LINK: 'https://faceglow.app/', // TODO: 替换为你的Universal Link
+  },
+  
   // 存储配置
   STORAGE: {
     // MMKV存储键名

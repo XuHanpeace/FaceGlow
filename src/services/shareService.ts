@@ -41,9 +41,14 @@ class ShareService {
    */
   async isWeChatInstalled(): Promise<boolean> {
     try {
-      return await WeChat.isWXAppInstalled();
-    } catch (error) {
-      console.error('检查微信安装状态失败:', error);
+      // 直接检查，不需要先注册
+      // react-native-wechat-lib 的 isWXAppInstalled 方法可以独立调用
+      const installed = await WeChat.isWXAppInstalled();
+      console.log('✅ 微信安装状态:', installed);
+      return installed;
+    } catch (error: any) {
+      console.warn('⚠️ 检查微信安装状态失败（可能未安装微信）:', error.message);
+      // 检查失败通常意味着未安装微信，返回false
       return false;
     }
   }
