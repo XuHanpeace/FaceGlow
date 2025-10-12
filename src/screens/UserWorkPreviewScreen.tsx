@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,11 +8,16 @@ import {
   StatusBar,
   Dimensions,
   ScrollView,
+  FlatList,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { UserWorkModel } from '../types/model/user_works';
+import { ImageComparison } from '../components/ImageComparison';
+import { shareService } from '../services/shareService';
+import { ShareModal } from '../components/ShareModal';
+import { Alert } from 'react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -24,46 +29,84 @@ const UserWorkPreviewScreen: React.FC = () => {
   const route = useRoute<UserWorkPreviewScreenRouteProp>();
   const { work } = route.params;
   
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [selectedResultIndex, setSelectedResultIndex] = useState(0);
+  const [showComparison, setShowComparison] = useState(true);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareImageUrl, setShareImageUrl] = useState<string>('');
+  const flatListRef = useRef<FlatList>(null);
 
   const handleBackPress = () => {
     navigation.goBack();
   };
 
-  const handleImagePress = (index: number) => {
-    setSelectedImageIndex(index);
+  const handleSharePress = () => {
+    const currentResult = work.result_data?.[selectedResultIndex];
+    if (currentResult) {
+      setShareImageUrl(currentResult.result_image);
+      setShowShareModal(true);
+    }
   };
 
-  // 获取所有换脸结果图片
-  const getAllImages = () => {
-    const images = [];
-    
-    // 添加活动图片
-    if (work.activity_image) {
-      images.push({
-        url: work.activity_image,
-        type: 'activity',
-        title: '活动图片'
-      });
-    }
-    
-    // 添加所有换脸结果
-    if (work.result_data && work.result_data.length > 0) {
-      work.result_data.forEach((result, index) => {
-        images.push({
-          url: result.result_image,
-          type: 'result',
-          title: `换脸结果 ${index + 1}`,
-          templateId: result.template_id
-        });
-      });
-    }
-    
-    return images;
+  // 分享选项配置
+  const getShareOptions = () => [
+    {
+      id: 'save',
+      icon: '💾',
+      label: '保存到相册',
+      onPress: async () => {
+        const result = await shareService.saveImageToAlbum(shareImageUrl);
+        if (result.success) {
+          Alert.alert('✅ 成功', '图片已保存到相册');
+        } else {
+          Alert.alert('提示', result.error || '保存失败');
+        }
+      },
+    },
+    {
+      id: 'wechat',
+      icon: '💬',
+      label: '微信好友',
+      onPress: async () => {
+        const result = await shareService.shareToWeChatSession(shareImageUrl);
+        if (!result.success) {
+          Alert.alert('提示', result.error || '分享失败');
+        }
+      },
+    },
+    {
+      id: 'moments',
+      icon: '🔗',
+      label: '朋友圈',
+      onPress: async () => {
+        const result = await shareService.shareToWeChatTimeline(shareImageUrl);
+        if (!result.success) {
+          Alert.alert('提示', result.error || '分享失败');
+        }
+      },
+    },
+  ];
+
+  const handleScroll = (event: any) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const index = Math.round(offsetX / screenWidth);
+    setSelectedResultIndex(index);
   };
 
-  const allImages = getAllImages();
-  const selectedImage = allImages[selectedImageIndex];
+  // 获取自拍照URL（从ext_data中解析）
+  const getSelfieUrl = (): string | null => {
+    try {
+      if (work.ext_data) {
+        const extData = JSON.parse(work.ext_data);
+        return extData.selfie_url || null;
+      }
+    } catch (error) {
+      console.error('解析ext_data失败:', error);
+    }
+    return null;
+  };
+
+  const selfieUrl = getSelfieUrl();
+  const currentResult = work.result_data?.[selectedResultIndex];
 
   return (
     <View style={styles.container}>
@@ -77,34 +120,88 @@ const UserWorkPreviewScreen: React.FC = () => {
         <Text style={styles.headerTitle} numberOfLines={1}>
           {work.activity_title}
         </Text>
-        <View style={styles.placeholder} />
+        <TouchableOpacity style={styles.shareButton} onPress={handleSharePress}>
+          <Text style={styles.shareIcon}>↗️</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* 主图片展示区域 */}
-      <View style={styles.mainImageContainer}>
-        {selectedImage ? (
-          <Image 
-            source={{ uri: selectedImage.url }} 
-            style={styles.mainImage}
-            resizeMode="cover"
-          />
-        ) : (
-          <View style={styles.noImageContainer}>
-            <Text style={styles.noImageText}>暂无图片</Text>
+      {/* 对比模式切换按钮 */}
+      <View style={styles.comparisonToggle}>
+        <TouchableOpacity
+          style={[styles.toggleButton, showComparison && styles.toggleButtonActive]}
+          onPress={() => setShowComparison(true)}
+        >
+          <Text style={[styles.toggleText, showComparison && styles.toggleTextActive]}>
+            对比模式
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.toggleButton, !showComparison && styles.toggleButtonActive]}
+          onPress={() => setShowComparison(false)}
+        >
+          <Text style={[styles.toggleText, !showComparison && styles.toggleTextActive]}>
+            单图模式
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* 主图片展示区域 - 左右滑动 */}
+      <FlatList
+        ref={flatListRef}
+        data={work.result_data || []}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        keyExtractor={(item, index) => `result-${index}`}
+        renderItem={({ item, index }) => (
+          <View style={styles.imageSlide}>
+            {showComparison && selfieUrl && item.template_image ? (
+              // 对比模式：显示换脸前后对比
+              <ImageComparison
+                beforeImage={item.template_image}
+                afterImage={item.result_image}
+                width={screenWidth}
+                height={screenHeight * 0.6}
+              />
+            ) : (
+              // 单图模式：只显示换脸结果
+              <Image
+                source={{ uri: item.result_image }}
+                style={styles.resultImage}
+                resizeMode="cover"
+              />
+            )}
+            
+            {/* 图片信息覆盖层 */}
+            <View style={styles.imageOverlay}>
+              <Text style={styles.imageTitle}>
+                换脸结果 {index + 1} / {work.result_data?.length || 0}
+              </Text>
+            </View>
           </View>
         )}
-        
-        {/* 图片信息覆盖层 */}
-        <View style={styles.imageOverlay}>
-          <Text style={styles.imageTitle}>{selectedImage?.title || '未知'}</Text>
-        </View>
-      </View>
+      />
 
-      {/* 作品信息区域 */}
-      <View style={styles.infoContainer}>
-        <Text style={styles.workTitle}>{work.activity_title}</Text>
-        <Text style={styles.workDescription}>{work.activity_description}</Text>
-        
+      {/* 底部信息区域 */}
+      <View style={styles.bottomContainer}>
+        {/* 指示器 */}
+        {work.result_data && work.result_data.length > 1 && (
+          <View style={styles.indicatorContainer}>
+            {work.result_data.map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.indicator,
+                  index === selectedResultIndex && styles.activeIndicator,
+                ]}
+              />
+            ))}
+          </View>
+        )}
+
+        {/* 作品统计 */}
         <View style={styles.workStats}>
           <View style={styles.statItem}>
             <Text style={styles.statIcon}>❤️</Text>
@@ -117,43 +214,19 @@ const UserWorkPreviewScreen: React.FC = () => {
           <View style={styles.statItem}>
             <Text style={styles.statIcon}>📅</Text>
             <Text style={styles.statText}>
-              {work.created_at ? new Date(work.created_at).toLocaleDateString() : '未知时间'}
+              {work.created_at ? new Date(work.created_at).toLocaleDateString() : '未知'}
             </Text>
           </View>
         </View>
       </View>
 
-      {/* 缩略图列表 */}
-      {allImages.length > 1 && (
-        <View style={styles.thumbnailContainer}>
-          <Text style={styles.thumbnailTitle}>浏览图片</Text>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.thumbnailList}
-          >
-            {allImages.map((image, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.thumbnailItem,
-                  selectedImageIndex === index && styles.selectedThumbnail
-                ]}
-                onPress={() => handleImagePress(index)}
-              >
-                <Image 
-                  source={{ uri: image.url }} 
-                  style={styles.thumbnailImage}
-                  resizeMode="cover"
-                />
-                <Text style={styles.thumbnailLabel} numberOfLines={1}>
-                  {image.title}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      )}
+      {/* 分享Modal */}
+      <ShareModal
+        visible={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        options={getShareOptions()}
+        title="分享作品"
+      />
     </View>
   );
 };
@@ -186,6 +259,17 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
   },
+  shareButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  shareIcon: {
+    fontSize: 16,
+  },
   headerTitle: {
     color: '#fff',
     fontSize: 18,
@@ -194,26 +278,40 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginHorizontal: 20,
   },
-  placeholder: {
-    width: 40,
+  comparisonToggle: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    gap: 12,
   },
-  mainImageContainer: {
+  toggleButton: {
     flex: 1,
-    position: 'relative',
-  },
-  mainImage: {
-    width: '100%',
-    height: '100%',
-  },
-  noImageContainer: {
-    flex: 1,
-    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     alignItems: 'center',
   },
-  noImageText: {
+  toggleButtonActive: {
+    backgroundColor: '#5EE7DF',
+  },
+  toggleText: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  toggleTextActive: {
     color: '#fff',
-    fontSize: 16,
-    opacity: 0.6,
+    fontWeight: '600',
+  },
+  imageSlide: {
+    width: screenWidth,
+    height: screenHeight * 0.6,
+    position: 'relative',
+  },
+  resultImage: {
+    width: '100%',
+    height: '100%',
   },
   imageOverlay: {
     position: 'absolute',
@@ -228,23 +326,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
   },
-  infoContainer: {
-    padding: 20,
+  bottomContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.1)',
   },
-  workTitle: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 8,
+  indicatorContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 20,
   },
-  workDescription: {
-    color: '#fff',
-    fontSize: 14,
-    opacity: 0.8,
-    lineHeight: 20,
-    marginBottom: 16,
+  indicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    marginHorizontal: 4,
+  },
+  activeIndicator: {
+    backgroundColor: '#5EE7DF',
   },
   workStats: {
     flexDirection: 'row',
@@ -261,38 +362,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     opacity: 0.7,
-  },
-  thumbnailContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-  thumbnailTitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  thumbnailList: {
-    paddingRight: 20,
-  },
-  thumbnailItem: {
-    marginRight: 12,
-    alignItems: 'center',
-  },
-  selectedThumbnail: {
-    opacity: 0.8,
-  },
-  thumbnailImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    marginBottom: 4,
-  },
-  thumbnailLabel: {
-    color: '#fff',
-    fontSize: 10,
-    opacity: 0.7,
-    textAlign: 'center',
   },
 });
 

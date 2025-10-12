@@ -4,9 +4,9 @@ export interface CloudBaseAuthResponse {
   access_token: string;
   refresh_token: string;
   expires_in: number;
-  scope: string;
+  scope?: string;  // 可选字段，某些响应中可能不包含
   sub: string;
-  groups: string[];
+  groups?: string[];  // 可选字段，某些响应中可能不包含
 }
 
 // 用户认证信息（适配后的格式）

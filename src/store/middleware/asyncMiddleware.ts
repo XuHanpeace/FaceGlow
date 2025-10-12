@@ -45,7 +45,7 @@ export interface Template {
 
 // 用户登录
 export const loginUser = createAsyncThunk<
-  { uid: string; token: string },
+  { uid: string; token: string; refreshToken: string; expiresIn: number; expiresAt: number },
   LoginCredentials,
   { rejectValue: string }
 >(
@@ -54,7 +54,13 @@ export const loginUser = createAsyncThunk<
     try {
       const result = await authService.loginWithPassword(credentials.username, credentials.password);
       if (result.success && result.data) {
-        return { uid: result.data.uid,token: result.data.accessToken };
+        return { 
+          uid: result.data.uid,
+          token: result.data.accessToken,
+          refreshToken: result.data.refreshToken,
+          expiresIn: result.data.expiresIn,
+          expiresAt: result.data.expiresAt
+        };
       } else {
         return rejectWithValue(result.error?.message || '登录失败');
       }
@@ -66,7 +72,7 @@ export const loginUser = createAsyncThunk<
 
 // 用户注册
 export const registerUser = createAsyncThunk<
-  { uid: string; token: string },
+  { uid: string; token: string; refreshToken: string; expiresIn: number; expiresAt: number },
   RegisterCredentials,
   { rejectValue: string }
 >(
@@ -82,7 +88,13 @@ export const registerUser = createAsyncThunk<
       );
       
       if (result.success && result.data) {
-        return { uid: result.data.uid, token: result.data.accessToken };
+        return { 
+          uid: result.data.uid, 
+          token: result.data.accessToken,
+          refreshToken: result.data.refreshToken,
+          expiresIn: result.data.expiresIn,
+          expiresAt: result.data.expiresAt
+        };
       } else {
         return rejectWithValue(result.error?.message || '注册失败');
       }

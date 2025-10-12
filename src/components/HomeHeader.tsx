@@ -116,6 +116,7 @@ const styles = StyleSheet.create({
   },
   balanceIcon: {
     fontSize: 16,
+    marginLeft: 4,
   },
   rightContainer: {
     flexDirection: 'row',

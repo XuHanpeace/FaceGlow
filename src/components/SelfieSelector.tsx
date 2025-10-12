@@ -278,11 +278,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  closeIcon: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
   selfieList: {
     paddingHorizontal: 20,
     paddingVertical: 16,

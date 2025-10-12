@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   },
   workStats: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 12,
   },
   statText: {
     color: '#fff',

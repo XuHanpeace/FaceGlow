@@ -20,6 +20,8 @@ import { balanceService } from '../services/balanceService';
 import { useAuthState } from '../hooks/useAuthState';
 import { UserWorkModel, ResultData } from '../types/model/user_works';
 import { authService } from '../services/auth/authService';
+import { shareService } from '../services/shareService';
+import { ShareModal } from '../components/ShareModal';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -40,6 +42,8 @@ const CreationResultScreen: React.FC = () => {
   const [fusionResults, setFusionResults] = useState<{ [templateId: string]: string }>({});
   const [showComparison, setShowComparison] = useState(false);
   const [failedTemplates, setFailedTemplates] = useState<{ [templateId: string]: string }>({});
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareImageUrl, setShareImageUrl] = useState<string>('');
 
   const selectedTemplate = albumData.template_list.find(
     template => template.template_id === selectedTemplateId
@@ -236,14 +240,57 @@ const CreationResultScreen: React.FC = () => {
   };
 
   const handleSharePress = () => {
-    Alert.alert(
-      '🚀 分享作品',
-      '分享功能正在开发中，敬请期待哦～',
-      [
-        { text: '✨ 好的' }
-      ]
-    );
+    // 获取当前选中的换脸结果
+    const currentResult = selectedResult;
+    
+    if (!currentResult) {
+      Alert.alert('提示', '请先完成换脸后再分享');
+      return;
+    }
+    
+    // 显示分享Modal
+    setShareImageUrl(currentResult);
+    setShowShareModal(true);
   };
+
+  // 分享选项配置
+  const getShareOptions = () => [
+    {
+      id: 'save',
+      icon: '💾',
+      label: '保存到相册',
+      onPress: async () => {
+        const result = await shareService.saveImageToAlbum(shareImageUrl);
+        if (result.success) {
+          Alert.alert('✅ 成功', '图片已保存到相册');
+        } else {
+          Alert.alert('提示', result.error || '保存失败');
+        }
+      },
+    },
+    {
+      id: 'wechat',
+      icon: '💬',
+      label: '微信好友',
+      onPress: async () => {
+        const result = await shareService.shareToWeChatSession(shareImageUrl);
+        if (!result.success) {
+          Alert.alert('提示', result.error || '分享失败');
+        }
+      },
+    },
+    {
+      id: 'moments',
+      icon: '🔗',
+      label: '朋友圈',
+      onPress: async () => {
+        const result = await shareService.shareToWeChatTimeline(shareImageUrl);
+        if (!result.success) {
+          Alert.alert('提示', result.error || '分享失败');
+        }
+      },
+    },
+  ];
 
   const handleTemplateSelect = (templateId: string) => {
     setSelectedTemplateId(templateId);
@@ -371,6 +418,14 @@ const CreationResultScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* 分享Modal */}
+      <ShareModal
+        visible={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        options={getShareOptions()}
+        title="分享作品"
+      />
     </View>
   );
 };

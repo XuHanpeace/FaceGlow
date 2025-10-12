@@ -106,8 +106,8 @@ export class AuthService {
       // 调用腾讯云官方注册API
       const response: CloudBaseAuthResponse = await cloudBaseAuthService.signup(requestData);
 
-      // 转换为内部格式
-      const credentials: AuthCredentials = cloudBaseAuthService.convertToAuthCredentials(response);
+      // 转换为内部格式（注册的用户不是匿名用户）
+      const credentials: AuthCredentials = cloudBaseAuthService.convertToAuthCredentials(response, false);
 
       // 保存认证信息到本地存储
       this.saveAuthCredentials(credentials);
@@ -153,8 +153,8 @@ export class AuthService {
       // 调用腾讯云官方登录API
       const response: CloudBaseAuthResponse = await cloudBaseAuthService.login(requestData);
 
-      // 转换为内部格式
-      const credentials: AuthCredentials = cloudBaseAuthService.convertToAuthCredentials(response);
+      // 转换为内部格式（登录的用户不是匿名用户）
+      const credentials: AuthCredentials = cloudBaseAuthService.convertToAuthCredentials(response, false);
 
       // 保存认证信息到本地存储
       this.saveAuthCredentials(credentials);
@@ -210,8 +210,8 @@ export class AuthService {
         response.scope = 'anonymous';
       }
 
-      // 转换为内部格式
-      const credentials: AuthCredentials = cloudBaseAuthService.convertToAuthCredentials(response);
+      // 转换为内部格式（明确标记为匿名用户）
+      const credentials: AuthCredentials = cloudBaseAuthService.convertToAuthCredentials(response, true);
 
       console.log('🔄 转换后的credentials:', {
         isAnonymous: credentials.isAnonymous,
@@ -261,32 +261,21 @@ export class AuthService {
 
       // 保存刷新前的匿名用户状态
       const wasAnonymous = this.isAnonymous();
-      const storedIsAnonymous = storage.getBoolean(STORAGE_KEYS.IS_ANONYMOUS);
-      console.log('📡 调用CloudBase刷新API...', { 
-        wasAnonymous, 
-        storedIsAnonymous,
-        hasRefreshToken: !!refreshToken 
-      });
+      
+      // 获取当前的access_token用于Authorization头
+      const currentAccessToken = storage.getString(STORAGE_KEYS.ACCESS_TOKEN);
       
       // 调用腾讯云官方刷新API
-      const response: CloudBaseAuthResponse = await cloudBaseAuthService.refreshToken(refreshToken);
+      const response: CloudBaseAuthResponse = await cloudBaseAuthService.refreshToken(refreshToken, currentAccessToken);
 
-      console.log('✅ CloudBase刷新API调用成功:', {
-        tokenType: response.token_type,
-        expiresIn: response.expires_in,
-        scope: response.scope,
-        sub: response.sub,
-      });
+      console.log('✅ CloudBase刷新API调用成功');
 
-      // 转换为内部格式
-      const credentials: AuthCredentials = cloudBaseAuthService.convertToAuthCredentials(response);
-
-      // 如果原来是匿名用户，刷新后保持匿名状态
-      // 检查存储中的原始值，因为isAnonymous()可能返回undefined
-      if (storedIsAnonymous === true || (wasAnonymous === true && !credentials.isAnonymous)) {
-        console.log('⚠️ 检测到匿名用户刷新token，保持匿名状态');
-        credentials.isAnonymous = true;
-      }
+      // 转换为内部格式，保持原有的匿名状态
+      // 刷新token时，用户类型不会改变
+      const credentials: AuthCredentials = cloudBaseAuthService.convertToAuthCredentials(
+        response, 
+        wasAnonymous  // 传递原来的匿名状态
+      );
 
       console.log('🔄 更新本地存储的认证信息...', { isAnonymous: credentials.isAnonymous });
 
@@ -423,7 +412,6 @@ export class AuthService {
     console.log('🔐 保存认证信息到本地存储:', {
       uid: credentials.uid,
       expiresAt: new Date(credentials.expiresAt).toISOString(),
-      expiresIn: credentials.expiresIn,
       isAnonymous: credentials.isAnonymous,
     });
     
@@ -435,23 +423,6 @@ export class AuthService {
     // 确保匿名标记被正确保存
     const isAnonymousValue = credentials.isAnonymous === true;
     storage.set(STORAGE_KEYS.IS_ANONYMOUS, isAnonymousValue);
-    
-    console.log('💾 存储详情:', {
-      accessToken: !!credentials.accessToken,
-      refreshToken: !!credentials.refreshToken,
-      uid: credentials.uid,
-      expiresAt: credentials.expiresAt,
-      isAnonymousStored: isAnonymousValue,
-      storageKey: STORAGE_KEYS.IS_ANONYMOUS
-    });
-    
-    // 立即验证存储是否成功
-    const storedIsAnonymous = storage.getBoolean(STORAGE_KEYS.IS_ANONYMOUS);
-    console.log('✅ 存储验证:', {
-      expected: isAnonymousValue,
-      actual: storedIsAnonymous,
-      match: isAnonymousValue === storedIsAnonymous
-    });
   }
 
   /**
@@ -595,7 +566,7 @@ export class AuthService {
   async ensureAuthenticated(): Promise<AuthResponse> {
     console.log('🔐 确保登录态（允许匿名）...');
     
-    // 检查是否已经有有效的认证态（包括匿名用户）
+    // 检查是否已经有有效的认证态（包括匿名用户和真实用户）
     if (this.hasValidAuth()) {
       console.log('✅ 已有有效认证态');
       const token = this.getCurrentAccessToken();
@@ -605,11 +576,9 @@ export class AuthService {
       
       console.log('🔍 检查现有认证态:', { token: !!token, uid, isAnonymous });
       
-      // 如果token存在但没有明确的匿名标记，或者被错误标记为非匿名，强制重新匿名登录
-      if (token && uid && expiresAt && (isAnonymous === undefined || isAnonymous === false)) {
-        console.log('⚠️ 检测到错误的匿名状态，强制重新匿名登录', { isAnonymous });
-        this.debugClearAllAuth();
-      } else if (token && uid && expiresAt) {
+      // 如果有完整的认证信息，直接返回（不管是真实用户还是匿名用户）
+      if (token && uid && expiresAt) {
+        console.log('✅ 返回现有认证态:', { isAnonymous, uid });
         return {
           success: true,
           data: {
@@ -637,11 +606,7 @@ export class AuthService {
     }
     
     // 没有登录态或刷新失败，进行匿名登录
-    console.log('🎭 执行匿名登录...');
-    
-    // 调试：清除所有认证数据确保干净的匿名登录
-    this.debugClearAllAuth();
-    
+    console.log('🎭 没有有效登录态，执行匿名登录...');
     return await this.anonymousLogin();
   }
 

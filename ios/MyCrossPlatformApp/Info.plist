@@ -10,6 +10,8 @@
 	<string>需要访问相机来拍摄照片</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>需要访问相册来选择照片</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>需要访问相册来保存您的作品</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleExecutable</key>

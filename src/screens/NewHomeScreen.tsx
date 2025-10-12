@@ -21,7 +21,6 @@ import { fetchActivities } from '../store/slices/activitySlice';
 import { useUser } from '../hooks/useUser';
 import { useAuthState } from '../hooks/useAuthState';
 import { authService } from '../services/auth/authService';
-import { Alert } from 'react-native';
 
 type NewHomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 

@@ -112,9 +112,9 @@ const NewAuthScreen: React.FC = () => {
           setAuthData({
             uid: loginResult.uid,
             accessToken: loginResult.token,
-            refreshToken: loginResult.token, // 暂时使用相同token
-            expiresIn: 3600, // 1小时
-            expiresAt: Date.now() + 3600000, // 1小时后过期
+            refreshToken: loginResult.refreshToken,
+            expiresIn: loginResult.expiresIn,
+            expiresAt: loginResult.expiresAt,
           });
           // 登录成功，直接关闭当前页面并返回主页
           navigation.goBack();
@@ -140,9 +140,9 @@ const NewAuthScreen: React.FC = () => {
           setAuthData({
             uid: registerResult.uid,
             accessToken: registerResult.token,
-            refreshToken: registerResult.token, // 暂时使用相同token
-            expiresIn: 3600, // 1小时
-            expiresAt: Date.now() + 3600000, // 1小时后过期
+            refreshToken: registerResult.refreshToken,
+            expiresIn: registerResult.expiresIn,
+            expiresAt: registerResult.expiresAt,
           });
           // 注册成功，直接关闭当前页面并返回主页
           navigation.goBack();
@@ -191,9 +191,9 @@ const NewAuthScreen: React.FC = () => {
         setAuthData({
           uid: result.uid,
           accessToken: result.token,
-          refreshToken: result.token, // 暂时使用相同token
-          expiresIn: 3600, // 1小时
-          expiresAt: Date.now() + 3600000, // 1小时后过期
+          refreshToken: result.refreshToken,
+          expiresIn: result.expiresIn,
+          expiresAt: result.expiresAt,
         });
         // 登录成功，直接关闭当前页面并返回主页
         navigation.goBack();

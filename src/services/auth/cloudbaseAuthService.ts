@@ -60,9 +60,17 @@ export class CloudBaseAuthService {
    */
   async signup(requestData: RegisterRequest): Promise<CloudBaseAuthResponse> {
     try {
+      // 获取设备ID
+      const deviceId = getOrCreateDeviceId();
+      
       const response: AxiosResponse<CloudBaseAuthResponse> = await this.axiosInstance.post(
         CLOUDBASE_CONFIG.AUTH_API.ENDPOINTS.SIGNUP,
-        requestData
+        requestData,
+        {
+          headers: {
+            'x-device-id': deviceId,
+          }
+        }
       );
 
       return response.data;
@@ -81,11 +89,20 @@ export class CloudBaseAuthService {
    */
   async login(requestData: LoginRequest): Promise<CloudBaseAuthResponse> {
     try {
+      // 获取设备ID
+      const deviceId = getOrCreateDeviceId();
+      
       const response: AxiosResponse<CloudBaseAuthResponse> = await this.axiosInstance.post(
         CLOUDBASE_CONFIG.AUTH_API.ENDPOINTS.LOGIN,
-        requestData
+        requestData,
+        {
+          headers: {
+            'x-device-id': deviceId,
+          }
+        }
       );
 
+      console.log('✅ 登录成功');
       return response.data;
     } catch (error: any) {
       if (error.response?.data) {
@@ -128,25 +145,40 @@ export class CloudBaseAuthService {
   /**
    * 刷新访问令牌
    * @param refreshToken 刷新令牌
+   * @param accessToken 当前访问令牌（用于Authorization头）
    * @returns Promise<CloudBaseAuthResponse>
    */
-  async refreshToken(refreshToken: string): Promise<CloudBaseAuthResponse> {
+  async refreshToken(refreshToken: string, accessToken?: string): Promise<CloudBaseAuthResponse> {
     try {
-      console.log('🔄 调用CloudBase刷新Token API...');
+      const deviceId = getOrCreateDeviceId();
+      
+      const requestData = {
+        grant_type: "refresh_token",
+        refresh_token: refreshToken
+      };
+      
+      const headers: any = {
+        'x-device-id': deviceId,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+      
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
       
       const response: AxiosResponse<CloudBaseAuthResponse> = await this.axiosInstance.post(
         CLOUDBASE_CONFIG.AUTH_API.ENDPOINTS.REFRESH,
+        requestData,
         {
-          client_id: CLOUDBASE_CONFIG.CLIENT_ID,
-          grant_type: "refresh_token",
-          refresh_token: refreshToken
+          headers
         }
       );
 
-      console.log('✅ CloudBase刷新Token API调用成功');
+      console.log('✅ Token刷新成功');
       return response.data;
     } catch (error: any) {
-      console.error('❌ CloudBase刷新Token API调用失败:', error);
+      console.error('❌ Token刷新失败:', error.response?.data || error.message);
       if (error.response?.data) {
         throw new Error(error.response.data.error_description || error.response.data.error || '令牌刷新失败');
       }
@@ -204,17 +236,13 @@ export class CloudBaseAuthService {
   /**
    * 将腾讯云API响应转换为内部格式
    * @param response 腾讯云API响应
+   * @param forceAnonymous 是否强制设置为匿名（用于匿名登录）
    * @returns AuthCredentials
    */
-  convertToAuthCredentials(response: CloudBaseAuthResponse): AuthCredentials {
-    const isAnonymous = response.scope === 'anonymous';
-    
-    console.log('🔄 convertToAuthCredentials 转换:', {
-      originalScope: response.scope,
-      isAnonymous,
-      uid: response.sub,
-      tokenType: response.token_type
-    });
+  convertToAuthCredentials(response: CloudBaseAuthResponse, forceAnonymous?: boolean): AuthCredentials {
+    // 只有明确是匿名登录时才设置为 true
+    // 如果 forceAnonymous 没有传值，则根据 scope 判断，但默认为 false
+    const isAnonymous = forceAnonymous === true || response.scope === 'anonymous';
     
     return {
       uid: response.sub,

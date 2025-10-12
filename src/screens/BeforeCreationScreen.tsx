@@ -83,13 +83,21 @@ const BeforeCreationScreen: React.FC = () => {
   };
 
   const handleSavePress = () => {
-    // 处理保存功能
-    console.log('Save pressed');
+    // 处理保存功能 - 提示用户先完成换脸
+    Alert.alert(
+      '💡 提示',
+      '请先完成AI换脸后再保存作品',
+      [{ text: '好的', style: 'default' }]
+    );
   };
 
   const handleSharePress = () => {
-    // 处理分享功能
-    console.log('Share pressed');
+    // 处理分享功能 - 提示用户先完成换脸
+    Alert.alert(
+      '💡 提示', 
+      '请先完成AI换脸后再分享作品',
+      [{ text: '好的', style: 'default' }]
+    );
   };
 
   const handleUseStylePress = async () => {
