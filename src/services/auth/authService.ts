@@ -188,6 +188,52 @@ export class AuthService {
   }
 
   /**
+   * 使用手机号和验证码登录
+   * @param phoneNumber 手机号
+   * @param verificationCode 验证码
+   * @param verificationId 验证码ID
+   * @returns Promise<AuthResponse>
+   */
+  async loginWithPhone(
+    phoneNumber: string,
+    verificationCode: string,
+    verificationId: string
+  ): Promise<AuthResponse> {
+    try {
+      // 验证验证码
+      const verificationToken = await verificationService.verifyCode(verificationId, verificationCode);
+      
+      // 构建登录请求数据
+      const requestData: LoginRequest = {
+        phone_number: phoneNumber.startsWith('+86') ? phoneNumber : `+86${phoneNumber}`,
+        verification_token: verificationToken,
+      };
+      
+      // 调用腾讯云官方登录API
+      const response: CloudBaseAuthResponse = await cloudBaseAuthService.login(requestData);
+
+      // 转换为内部格式（登录的用户不是匿名用户）
+      const credentials: AuthCredentials = cloudBaseAuthService.convertToAuthCredentials(response, false);
+
+      // 保存认证信息到本地存储
+      this.saveAuthCredentials(credentials);
+
+      return {
+        success: true,
+        data: credentials,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: {
+          code: 'LOGIN_ERROR',
+          message: error.message || '登录失败',
+        },
+      };
+    }
+  }
+
+  /**
    * 匿名登录
    * @returns Promise<AuthResponse>
    */

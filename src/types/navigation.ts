@@ -25,6 +25,11 @@ export type RootStackParamList = {
   Notifications: undefined;
   Login: undefined;
   NewAuth: undefined;
+  VerificationCode: {
+    phoneNumber: string;
+    verificationId: string;
+    authMode: 'phone-verify' | 'register';
+  };
   Subscription: undefined;
   CoinPurchase: undefined;
   ServiceTest: undefined;

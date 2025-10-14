@@ -45,10 +45,12 @@ export interface RegisterRequest {
   locale?: string;              // 地区（可选）
 }
 
-// 登录请求参数
+// 登录请求参数（支持用户名密码登录和手机验证码登录）
 export interface LoginRequest {
-  username: string;
-  password: string;
+  username?: string;                // 用户名（用户名密码登录时必传）
+  password?: string;                // 密码（用户名密码登录时必传）
+  phone_number?: string;            // 手机号（手机验证码登录时必传）
+  verification_token?: string;      // 验证码Token（手机验证码登录时必传）
 }
 
 // 认证响应

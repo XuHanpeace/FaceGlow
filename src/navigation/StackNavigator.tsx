@@ -11,6 +11,7 @@ import NewProfileScreen from '../screens/NewProfileScreen';
 import TestCenterScreen from '../screens/TestCenterScreen';
 import SelfieGuideScreen from '../screens/SelfieGuideScreen';
 import NewAuthScreen from '../screens/NewAuthScreen';
+import VerificationCodeScreen from '../screens/VerificationCodeScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
 import CoinPurchaseScreen from '../screens/CoinPurchaseScreen';
 import ServiceTestScreen from '../screens/ServiceTestScreen';
@@ -96,6 +97,15 @@ const StackNavigator = () => {
         options={{
           headerShown: false,
           animation: 'slide_from_bottom',
+          animationDuration: 250,
+        }}
+      />
+      <Stack.Screen
+        name="VerificationCode"
+        component={VerificationCodeScreen}
+        options={{
+          headerShown: false,
+          animation: 'slide_from_right',
           animationDuration: 250,
         }}
       />

@@ -11,38 +11,56 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
+  Linking,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
-import { useAppDispatch } from '../store/hooks';
-import { sendVerificationCode, loginUser, registerUser } from '../store/middleware/asyncMiddleware';
 import { useAuthState } from '../hooks/useAuthState';
+import { authService, verificationService } from '../services/auth';
+import { MMKV } from 'react-native-mmkv';
+
+const storage = new MMKV();
 
 type NewAuthScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+// 判断是否是新设备（从未登录过正式账号）
+const isNewDevice = (): boolean => {
+  const accessToken = storage.getString('accessToken');
+  const isAnonymous = storage.getBoolean('isAnonymous');
+  
+  // 如果没有token，或者只有匿名token，则认为是新设备
+  if (!accessToken || isAnonymous) {
+    return true;
+  }
+  return false;
+};
+
+type AuthMode = 'phone-verify' | 'password' | 'register';
+
 const NewAuthScreen: React.FC = () => {
   const navigation = useNavigation<NewAuthScreenNavigationProp>();
-  const dispatch = useAppDispatch();
   const { setAuthData } = useAuthState();
   
-  // 状态管理
-  const [loginMode, setLoginMode] = useState<'password' | 'phone'>('password'); // 默认账号密码登录
-  const [step, setStep] = useState<'phone' | 'code'>('phone');
+  // 判断初始模式：新设备显示注册，老设备显示登录
+  const [authMode, setAuthMode] = useState<AuthMode>(isNewDevice() ? 'register' : 'phone-verify');
+  
+  // 表单数据
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [verificationCode, setVerificationCode] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
+  
+  // UI状态
   const [isLoading, setIsLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
-  const [isNewUser, setIsNewUser] = useState(false);
   
   // 输入框引用
   const phoneInputRef = useRef<TextInput>(null);
-  const codeInputRef = useRef<TextInput>(null);
   
   const screenWidth = Dimensions.get('window').width;
-  const screenHeight = Dimensions.get('window').height;
 
   // 倒计时效果
   useEffect(() => {
@@ -53,6 +71,8 @@ const NewAuthScreen: React.FC = () => {
     return () => clearTimeout(timer);
   }, [countdown]);
 
+  // 手机号到验证码的转场动画
+
   const handleClosePress = () => {
     navigation.goBack();
   };
@@ -62,27 +82,35 @@ const NewAuthScreen: React.FC = () => {
     return phoneRegex.test(phone);
   };
 
+  // 发送验证码
   const handleSendCode = async () => {
     if (!validatePhoneNumber(phoneNumber)) {
       Alert.alert('手机号格式错误', '请输入正确的11位手机号码');
       return;
     }
 
+    if (countdown > 0) {
+      return;
+    }
+
+    // 注册模式下检查是否同意用户协议
+    if (authMode === 'register' && !agreeToTerms) {
+      Alert.alert('提示', '请先同意用户协议');
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      const result = await dispatch(sendVerificationCode({ phoneNumber })).unwrap();
+      const result = await verificationService.sendPhoneVerification(phoneNumber);
       
-      if (result.verificationId) {
-        setStep('code');
-        setCountdown(60);
-        Alert.alert('验证码已发送', '请查看短信并输入验证码');
-        // 自动聚焦验证码输入框
-        setTimeout(() => {
-          codeInputRef.current?.focus();
-        }, 100);
-      } else {
-        Alert.alert('发送失败', '验证码发送失败，请重试');
-      }
+      Alert.alert('成功', '验证码已发送，请查收');
+      
+      // 导航到验证码输入页面
+      navigation.navigate('VerificationCode', {
+        phoneNumber: phoneNumber,
+        verificationId: result.verification_id,
+        authMode: authMode === 'register' ? 'register' : 'phone-verify',
+      });
     } catch (error: any) {
       Alert.alert('发送失败', error.message || '验证码发送失败，请重试');
     } finally {
@@ -90,130 +118,90 @@ const NewAuthScreen: React.FC = () => {
     }
   };
 
-  const handleVerifyCode = async () => {
-    if (verificationCode.length !== 6) {
-      Alert.alert('验证码错误', '请输入6位验证码');
-      return;
-    }
 
-    try {
-      setIsLoading(true);
-      
-      // 先尝试登录
-      try {
-        const loginResult = await dispatch(loginUser({
-          username: phoneNumber, // 使用手机号作为用户名
-          password: verificationCode // 使用验证码作为密码
-        })).unwrap();
-        
-        if (loginResult.uid && loginResult.token) {
-          setIsNewUser(false);
-          // 更新本地存储的认证数据
-          setAuthData({
-            uid: loginResult.uid,
-            accessToken: loginResult.token,
-            refreshToken: loginResult.refreshToken,
-            expiresIn: loginResult.expiresIn,
-            expiresAt: loginResult.expiresAt,
-          });
-          // 登录成功，直接关闭当前页面并返回主页
-          navigation.goBack();
-          return;
-        }
-      } catch (loginError) {
-        // 登录失败，尝试注册
-        console.log('登录失败，尝试注册');
-      }
-
-      // 尝试注册
-      try {
-        const registerResult = await dispatch(registerUser({
-          phoneNumber,
-          username: phoneNumber, // 使用手机号作为用户名
-          verificationCode,
-          verificationId: 'temp_verification_id' // TODO: 从sendVerificationCode返回中获取
-        })).unwrap();
-        
-        if (registerResult.uid && registerResult.token) {
-          setIsNewUser(true);
-          // 更新本地存储的认证数据
-          setAuthData({
-            uid: registerResult.uid,
-            accessToken: registerResult.token,
-            refreshToken: registerResult.refreshToken,
-            expiresIn: registerResult.expiresIn,
-            expiresAt: registerResult.expiresAt,
-          });
-          // 注册成功，直接关闭当前页面并返回主页
-          navigation.goBack();
-          return;
-        }
-      } catch (registerError: any) {
-        Alert.alert('验证失败', registerError.message || '验证码错误，请重试');
-      }
-    } catch (error: any) {
-      Alert.alert('验证失败', error.message || '验证失败，请重试');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleBackToPhone = () => {
-    setStep('phone');
-    setVerificationCode('');
-    setCountdown(0);
-    phoneInputRef.current?.focus();
-  };
-
-  // 账号密码登录处理
+  // 密码登录
   const handlePasswordLogin = async () => {
-    if (!username.trim()) {
-      Alert.alert('用户名不能为空', '请输入用户名');
-      return;
-    }
-    
-    if (!password.trim()) {
-      Alert.alert('密码不能为空', '请输入密码');
+    if (!username.trim() || !password.trim()) {
+      Alert.alert('提示', '请填写用户名和密码');
       return;
     }
 
+    setIsLoading(true);
     try {
-      setIsLoading(true);
+      const result = await authService.loginWithPassword(username, password);
       
-      // 调用账号密码登录API
-      const result = await dispatch(loginUser({
-        username: username.trim(),
-        password: password.trim()
-      })).unwrap();
-      
-      if (result.uid && result.token) {
-        // 更新本地存储的认证数据
-        setAuthData({
-          uid: result.uid,
-          accessToken: result.token,
-          refreshToken: result.refreshToken,
-          expiresIn: result.expiresIn,
-          expiresAt: result.expiresAt,
-        });
-        // 登录成功，直接关闭当前页面并返回主页
-        navigation.goBack();
+      if (result.success && result.data) {
+        setAuthData(result.data);
+        Alert.alert('成功', '登录成功！', [
+          { text: '确定', onPress: () => navigation.goBack() }
+        ]);
       } else {
-        Alert.alert('登录失败', '用户名或密码错误');
+        Alert.alert('登录失败', result.error?.message || '未知错误');
       }
     } catch (error: any) {
-      Alert.alert('登录失败', error.message || '登录失败，请重试');
+      Alert.alert('登录失败', error.message || '未知错误');
     } finally {
       setIsLoading(false);
     }
+  };
+
+
+  // 切换到注册模式
+  const switchToRegister = () => {
+    setAuthMode('register');
+    setPhoneNumber('');
+    setUsername('');
+    setPassword('');
+    setAgreeToTerms(false);
+  };
+
+  // 切换到登录模式
+  const switchToLogin = () => {
+    setAuthMode('phone-verify');
+    setPhoneNumber('');
+    setUsername('');
+    setPassword('');
+    setAgreeToTerms(false);
+  };
+
+  // 切换到密码登录
+  const switchToPasswordLogin = () => {
+    setAuthMode('password');
+    setUsername('');
+    setPassword('');
+  };
+
+  // 切换到验证码登录
+  const switchToPhoneVerify = () => {
+    setAuthMode('phone-verify');
+    setPhoneNumber('');
   };
 
   const formatPhoneNumber = (text: string) => {
-    // 只允许数字，最多11位
     const cleaned = text.replace(/\D/g, '');
-    if (cleaned.length <= 11) {
-      return cleaned;
-    }
     return cleaned.slice(0, 11);
+  };
+
+  // 打开用户协议
+  const handleOpenUserAgreement = () => {
+    Linking.openURL('https://xuhanpeace.github.io/facegolow-support/user-agreement.html');
+  };
+
+  // 打开隐私政策
+  const handleOpenPrivacyPolicy = () => {
+    Linking.openURL('https://xuhanpeace.github.io/facegolow-support/privacy-policy.html');
+  };
+
+  // 渲染标题
+  const getTitle = () => {
+    if (authMode === 'register') return '欢迎来到美颜换换';
+    if (authMode === 'password') return '账号密码登录';
+    return '手机号登录';
+  };
+
+  const getSubtitle = () => {
+    if (authMode === 'password') return '请输入账号密码登录';
+    return authMode === 'register' ? '请输入手机号开始体验' : '请输入手机号开始体验';
   };
 
   return (
@@ -223,79 +211,102 @@ const NewAuthScreen: React.FC = () => {
     >
       <StatusBar barStyle="light-content" translucent={true} backgroundColor="transparent" />
       
-      {/* 关闭按钮 */}
-      <TouchableOpacity style={styles.closeButton} onPress={handleClosePress}>
-        <Text style={styles.closeIcon}>✕</Text>
-      </TouchableOpacity>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.innerContainer}>
+          {/* 关闭按钮 */}
+          <TouchableOpacity style={styles.closeButton} onPress={handleClosePress}>
+            <Text style={styles.closeIcon}>✕</Text>
+          </TouchableOpacity>
 
-      {/* 主要内容 */}
-      <View style={styles.content}>
+          {/* 主要内容 */}
+          <View style={styles.content}>
         {/* 标题 */}
-        <Text style={styles.title}>
-          {loginMode === 'password' ? '欢迎使用FaceGlow' : (step === 'phone' ? '欢迎使用FaceGlow' : '输入验证码')}
-        </Text>
-        <Text style={styles.subtitle}>
-          {loginMode === 'password' 
-            ? '请输入账号密码登录' 
-            : (step === 'phone' 
-              ? '请输入手机号开始体验AI头像创作' 
-              : `验证码已发送至 ${phoneNumber.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')}`)
-          }
-        </Text>
+        <Text style={styles.title}>{getTitle()}</Text>
+        <Text style={styles.subtitle}>{getSubtitle()}</Text>
 
-        {/* 登录模式切换 */}
-        <View style={styles.modeSwitchContainer}>
-          <TouchableOpacity
-            style={[styles.modeButton, loginMode === 'password' && styles.modeButtonActive]}
-            onPress={() => setLoginMode('password')}
-          >
-            <Text style={[styles.modeButtonText, loginMode === 'password' && styles.modeButtonTextActive]}>
-              账号密码
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.modeButton, loginMode === 'phone' && styles.modeButtonActive]}
-            onPress={() => setLoginMode('phone')}
-          >
-            <Text style={[styles.modeButtonText, loginMode === 'phone' && styles.modeButtonTextActive]}>
-              手机验证码
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {/* 验证码登录/注册模式 */}
+        {(authMode === 'phone-verify' || authMode === 'register') && (
+          <View style={styles.stepContainer}>
+                <View style={styles.phoneInputWrapper}>
+                  <Text style={styles.phonePrefix}>+86</Text>
+                  <TextInput
+                    ref={phoneInputRef}
+                    style={styles.phoneInput}
+                    placeholder="请输入手机号"
+                    placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                    value={phoneNumber}
+                    onChangeText={(text) => setPhoneNumber(formatPhoneNumber(text))}
+                    keyboardType="phone-pad"
+                    maxLength={11}
+                    autoFocus
+                  />
+                </View>
 
-        {/* 账号密码输入 */}
-        {loginMode === 'password' && (
-          <View style={styles.inputContainer}>
-            <View style={styles.passwordInputWrapper}>
-              <TextInput
-                style={styles.passwordInput}
-                placeholder="请输入用户名"
-                placeholderTextColor="rgba(255, 255, 255, 0.5)"
-                value={username}
-                onChangeText={setUsername}
-                autoCapitalize="none"
-                autoCorrect={false}
-                autoFocus={true}
-              />
-            </View>
+                <TouchableOpacity
+                  style={[
+                    styles.sendCodeButton,
+                    (!validatePhoneNumber(phoneNumber) || isLoading) && styles.sendCodeButtonDisabled
+                  ]}
+                  onPress={handleSendCode}
+                  disabled={!validatePhoneNumber(phoneNumber) || isLoading}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.sendCodeButtonText}>获取验证码</Text>
+                  )}
+                </TouchableOpacity>
+
+                {/* 用户协议勾选 - 仅注册模式显示 */}
+                {authMode === 'register' && (
+                  <View style={styles.agreementContainer}>
+                    <TouchableOpacity 
+                      style={styles.checkboxContainer}
+                      onPress={() => setAgreeToTerms(!agreeToTerms)}
+                    >
+                      <View style={[styles.checkbox, agreeToTerms && styles.checkboxChecked]}>
+                        {agreeToTerms && <Text style={styles.checkmark}>✓</Text>}
+                      </View>
+                      <Text style={styles.agreementText}>
+                        我已阅读并同意
+                        <Text style={styles.linkText} onPress={handleOpenUserAgreement}>《用户协议》</Text>
+                        和
+                        <Text style={styles.linkText} onPress={handleOpenPrivacyPolicy}>《隐私政策》</Text>
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+          </View>
+        )}
+
+        {/* 密码登录模式 */}
+        {authMode === 'password' && (
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="用户名"
+              placeholderTextColor="rgba(255, 255, 255, 0.5)"
+              value={username}
+              onChangeText={setUsername}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoFocus
+            />
             
-            <View style={styles.passwordInputWrapper}>
-              <TextInput
-                style={styles.passwordInput}
-                placeholder="请输入密码"
-                placeholderTextColor="rgba(255, 255, 255, 0.5)"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={true}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-            
+            <TextInput
+              style={styles.input}
+              placeholder="密码"
+              placeholderTextColor="rgba(255, 255, 255, 0.5)"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+            />
+
             <TouchableOpacity
               style={[
-                styles.loginButton,
-                (!username.trim() || !password.trim() || isLoading) && styles.loginButtonDisabled
+                styles.submitButton,
+                (!username.trim() || !password.trim() || isLoading) && styles.submitButtonDisabled
               ]}
               onPress={handlePasswordLogin}
               disabled={!username.trim() || !password.trim() || isLoading}
@@ -303,118 +314,43 @@ const NewAuthScreen: React.FC = () => {
               {isLoading ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.loginButtonText}>登录</Text>
+                <Text style={styles.submitButtonText}>登录</Text>
               )}
             </TouchableOpacity>
           </View>
         )}
 
-        {/* 手机号输入步骤 */}
-        {loginMode === 'phone' && step === 'phone' && (
-          <View style={styles.inputContainer}>
-            <View style={styles.phoneInputWrapper}>
-              <Text style={styles.phonePrefix}>+86</Text>
-              <TextInput
-                ref={phoneInputRef}
-                style={styles.phoneInput}
-                placeholder="请输入手机号"
-                placeholderTextColor="rgba(255, 255, 255, 0.5)"
-                value={phoneNumber}
-                onChangeText={(text) => setPhoneNumber(formatPhoneNumber(text))}
-                keyboardType="phone-pad"
-                maxLength={11}
-                autoFocus={true}
-              />
-            </View>
-            
-            <TouchableOpacity
-              style={[
-                styles.sendCodeButton,
-                (!validatePhoneNumber(phoneNumber) || isLoading) && styles.sendCodeButtonDisabled
-              ]}
-              onPress={handleSendCode}
-              disabled={!validatePhoneNumber(phoneNumber) || isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.sendCodeButtonText}>发送验证码</Text>
-              )}
+        {/* 底部入口 */}
+        <View style={styles.switchContainer}>
+          {authMode === 'phone-verify' && (
+            <>
+              <TouchableOpacity onPress={switchToPasswordLogin}>
+                <Text style={styles.switchText}>账号密码登录</Text>
+              </TouchableOpacity>
+              <Text style={styles.divider}>|</Text>
+              <TouchableOpacity onPress={switchToRegister}>
+                <Text style={styles.switchText}>没有账号？去注册</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {authMode === 'password' && (
+            <>
+              <TouchableOpacity onPress={switchToPhoneVerify}>
+                <Text style={styles.switchText}>验证码登录</Text>
+              </TouchableOpacity>
+              <Text style={styles.divider}>|</Text>
+              <TouchableOpacity onPress={switchToRegister}>
+                <Text style={styles.switchText}>没有账号？去注册</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {authMode === 'register' && (
+            <TouchableOpacity onPress={switchToLogin}>
+              <Text style={styles.switchText}>已有账号，去登录</Text>
             </TouchableOpacity>
-          </View>
-        )}
-
-        {/* 验证码输入步骤 */}
-        {loginMode === 'phone' && step === 'code' && (
-          <View style={styles.inputContainer}>
-            <View style={styles.codeInputWrapper}>
-              <TextInput
-                ref={codeInputRef}
-                style={styles.codeInput}
-                placeholder="请输入6位验证码"
-                placeholderTextColor="rgba(255, 255, 255, 0.5)"
-                value={verificationCode}
-                onChangeText={(text) => setVerificationCode(text.replace(/\D/g, '').slice(0, 6))}
-                keyboardType="number-pad"
-                maxLength={6}
-                autoFocus={true}
-              />
-            </View>
-            
-            <View style={styles.codeActions}>
-              <TouchableOpacity
-                style={[
-                  styles.resendButton,
-                  (countdown > 0 || isLoading) && styles.resendButtonDisabled
-                ]}
-                onPress={handleSendCode}
-                disabled={countdown > 0 || isLoading}
-              >
-                <Text style={styles.resendButtonText}>
-                  {countdown > 0 ? `重新发送(${countdown}s)` : '重新发送'}
-                </Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.backButton}
-                onPress={handleBackToPhone}
-              >
-                <Text style={styles.backButtonText}>返回修改</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* 流程说明 */}
-        <View style={styles.processContainer}>
-          <View style={styles.processStep}>
-            <View style={styles.processIcon}>
-              <Text style={styles.processIconText}>📱</Text>
-            </View>
-            <Text style={styles.processText}>手机号验证</Text>
-          </View>
-
-          <View style={styles.arrowContainer}>
-            <Text style={styles.arrow}>→</Text>
-          </View>
-
-          <View style={styles.processStep}>
-            <View style={styles.processIcon}>
-              <Text style={styles.processIconText}>🔐</Text>
-            </View>
-            <Text style={styles.processText}>安全登录</Text>
-          </View>
-
-          <View style={styles.arrowContainer}>
-            <Text style={styles.arrow}>→</Text>
-          </View>
-
-          <View style={styles.processStep}>
-            <View style={styles.processIcon}>
-              <Text style={styles.processIconText}>🎨</Text>
-            </View>
-            <Text style={styles.processText}>开始创作</Text>
-          </View>
+          )}
         </View>
 
         {/* 安全提示 */}
@@ -422,29 +358,8 @@ const NewAuthScreen: React.FC = () => {
           您的个人信息将受到严格保护
         </Text>
       </View>
-
-      {/* 底部按钮 */}
-      {loginMode === 'phone' && step === 'code' && (
-        <View style={styles.bottomContainer}>
-          <TouchableOpacity
-            style={[
-              styles.continueButton,
-              (verificationCode.length !== 6 || isLoading) && styles.continueButtonDisabled
-            ]}
-            onPress={handleVerifyCode}
-            disabled={verificationCode.length !== 6 || isLoading}
-          >
-            {isLoading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" color="#fff" />
-                <Text style={styles.loadingText}>验证中...</Text>
-              </View>
-            ) : (
-              <Text style={styles.continueButtonText}>确认</Text>
-            )}
-          </TouchableOpacity>
         </View>
-      )}
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 };
@@ -453,6 +368,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#131313',
+  },
+  innerContainer: {
+    flex: 1,
   },
   closeButton: {
     position: 'absolute',
@@ -487,40 +405,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
     textAlign: 'left',
-    marginBottom: 20,
+    marginBottom: 40,
     opacity: 0.8,
     lineHeight: 22,
   },
-  modeSwitchContainer: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 40,
+  stepContainer: {
     width: '100%',
-  },
-  modeButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  modeButtonActive: {
-    backgroundColor: '#007AFF',
-  },
-  modeButtonText: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  modeButtonTextActive: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  inputContainer: {
-    marginBottom: 40,
-    alignItems: 'center',
   },
   phoneInputWrapper: {
     flexDirection: 'row',
@@ -532,6 +422,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
+    width: '100%',
   },
   phonePrefix: {
     color: '#fff',
@@ -545,7 +436,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
   },
-  passwordInputWrapper: {
+  input: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 16,
     paddingHorizontal: 16,
@@ -553,33 +444,20 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
-    width: '100%',
-  },
-  passwordInput: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '500',
-  },
-  loginButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
     width: '100%',
   },
-  loginButtonDisabled: {
-    backgroundColor: '#666',
-  },
-  loginButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+  passwordContainer: {
+    marginBottom: 20,
   },
   sendCodeButton: {
-    backgroundColor: '#FF6B6B',
+    backgroundColor: '#FF6B9D',
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: 'center',
+    marginTop: 8,
     width: '100%',
   },
   sendCodeButtonDisabled: {
@@ -590,87 +468,76 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  codeInputWrapper: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  submitButton: {
+    backgroundColor: '#FF6B9D',
     borderRadius: 16,
-    paddingHorizontal: 16,
     paddingVertical: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    marginTop: 8,
+    width: '100%',
   },
-  codeInput: {
+  submitButtonDisabled: {
+    backgroundColor: '#666',
+  },
+  submitButtonText: {
     color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-    textAlign: 'center',
-    letterSpacing: 8,
+    fontSize: 16,
+    fontWeight: 'bold',
   },
-  codeActions: {
+  agreementContainer: {
+    marginTop: 20,
+    width: '100%',
+  },
+  checkboxContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    width: '100%',
   },
-  resendButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  resendButtonDisabled: {
-    opacity: 0.5,
-  },
-  resendButtonText: {
-    color: '#FF6B6B',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  backButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  backButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
-    opacity: 0.7,
-  },
-  processContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 30,
-    paddingHorizontal: 20,
-  },
-  processStep: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  processIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    marginRight: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
+    marginTop: 2,
   },
-  processIconText: {
-    fontSize: 24,
+  checkboxChecked: {
+    backgroundColor: '#FF6B9D',
+    borderColor: '#FF6B9D',
   },
-  processText: {
+  checkmark: {
     color: '#fff',
     fontSize: 12,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  arrowContainer: {
-    alignItems: 'center',
-    paddingHorizontal: 10,
-  },
-  arrow: {
-    color: '#fff',
-    fontSize: 20,
     fontWeight: 'bold',
-    opacity: 0.6,
+  },
+  agreementText: {
+    flex: 1,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  linkText: {
+    color: '#FF6B9D',
+    textDecorationLine: 'underline',
+  },
+  switchContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 30,
+    marginBottom: 30,
+    gap: 12,
+  },
+  switchText: {
+    color: '#FF6B9D',
+    fontSize: 14,
+  },
+  divider: {
+    color: '#666',
+    fontSize: 14,
   },
   securityText: {
     fontSize: 14,
@@ -678,35 +545,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     opacity: 0.6,
     lineHeight: 20,
-  },
-  bottomContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-  },
-  continueButton: {
-    backgroundColor: '#FF6B6B',
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
-    width: '100%',
-  },
-  continueButtonDisabled: {
-    backgroundColor: '#666',
-  },
-  continueButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  loadingText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });
 
