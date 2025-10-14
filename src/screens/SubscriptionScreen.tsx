@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  Linking,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -190,6 +191,14 @@ const SubscriptionScreen: React.FC = () => {
     }
   };
 
+  const handleOpenPrivacyPolicy = () => {
+    Linking.openURL('https://xuhanpeace.github.io/facegolow-support/privacy-policy.html');
+  };
+
+  const handleOpenTermsOfUse = () => {
+    Linking.openURL('https://xuhanpeace.github.io/facegolow-support/terms-of-use.html');
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
@@ -250,6 +259,29 @@ const SubscriptionScreen: React.FC = () => {
           ))}
         </View>
 
+        {/* 法律链接 */}
+        <View style={styles.legalLinksContainer}>
+          <TouchableOpacity onPress={handleOpenPrivacyPolicy}>
+            <Text style={styles.legalLinkText}>隐私政策</Text>
+          </TouchableOpacity>
+          <Text style={styles.legalLinkDivider}>•</Text>
+          <TouchableOpacity onPress={handleOpenTermsOfUse}>
+            <Text style={styles.legalLinkText}>服务条款</Text>
+          </TouchableOpacity>
+          <Text style={styles.legalLinkDivider}>•</Text>
+          <TouchableOpacity onPress={handleRestorePurchases}>
+            <Text style={styles.legalLinkText}>恢复购买</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 订阅说明 */}
+        <View style={styles.subscriptionNotice}>
+          <Text style={styles.noticeText}>
+            • 订阅将自动续订，除非在当前订阅期结束前至少24小时取消{'\n'}
+            • 您可以在Apple ID账户设置中管理订阅{'\n'}
+            • 付款将在确认购买时从Apple ID账户扣除
+          </Text>
+        </View>
 
       </ScrollView>
 
@@ -479,6 +511,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     fontWeight: '500',
+  },
+  legalLinksContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 20,
+    gap: 10,
+  },
+  legalLinkText: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 13,
+    textDecorationLine: 'underline',
+  },
+  legalLinkDivider: {
+    color: 'rgba(255, 255, 255, 0.4)',
+    fontSize: 13,
+  },
+  subscriptionNotice: {
+    marginBottom: 20,
+    paddingHorizontal: 10,
+  },
+  noticeText: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 11,
+    lineHeight: 16,
+    textAlign: 'center',
   },
 });
 
