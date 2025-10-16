@@ -7,6 +7,7 @@ import {
   Image,
 } from 'react-native';
 import { UserWorkModel } from '../types/model/user_works';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
 interface UserWorkCardProps {
   work: UserWorkModel;
@@ -47,8 +48,14 @@ const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress }) => {
           {formatDate(work.created_at)}
         </Text>
         <View style={styles.workStats}>
-          <Text style={styles.statText}>❤️ {work.likes || '0'}</Text>
-          <Text style={styles.statText}>📥 {work.download_count || '0'}</Text>
+          <View style={styles.statItem}>
+            <FontAwesome name="heart" size={12} color="#FF6B9D" />
+            <Text style={styles.statText}>{work.likes || '0'}</Text>
+          </View>
+          <View style={styles.statItem}>
+            <FontAwesome name="download" size={12} color="#4CAF50" />
+            <Text style={styles.statText}>{work.download_count || '0'}</Text>
+          </View>
         </View>
       </View>
     </TouchableOpacity>
@@ -87,6 +94,11 @@ const styles = StyleSheet.create({
   workStats: {
     flexDirection: 'row',
     gap: 12,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   statText: {
     color: '#fff',

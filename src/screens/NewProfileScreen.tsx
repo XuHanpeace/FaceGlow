@@ -18,6 +18,7 @@ import { userWorkService } from '../services/database/userWorkService';
 import { UserWorkModel } from '../types/model/user_works';
 import { useAuthState } from '../hooks/useAuthState';
 import UserWorkCard from '../components/UserWorkCard';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
 type NewProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -148,7 +149,7 @@ const NewProfileScreen: React.FC = () => {
         <View style={styles.placeholder} />
         {/* <View style={styles.headerActions}>
           <TouchableOpacity style={styles.actionButton} onPress={handleGiftPress}>
-            <Text style={styles.giftIcon}>🎁</Text>
+            <FontAwesome name="gift" size={20} color="#FF6B9D" />
           </TouchableOpacity>
         </View> */}
       </View>
@@ -162,14 +163,14 @@ const NewProfileScreen: React.FC = () => {
               {hasAvatar ? (
                 <Image source={avatarSource} style={styles.avatarImage} />
               ) : (
-                <Text style={styles.avatarIcon}>👤</Text>
+                <FontAwesome name="user-circle" size={30} color="#ccc" />
               )}
             </View>
           </View>
           <View style={styles.userDetails}>
             <Text style={styles.username}>{userInfo.name || userInfo.username || '未设置用户名'}</Text>
             <TouchableOpacity style={styles.editButton} onPress={handleEditProfilePress}>
-              <Text style={styles.editIcon}>✏️</Text>
+              <FontAwesome name="pencil" size={14} color="#fff" />
             </TouchableOpacity>
           </View>
         </View>
@@ -177,10 +178,10 @@ const NewProfileScreen: React.FC = () => {
         {/* 添加自拍照 */}
         <TouchableOpacity style={styles.instagramButton} onPress={handleAddSelfiePress}>
           <View style={styles.instagramIcon}>
-            <Text style={styles.instagramGradient}>📸</Text>
+            <FontAwesome name="camera" size={18} color="#fff" />
           </View>
           <Text style={styles.instagramText}>添加自拍照</Text>
-          <Text style={styles.plusIcon}>+</Text>
+          <FontAwesome name="plus" size={20} color="#fff" style={styles.plusIcon} />
         </TouchableOpacity>
 
         {/* 导航标签 */}
@@ -215,7 +216,7 @@ const NewProfileScreen: React.FC = () => {
         <View style={styles.contentArea}>
           {activeTab === 'posts' && (
             <TouchableOpacity style={styles.addPostCard} onPress={handleAddPostPress}>
-              <Text style={styles.addPostIcon}>+</Text>
+              <FontAwesome name="plus" size={32} color="rgba(255,255,255,0.5)" />
               <Text style={styles.addPostText}>添加帖子</Text>
             </TouchableOpacity>
           )}
@@ -223,7 +224,8 @@ const NewProfileScreen: React.FC = () => {
             <View style={styles.worksContainer}>
               {worksLoading ? (
                 <View style={styles.loadingContainer}>
-                  <Text style={styles.loadingText}>🎨 正在加载作品...</Text>
+                  <FontAwesome name="paint-brush" size={24} color="#999" />
+                  <Text style={styles.loadingText}>正在加载作品...</Text>
                 </View>
               ) : userWorks.length > 0 ? (
                 <View style={styles.worksGrid}>
@@ -237,7 +239,8 @@ const NewProfileScreen: React.FC = () => {
                 </View>
               ) : (
                 <View style={styles.emptyState}>
-                  <Text style={styles.emptyText}>🎨 还没有作品哦</Text>
+                  <FontAwesome name="paint-brush" size={20} color="#ddd" style={{marginBottom: 10}}/>
+                  <Text style={styles.emptyText}>还没有作品哦</Text>
                   <Text style={styles.emptySubText}>快去创作你的第一个作品吧～</Text>
                 </View>
               )}

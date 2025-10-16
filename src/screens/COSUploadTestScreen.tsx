@@ -18,6 +18,7 @@ import {
   ImageLibraryOptions
 } from 'react-native-image-picker';
 import cosService, { COSUploadResult } from '../services/cos/COSService';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
 const COSUploadTestScreen: React.FC = () => {
   const [isInitialized, setIsInitialized] = useState(false);
@@ -288,11 +289,13 @@ const COSUploadTestScreen: React.FC = () => {
 
         <View style={styles.buttonRow}>
           <TouchableOpacity style={styles.button} onPress={takePhoto}>
-            <Text style={styles.buttonText}>📷 拍照</Text>
+            <FontAwesome name="camera" size={20} color="#fff" style={styles.buttonIcon} />
+            <Text style={styles.buttonText}>拍照</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.button} onPress={selectFromGallery}>
-            <Text style={styles.buttonText}>🖼️ 相册</Text>
+            <FontAwesome name="image" size={20} color="#fff" style={styles.buttonIcon} />
+            <Text style={styles.buttonText}>相册</Text>
           </TouchableOpacity>
         </View>
 
@@ -321,7 +324,10 @@ const COSUploadTestScreen: React.FC = () => {
             {isUploading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.uploadButtonText}>🚀 开始上传</Text>
+              <>
+                <FontAwesome name="cloud-upload" size={20} color="#fff" style={styles.uploadIcon} />
+                <Text style={styles.uploadButtonText}>开始上传</Text>
+              </>
             )}
           </TouchableOpacity>
 

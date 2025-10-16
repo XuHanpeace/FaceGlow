@@ -16,6 +16,7 @@ import { RootStackParamList } from '../types/navigation';
 import { useTypedSelector, useAppDispatch } from '../store/hooks';
 import { fetchActivities } from '../store/slices/activitySlice';
 import { Album } from '../types/model/activity';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
 const { width: screenWidth } = Dimensions.get('window');
 const numColumns = 2;
@@ -105,7 +106,7 @@ const AlbumMarketScreen: React.FC = () => {
             {item.album_description}
           </Text>
           <View style={styles.likesContainer}>
-            <Text style={styles.likesIcon}>❤️</Text>
+            <FontAwesome name="heart" size={14} color="#FF6B9D" style={styles.likesIcon} />
             <Text style={styles.likesText}>
               {totalLikes >= 1000 ? `${(totalLikes / 1000).toFixed(1)}K` : totalLikes}
             </Text>
@@ -124,7 +125,9 @@ const AlbumMarketScreen: React.FC = () => {
         {/* 头部 */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-            <Text style={styles.backIcon}>‹</Text>
+                                    <FontAwesome name="chevron-left" size={14} color="#fff" />
+
+
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{activityName}</Text>
           <View style={styles.placeholder} />
@@ -148,7 +151,9 @@ const AlbumMarketScreen: React.FC = () => {
         {/* 头部 */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-            <Text style={styles.backIcon}>‹</Text>
+                                    <FontAwesome name="chevron-left" size={14} color="#fff" />
+
+
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{activityName}</Text>
           <View style={styles.placeholder} />

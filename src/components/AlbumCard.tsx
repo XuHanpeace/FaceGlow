@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, Dimensions } from 'react-native';
 import { Album } from '../types/model/activity';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
 const { width: screenWidth } = Dimensions.get('window');
 const cardWidth = screenWidth * 0.35;
@@ -37,7 +38,7 @@ const AlbumCard: React.FC<AlbumCardProps> = ({
         />
         {album.level !== '0' && (
           <View style={styles.premiumBadge}>
-            <Text style={styles.premiumIcon}>👑</Text>
+            <FontAwesome name="crown" size={12} color="#FFD700" />
           </View>
         )}
         {/* 显示相册内模板数量 */}
@@ -53,7 +54,7 @@ const AlbumCard: React.FC<AlbumCardProps> = ({
           {album.album_name}
         </Text>
         <View style={styles.likesContainer}>
-          <Text style={styles.likesIcon}>❤️</Text>
+          <FontAwesome name="heart" size={12} color="#FF6B9D" style={styles.likesIcon} />
           <Text style={styles.likesText}>
             {totalLikes >= 1000 ? `${(totalLikes / 1000).toFixed(1)}K` : totalLikes}
           </Text>
@@ -89,9 +90,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 4,
   },
-  premiumIcon: {
-    fontSize: 12,
-  },
   templateCountBadge: {
     position: 'absolute',
     bottom: 8,
@@ -124,7 +122,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   likesIcon: {
-    fontSize: 12,
     marginRight: 4,
   },
   likesText: {

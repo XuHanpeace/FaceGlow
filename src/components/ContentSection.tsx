@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import AlbumCard from './AlbumCard';
 import { Album } from '../types/model/activity';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
 interface ContentSectionProps {
   title: string;
@@ -26,7 +27,8 @@ const ContentSection: React.FC<ContentSectionProps> = ({
           style={styles.viewAllButton}
           onPress={() => onViewAllPress(categoryId, title)}
         >
-          <Text style={styles.viewAllText}>查看全部 {'>'}</Text>
+          <Text style={styles.viewAllText}>查看全部</Text>
+          <FontAwesome name="chevron-right" size={12} color="rgba(255,255,255,0.6)" style={styles.viewAllIcon} />
         </TouchableOpacity>
       </View>
       
@@ -66,11 +68,16 @@ const styles = StyleSheet.create({
   viewAllButton: {
     paddingVertical: 4,
     paddingHorizontal: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   viewAllText: {
     color: '#fff',
     fontSize: 14,
     fontWeight: '500',
+  },
+  viewAllIcon: {
+    marginLeft: 4,
   },
   scrollContent: {
     paddingLeft: 20,

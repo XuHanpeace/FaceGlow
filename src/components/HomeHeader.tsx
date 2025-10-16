@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { useUserAvatar, useUserBalance } from '../hooks/useUser';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
 type HomeHeaderNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -39,9 +40,6 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
     <View style={styles.container}>
       {/* 左侧余额区域 */}
       <View style={styles.balanceContainer}>
-        <View style={styles.freeBadge}>
-          <Text style={styles.freeText}>免费</Text>
-        </View>
         <TouchableOpacity 
           style={styles.balanceInfo}
           onPress={() => navigation.navigate('CoinPurchase')}
@@ -49,7 +47,7 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
           <Text style={styles.balanceLabel}>美美币</Text>
           <View style={styles.balanceValue}>
             <Text style={styles.balanceNumber}>{balanceFormatted}</Text>
-            <Text style={styles.balanceIcon}>💰</Text>
+            <FontAwesome name="bitcoin" size={16} color="#FFD700" style={styles.balanceIcon} />
           </View>
         </TouchableOpacity>
       </View>
@@ -63,7 +61,7 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
           {hasAvatar ? (
             <Image source={avatarSource} style={styles.profileAvatar} />
           ) : (
-            <Text style={styles.profileIcon}>👤</Text>
+            <FontAwesome name="user" size={18} color="#fff" />
           )}
         </TouchableOpacity>
       </View>
@@ -115,7 +113,6 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   balanceIcon: {
-    fontSize: 16,
     marginLeft: 4,
   },
   rightContainer: {
@@ -141,9 +138,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  profileIcon: {
-    fontSize: 18,
   },
   profileAvatar: {
     width: 36,

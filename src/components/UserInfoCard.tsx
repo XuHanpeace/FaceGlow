@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { useUser, useUserAvatar, useUserBalance } from '../hooks/useUser';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
 /**
  * 用户信息卡片组件
@@ -26,7 +27,7 @@ const UserInfoCard: React.FC = () => {
           <Image source={avatarSource} style={styles.avatar} />
         ) : (
           <View style={styles.defaultAvatar}>
-            <Text style={styles.defaultAvatarText}>👤</Text>
+            <FontAwesome name="user-circle" size={40} color="#999" />
           </View>
         )}
       </View>
@@ -75,10 +76,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  defaultAvatarText: {
-    fontSize: 20,
-    color: '#666',
   },
   userInfo: {
     flex: 1,

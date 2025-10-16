@@ -19,6 +19,7 @@ import { subscriptionManager } from '../services/subscriptionManager';
 import { subscriptionDataService } from '../services/subscriptionDataService';
 import { useAuthState } from '../hooks/useAuthState';
 import { subscriptionPlans, subscriptionConfig, SubscriptionPlan } from '../config/subscriptionConfig';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
 const { ApplePayModule } = NativeModules;
 
@@ -206,7 +207,9 @@ const SubscriptionScreen: React.FC = () => {
       {/* 头部 */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <Text style={styles.backIcon}>‹</Text>
+                                  <FontAwesome name="chevron-left" size={14} color="#fff" />
+
+
         </TouchableOpacity>
         <View style={styles.placeholder} />
       </View>

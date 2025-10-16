@@ -17,6 +17,7 @@ import { NativeModules } from 'react-native';
 import { subscriptionDataService } from '../services/subscriptionDataService';
 import { useAuthState } from '../hooks/useAuthState';
 import { coinPackages, coinConfig, CoinPackage } from '../config/subscriptionConfig';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
 const { ApplePayModule } = NativeModules;
 
@@ -154,7 +155,9 @@ const CoinPurchaseScreen: React.FC = () => {
       {/* 头部 */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <Text style={styles.backIcon}>‹</Text>
+                                  <FontAwesome name="chevron-left" size={14} color="#fff" />
+
+
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{coinConfig.title}</Text>
         <View style={styles.placeholder} />

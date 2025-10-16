@@ -18,6 +18,7 @@ import { ImageComparison } from '../components/ImageComparison';
 import { shareService } from '../services/shareService';
 import { ShareModal } from '../components/ShareModal';
 import { Alert } from 'react-native';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -115,13 +116,13 @@ const UserWorkPreviewScreen: React.FC = () => {
       {/* 头部导航 */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <Text style={styles.backIcon}>←</Text>
+          <FontAwesome name="arrow-left" size={12} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>
           {work.activity_title}
         </Text>
         <TouchableOpacity style={styles.shareButton} onPress={handleSharePress}>
-          <Text style={styles.shareIcon}>↗️</Text>
+          <FontAwesome name="share-alt" size={20} color="#fff" />
         </TouchableOpacity>
       </View>
 
@@ -204,15 +205,15 @@ const UserWorkPreviewScreen: React.FC = () => {
         {/* 作品统计 */}
         <View style={styles.workStats}>
           <View style={styles.statItem}>
-            <Text style={styles.statIcon}>❤️</Text>
+            <FontAwesome name="heart" size={18} color="#FF6B9D" />
             <Text style={styles.statText}>{work.likes || '0'}</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statIcon}>📥</Text>
+            <FontAwesome name="download" size={18} color="#4CAF50" />
             <Text style={styles.statText}>{work.download_count || '0'}</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statIcon}>📅</Text>
+            <FontAwesome name="calendar" size={18} color="#2196F3" />
             <Text style={styles.statText}>
               {work.created_at ? new Date(work.created_at).toLocaleDateString() : '未知'}
             </Text>

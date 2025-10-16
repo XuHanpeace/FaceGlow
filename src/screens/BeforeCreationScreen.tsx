@@ -21,6 +21,7 @@ import { Template } from '../types/model/activity';
 import SelfieSelector from '../components/SelfieSelector';
 import { useAuthState } from '../hooks/useAuthState';
 import { authService } from '../services/auth/authService';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -176,17 +177,19 @@ const BeforeCreationScreen: React.FC = () => {
     <View style={styles.container}>
       {/* 返回按钮 */}
       <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-        <Text style={styles.backIcon}>‹</Text>
+                                <FontAwesome name="chevron-left" size={14} color="#fff" />
+
+
       </TouchableOpacity>
 
       {/* 右侧操作按钮 */}
       <View style={styles.rightActions}>
         <TouchableOpacity style={styles.actionButton} onPress={handleSavePress}>
-          <Text style={styles.actionIcon}>⬇️</Text>
+          <FontAwesome name="download" size={24} color="#fff" />
           <Text style={styles.actionLabel}>保存</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.actionButton} onPress={handleSharePress}>
-          <Text style={styles.actionIcon}>↗️</Text>
+          <FontAwesome name="share-alt" size={24} color="#fff" />
           <Text style={styles.actionLabel}>分享</Text>
         </TouchableOpacity>
       </View>

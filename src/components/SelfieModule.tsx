@@ -11,6 +11,7 @@ import { useUserSelfies } from '../hooks/useUser';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
 type SelfieModuleNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -50,7 +51,7 @@ const SelfieModule: React.FC<SelfieModuleProps> = ({ onAddSelfiePress, onSelfieS
             onAddSelfiePress();
           }}
         >
-          <Text style={styles.addIcon}>+</Text>
+          <FontAwesome name="plus" size={20} color="rgba(255,255,255,0.6)" />
         </TouchableOpacity>
         
         {/* 自拍照列表 */}

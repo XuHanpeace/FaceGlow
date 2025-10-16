@@ -9,6 +9,7 @@ import {
   ScrollView,
   Image,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -22,6 +23,7 @@ import { UserWorkModel, ResultData } from '../types/model/user_works';
 import { authService } from '../services/auth/authService';
 import { shareService } from '../services/shareService';
 import { ShareModal } from '../components/ShareModal';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -227,7 +229,7 @@ const CreationResultScreen: React.FC = () => {
           '🎉 保存成功',
           `太棒了！已保存 ${resultData.length} 个换脸作品到云端，可以在个人中心查看哦～`,
           [
-            { text: '✨ 好的', onPress: () => console.log('作品保存成功') }
+            { text: '好的', onPress: () => console.log('作品保存成功') }
           ]
         );
       } else {
@@ -307,7 +309,7 @@ const CreationResultScreen: React.FC = () => {
       
       {/* 返回按钮 - 浮动在左上角 */}
       <TouchableOpacity style={styles.floatingBackButton} onPress={handleBackPress}>
-        <Text style={styles.backIcon}>←</Text>
+        <FontAwesome name="arrow-left" size={12} color="#fff" />
       </TouchableOpacity>
 
       {/* 图片对比区域 - 顶到页面顶部 */}
@@ -330,8 +332,9 @@ const CreationResultScreen: React.FC = () => {
       {isProcessing && (
         <View style={styles.globalLoadingOverlay}>
           <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>🎨 美颜换换正在认真创作中</Text>
-            <Text style={styles.loadingSubtext}>✨ 请稍候，马上就好啦</Text>
+            <ActivityIndicator size="large" color="#FF6B9D" />
+            <Text style={styles.loadingText}>美颜换换正在认真创作中</Text>
+            <Text style={styles.loadingSubtext}>请稍候，马上就好啦</Text>
           </View>
         </View>
       )}
@@ -390,7 +393,8 @@ const CreationResultScreen: React.FC = () => {
                           processTemplate(template.template_id);
                         }}
                       >
-                        <Text style={styles.retryText}>✨ 再来一次</Text>
+                        <FontAwesome name="magic" size={16} color="#fff" style={styles.retryIcon} />
+                        <Text style={styles.retryText}>再来一次</Text>
                       </TouchableOpacity>
                     </View>
                   )}
@@ -398,7 +402,8 @@ const CreationResultScreen: React.FC = () => {
                   {/* 处理中状态 */}
                   {isCurrentProcessing && (
                     <View style={styles.processingOverlay}>
-                      <Text style={styles.processingText}>🎨 AI正在认真创作中...</Text>
+                      <ActivityIndicator size="small" color="#fff" />
+                      <Text style={styles.processingText}>AI正在认真创作中...</Text>
                     </View>
                   )}
                 </TouchableOpacity>

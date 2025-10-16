@@ -15,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { authService } from '../services/auth/authService';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -109,7 +110,7 @@ const SelfieSelector: React.FC<SelfieSelectorProps> = ({
             style={[styles.addButton, { width: size * 0.6, height: size * 0.6, borderRadius: size * 0.3 }]}
             onPress={handleSelfiePress}
           >
-            <Text style={[styles.addIcon, { fontSize: size * 0.3 }]}>+</Text>
+            <FontAwesome name="plus" size={size * 0.3} color="rgba(255,255,255,0.6)" />
           </TouchableOpacity>
         </View>
       );
