@@ -260,6 +260,8 @@ const CreationResultScreen: React.FC = () => {
     {
       id: 'save',
       icon: '💾',
+      iconName: 'download',
+      iconColor: '#4CAF50', // 绿色 - 保存
       label: '保存到相册',
       onPress: async () => {
         const result = await shareService.saveImageToAlbum(shareImageUrl);
@@ -273,6 +275,8 @@ const CreationResultScreen: React.FC = () => {
     {
       id: 'wechat',
       icon: '💬',
+      iconName: 'wechat',
+      iconColor: '#07C160', // 微信绿
       label: '微信好友',
       onPress: async () => {
         const result = await shareService.shareToWeChatSession(shareImageUrl);
@@ -284,6 +288,8 @@ const CreationResultScreen: React.FC = () => {
     {
       id: 'moments',
       icon: '🔗',
+      iconName: 'link',
+      iconColor: '#2196F3', // 蓝色 - 链接
       label: '朋友圈',
       onPress: async () => {
         const result = await shareService.shareToWeChatTimeline(shareImageUrl);
@@ -393,7 +399,7 @@ const CreationResultScreen: React.FC = () => {
                           processTemplate(template.template_id);
                         }}
                       >
-                        <FontAwesome name="magic" size={16} color="#fff" style={styles.retryIcon} />
+                        <FontAwesome name="magic" size={16} color="#fff" />
                         <Text style={styles.retryText}>再来一次</Text>
                       </TouchableOpacity>
                     </View>

@@ -53,6 +53,8 @@ const UserWorkPreviewScreen: React.FC = () => {
     {
       id: 'save',
       icon: '💾',
+      iconName: 'download',
+      iconColor: '#4CAF50', // 绿色 - 保存
       label: '保存到相册',
       onPress: async () => {
         const result = await shareService.saveImageToAlbum(shareImageUrl);
@@ -66,6 +68,8 @@ const UserWorkPreviewScreen: React.FC = () => {
     {
       id: 'wechat',
       icon: '💬',
+      iconName: 'wechat',
+      iconColor: '#07C160', // 微信绿
       label: '微信好友',
       onPress: async () => {
         const result = await shareService.shareToWeChatSession(shareImageUrl);
@@ -77,6 +81,8 @@ const UserWorkPreviewScreen: React.FC = () => {
     {
       id: 'moments',
       icon: '🔗',
+      iconName: 'link',
+      iconColor: '#2196F3', // 蓝色 - 链接
       label: '朋友圈',
       onPress: async () => {
         const result = await shareService.shareToWeChatTimeline(shareImageUrl);

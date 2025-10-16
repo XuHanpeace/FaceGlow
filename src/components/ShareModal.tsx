@@ -9,11 +9,14 @@ import {
   Dimensions,
   TouchableWithoutFeedback,
 } from 'react-native';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 interface ShareOption {
   id: string;
   icon: string;
+  iconName?: string; // FontAwesome 图标名称
+  iconColor?: string; // 图标颜色
   label: string;
   onPress: () => void;
 }
@@ -121,7 +124,15 @@ export const ShareModal: React.FC<ShareModalProps> = ({
               activeOpacity={0.7}
             >
               <View style={styles.optionIconContainer}>
-                <Text style={styles.optionIcon}>{option.icon}</Text>
+                {option.iconName ? (
+                  <FontAwesome 
+                    name={option.iconName} 
+                    size={28} 
+                    color={option.iconColor || '#fff'} 
+                  />
+                ) : (
+                  <Text style={styles.optionIcon}>{option.icon}</Text>
+                )}
               </View>
               <Text style={styles.optionLabel}>{option.label}</Text>
             </TouchableOpacity>

@@ -119,7 +119,13 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({ route }
         if (result.success && result.data) {
           setAuthData(result.data);
           Alert.alert('成功', '注册成功！', [
-            { text: '确定', onPress: () => navigation.goBack() }
+            { text: '确定', onPress: () => {
+              // 返回到根页面，关闭整个登录流程
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'MainTab' }],
+              });
+            }}
           ]);
         } else {
           Alert.alert('注册失败', result.error?.message || '未知错误');
@@ -135,7 +141,13 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({ route }
         if (result.success && result.data) {
           setAuthData(result.data);
           Alert.alert('成功', '登录成功！', [
-            { text: '确定', onPress: () => navigation.goBack() }
+            { text: '确定', onPress: () => {
+              // 返回到根页面，关闭整个登录流程
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'MainTab' }],
+              });
+            }}
           ]);
         } else {
           Alert.alert('登录失败', result.error?.message || '未知错误');
