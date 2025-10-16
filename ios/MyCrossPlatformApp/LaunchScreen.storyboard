@@ -16,69 +16,19 @@
                         <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <!-- 渐变背景视图 -->
-                            <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="bg-gradient">
+                            <!-- 开屏背景图片 -->
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFill" translatesAutoresizingMaskIntoConstraints="NO" image="LaunchBackground" id="bg-image">
                                 <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
-                                <color key="backgroundColor" red="0.07450980392156863" green="0.07450980392156863" blue="0.07450980392156863" alpha="1" colorSpace="calibratedRGB"/>
-                            </view>
-                            
-                            <!-- 应用图标 -->
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="4b5c194393332" translatesAutoresizingMaskIntoConstraints="NO" id="app-icon">
-                                <rect key="frame" x="137.5" y="233.5" width="100" height="100"/>
-                                <constraints>
-                                    <constraint firstAttribute="width" constant="100" id="icon-width"/>
-                                    <constraint firstAttribute="height" constant="100" id="icon-height"/>
-                                </constraints>
                             </imageView>
-                            
-                            <!-- 应用名称 -->
-                            <label opaque="NO" clipsSubviews="YES" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="美颜换换" textAlignment="center" lineBreakMode="middleTruncation" baselineAdjustment="alignBaselines" minimumFontSize="18" translatesAutoresizingMaskIntoConstraints="NO" id="app-title">
-                                <rect key="frame" x="0.0" y="353.5" width="375" height="43"/>
-                                <fontDescription key="fontDescription" type="boldSystem" pointSize="36"/>
-                                <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                                <nil key="highlightedColor"/>
-                            </label>
-                            
-                            <!-- 副标题 -->
-                            <label opaque="NO" clipsSubviews="YES" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="AI换脸神器，一键生成艺术照" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" minimumFontSize="12" translatesAutoresizingMaskIntoConstraints="NO" id="app-subtitle">
-                                <rect key="frame" x="0.0" y="406.5" width="375" height="21"/>
-                                <fontDescription key="fontDescription" type="system" pointSize="17"/>
-                                <color key="textColor" white="1" alpha="0.80000000000000004" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                                <nil key="highlightedColor"/>
-                            </label>
-                            
-                            <!-- 加载指示器 -->
-                            <activityIndicatorView opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="750" verticalHuggingPriority="750" animating="YES" style="large" translatesAutoresizingMaskIntoConstraints="NO" id="loading-indicator">
-                                <rect key="frame" x="175" y="500" width="25" height="25"/>
-                                <color key="color" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                            </activityIndicatorView>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="Bcu-3y-fUS"/>
                         <color key="backgroundColor" red="0.07450980392156863" green="0.07450980392156863" blue="0.07450980392156863" alpha="1" colorSpace="calibratedRGB"/>
                         <constraints>
-                            <!-- 背景渐变 -->
-                            <constraint firstItem="bg-gradient" firstAttribute="top" secondItem="Ze5-6b-2t3" secondAttribute="top" id="bg-top"/>
-                            <constraint firstItem="bg-gradient" firstAttribute="leading" secondItem="Ze5-6b-2t3" secondAttribute="leading" id="bg-leading"/>
-                            <constraint firstAttribute="trailing" secondItem="bg-gradient" secondAttribute="trailing" id="bg-trailing"/>
-                            <constraint firstAttribute="bottom" secondItem="bg-gradient" secondAttribute="bottom" id="bg-bottom"/>
-                            
-                            <!-- 应用图标 -->
-                            <constraint firstItem="Bcu-3y-fUS" firstAttribute="centerX" secondItem="app-icon" secondAttribute="centerX" id="icon-centerX"/>
-                            <constraint firstItem="app-icon" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" constant="-50" id="icon-centerY"/>
-                            
-                            <!-- 应用标题 -->
-                            <constraint firstItem="Bcu-3y-fUS" firstAttribute="centerX" secondItem="app-title" secondAttribute="centerX" id="title-centerX"/>
-                            <constraint firstItem="app-title" firstAttribute="top" secondItem="app-icon" secondAttribute="bottom" constant="20" id="title-top"/>
-                            <constraint firstItem="app-title" firstAttribute="leading" secondItem="Bcu-3y-fUS" secondAttribute="leading" symbolic="YES" id="title-leading"/>
-                            
-                            <!-- 副标题 -->
-                            <constraint firstItem="Bcu-3y-fUS" firstAttribute="centerX" secondItem="app-subtitle" secondAttribute="centerX" id="subtitle-centerX"/>
-                            <constraint firstItem="app-subtitle" firstAttribute="top" secondItem="app-title" secondAttribute="bottom" constant="10" id="subtitle-top"/>
-                            <constraint firstItem="app-subtitle" firstAttribute="leading" secondItem="Bcu-3y-fUS" secondAttribute="leading" symbolic="YES" id="subtitle-leading"/>
-                            
-                            <!-- 加载指示器 -->
-                            <constraint firstItem="Bcu-3y-fUS" firstAttribute="centerX" secondItem="loading-indicator" secondAttribute="centerX" id="loading-centerX"/>
-                            <constraint firstItem="loading-indicator" firstAttribute="top" secondItem="app-subtitle" secondAttribute="bottom" constant="73" id="loading-top"/>
+                            <!-- 背景图片铺满 -->
+                            <constraint firstItem="bg-image" firstAttribute="top" secondItem="Ze5-6b-2t3" secondAttribute="top" id="bg-top"/>
+                            <constraint firstItem="bg-image" firstAttribute="leading" secondItem="Ze5-6b-2t3" secondAttribute="leading" id="bg-leading"/>
+                            <constraint firstAttribute="trailing" secondItem="bg-image" secondAttribute="trailing" id="bg-trailing"/>
+                            <constraint firstAttribute="bottom" secondItem="bg-image" secondAttribute="bottom" id="bg-bottom"/>
                         </constraints>
                     </view>
                 </viewController>
@@ -88,6 +38,6 @@
         </scene>
     </scenes>
     <resources>
-        <image name="4b5c194393332" width="1024" height="1024"/>
+        <image name="LaunchBackground" width="1290" height="2796"/>
     </resources>
 </document>
