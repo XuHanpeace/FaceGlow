@@ -22,6 +22,7 @@ import SelfieSelector from '../components/SelfieSelector';
 import { useAuthState } from '../hooks/useAuthState';
 import { authService } from '../services/auth/authService';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import GradientButton from '../components/GradientButton';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -246,13 +247,17 @@ const BeforeCreationScreen: React.FC = () => {
           <Text style={styles.description}>{album.album_description || '需要AI头像'}</Text>
         </View>
         
-        <TouchableOpacity 
-          style={[styles.useStyleButton, (isFusionProcessing || isProcessing) && styles.useStyleButtonDisabled]} 
+        <GradientButton
+          title="使用风格"
           onPress={handleUseStylePress}
           disabled={isProcessing}
-        >
-          <Text style={styles.useStyleText}>使用风格</Text>
-        </TouchableOpacity>
+          loading={isProcessing}
+          variant="primary"
+          size="medium"
+          fontSize={16}
+          borderRadius={22}
+          style={styles.useStyleButton}
+        />
       </View>
     </View>
   );
@@ -370,18 +375,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   useStyleButton: {
-    backgroundColor: '#FF6B9D',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  useStyleText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  useStyleButtonDisabled: {
-    backgroundColor: '#666',
+    marginTop: 8,
+    width: '100%',
   },
   processingContainer: {
     flexDirection: 'row',

@@ -17,6 +17,7 @@ import { useTypedSelector, useAppDispatch } from '../store/hooks';
 import { fetchActivities } from '../store/slices/activitySlice';
 import { Album } from '../types/model/activity';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import GradientButton from '../components/GradientButton';
 
 const { width: screenWidth } = Dimensions.get('window');
 const numColumns = 2;
@@ -44,7 +45,7 @@ const AlbumMarketScreen: React.FC = () => {
   useEffect(() => {
     // 如果活动数据为空，则发起请求
     if (activities.length === 0) {
-      dispatch(fetchActivities({ pageSize: 20, pageNumber: 1 }));
+      dispatch(fetchActivities({ page_size: 20, page_number: 1 }));
     }
   }, [activities.length, dispatch]);
 
@@ -56,6 +57,7 @@ const AlbumMarketScreen: React.FC = () => {
       // 直接传递album数据到BeforeCreation页面
       navigation.navigate('BeforeCreation', {
         albumData: selectedAlbum,
+        activityId: activityId,
       });
     }
   };
@@ -162,12 +164,17 @@ const AlbumMarketScreen: React.FC = () => {
         {/* 错误状态 */}
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>加载失败: {error}</Text>
-          <TouchableOpacity 
-            style={styles.retryButton} 
-            onPress={() => dispatch(fetchActivities({ pageSize: 20, pageNumber: 1 }))}
-          >
-            <Text style={styles.retryButtonText}>重试</Text>
-          </TouchableOpacity>
+          <GradientButton
+            title="重试"
+            onPress={() => dispatch(fetchActivities({ page_size: 20, page_number: 1 }))}
+            variant="primary"
+            size="medium"
+            width={100}
+            height={40}
+            fontSize={14}
+            borderRadius={20}
+            style={styles.retryButton}
+          />
         </View>
       </View>
     );
@@ -332,15 +339,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   retryButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    marginTop: 8,
   },
 });
 

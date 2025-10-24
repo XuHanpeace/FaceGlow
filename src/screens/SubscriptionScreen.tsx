@@ -20,6 +20,7 @@ import { subscriptionDataService } from '../services/subscriptionDataService';
 import { useAuthState } from '../hooks/useAuthState';
 import { subscriptionPlans, subscriptionConfig, SubscriptionPlan } from '../config/subscriptionConfig';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import GradientButton from '../components/GradientButton';
 
 const { ApplePayModule } = NativeModules;
 
@@ -290,25 +291,17 @@ const SubscriptionScreen: React.FC = () => {
 
       {/* 底部按钮 */}
       <View style={styles.bottomContainer}>
-        <TouchableOpacity
-          style={[
-            styles.subscribeButton,
-            (!selectedPlan || isLoading) && styles.subscribeButtonDisabled,
-          ]}
+        <GradientButton
+          title={selectedPlan ? `订阅 ${selectedPlan.title}` : '选择套餐'}
           onPress={handleSubscribe}
-          disabled={!selectedPlan || isLoading}
-        >
-          {isLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="#fff" />
-              <Text style={styles.loadingText}>处理中...</Text>
-            </View>
-          ) : (
-            <Text style={styles.subscribeButtonText}>
-              {selectedPlan ? `订阅 ${selectedPlan.title}` : '选择套餐'}
-            </Text>
-          )}
-        </TouchableOpacity>
+          disabled={!selectedPlan}
+          loading={isLoading}
+          variant="primary"
+          size="medium"
+          fontSize={16}
+          borderRadius={22}
+          style={styles.subscribeButton}
+        />
       </View>
     </View>
   );
@@ -466,29 +459,8 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   subscribeButton: {
-    backgroundColor: '#FF6B6B',
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
     marginBottom: 12,
-  },
-  subscribeButtonDisabled: {
-    backgroundColor: '#666',
-  },
-  subscribeButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  loadingText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    width: '100%',
   },
   restoreButton: {
     paddingVertical: 12,

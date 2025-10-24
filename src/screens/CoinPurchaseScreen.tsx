@@ -18,6 +18,7 @@ import { subscriptionDataService } from '../services/subscriptionDataService';
 import { useAuthState } from '../hooks/useAuthState';
 import { coinPackages, coinConfig, CoinPackage } from '../config/subscriptionConfig';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import GradientButton from '../components/GradientButton';
 
 const { ApplePayModule } = NativeModules;
 
@@ -228,25 +229,17 @@ const CoinPurchaseScreen: React.FC = () => {
 
       {/* 底部按钮 */}
       <View style={styles.bottomContainer}>
-        <TouchableOpacity
-          style={[
-            styles.purchaseButton,
-            (!selectedPackage || isLoading) && styles.purchaseButtonDisabled,
-          ]}
+        <GradientButton
+          title={`购买 ${selectedPackage?.coins || 0} 金币`}
           onPress={handlePurchase}
-          disabled={!selectedPackage || isLoading}
-        >
-          {isLoading ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="#fff" />
-              <Text style={styles.loadingText}>处理中...</Text>
-            </View>
-          ) : (
-            <Text style={styles.purchaseButtonText}>
-              购买 {selectedPackage?.coins} 金币
-            </Text>
-          )}
-        </TouchableOpacity>
+          disabled={!selectedPackage}
+          loading={isLoading}
+          variant="primary"
+          size="medium"
+          fontSize={16}
+          borderRadius={22}
+          style={styles.purchaseButton}
+        />
       </View>
     </View>
   );
@@ -412,29 +405,8 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   purchaseButton: {
-    backgroundColor: '#FF6B35',
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
     marginBottom: 12,
-  },
-  purchaseButtonDisabled: {
-    backgroundColor: '#666',
-  },
-  purchaseButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  loadingText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    width: '100%',
   },
 });
 

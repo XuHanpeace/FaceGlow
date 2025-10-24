@@ -14,6 +14,7 @@ import {RootStackParamList} from './src/types/navigation';
 import { ModalProvider } from './src/components/modal';
 import { store } from './src/store';
 import { shareService } from './src/services/shareService';
+import { appLifecycleManager } from './src/services/auth/appLifecycleManager';
 import CLOUDBASE_CONFIG from './src/config/cloudbase';
 
 declare global {
@@ -23,10 +24,16 @@ declare global {
 }
 
 function App(): JSX.Element {
-  // 初始化微信SDK
+  // 初始化应用服务
   useEffect(() => {
-    const initWeChatSDK = async () => {
+    const initializeApp = async () => {
       try {
+        // 初始化应用生命周期管理器（包括长期认证）
+        console.log('🚀 初始化应用生命周期管理器...');
+        await appLifecycleManager.initialize();
+        console.log('✅ 应用生命周期管理器初始化完成');
+
+        // 初始化微信SDK
         const { APP_ID, UNIVERSAL_LINK } = CLOUDBASE_CONFIG.WECHAT;
         
         // 如果配置了真实的AppId（不是占位符），则初始化
@@ -42,11 +49,17 @@ function App(): JSX.Element {
           console.log('ℹ️ 微信AppId未配置，跳过微信SDK初始化');
         }
       } catch (error) {
-        console.error('❌ 微信SDK初始化异常:', error);
+        console.error('❌ 应用初始化异常:', error);
       }
     };
     
-    initWeChatSDK();
+    initializeApp();
+
+    // 清理函数
+    return () => {
+      console.log('🛑 应用卸载，停止生命周期管理器...');
+      appLifecycleManager.stop();
+    };
   }, []);
   
   return (

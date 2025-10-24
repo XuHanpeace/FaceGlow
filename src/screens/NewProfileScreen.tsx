@@ -630,15 +630,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   addFirstSelfieButton: {
-    backgroundColor: '#FF6B35',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-  },
-  addFirstSelfieText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
+    marginTop: 8,
   },
 });
 

@@ -3,6 +3,7 @@ import { cloudBaseAuthService } from './cloudbaseAuthService';
 import { verificationService } from './verificationService';
 import { AuthCredentials, RegisterRequest, LoginRequest, AuthResponse, CloudBaseAuthResponse, SendVerificationResponse, STORAGE_KEYS } from '../../types/auth';
 import { userDataService } from '../database/userDataService';
+import { longTermAuthService } from './longTermAuthService';
 
 // 创建MMKV存储实例
 const storage = new MMKV();
@@ -112,6 +113,9 @@ export class AuthService {
       // 保存认证信息到本地存储
       this.saveAuthCredentials(credentials);
 
+      // 更新长期认证的活跃时间
+      longTermAuthService.updateLastActiveTime();
+
       // 注册成功后，自动创建用户信息
       try {
         await userDataService.createUser({
@@ -158,6 +162,9 @@ export class AuthService {
 
       // 保存认证信息到本地存储
       this.saveAuthCredentials(credentials);
+
+      // 更新长期认证的活跃时间
+      longTermAuthService.updateLastActiveTime();
 
       // // 登录成功后，获取用户信息并更新登录时间
       // try {
@@ -218,6 +225,9 @@ export class AuthService {
       // 保存认证信息到本地存储
       this.saveAuthCredentials(credentials);
 
+      // 更新长期认证的活跃时间
+      longTermAuthService.updateLastActiveTime();
+
       return {
         success: true,
         data: credentials,
@@ -266,6 +276,9 @@ export class AuthService {
 
       // 保存认证信息到本地存储
       this.saveAuthCredentials(credentials);
+
+      // 更新长期认证的活跃时间
+      longTermAuthService.updateLastActiveTime();
 
       console.log('✅ 匿名登录成功并保存');
 
@@ -327,6 +340,9 @@ export class AuthService {
 
       // 更新本地存储
       this.saveAuthCredentials(credentials);
+
+      // 更新长期认证的活跃时间
+      longTermAuthService.updateLastActiveTime();
 
       console.log('🎉 AccessToken刷新成功!');
 

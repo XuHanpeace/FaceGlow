@@ -19,6 +19,7 @@ import { shareService } from '../services/shareService';
 import { ShareModal } from '../components/ShareModal';
 import { Alert } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import GradientButton from '../components/GradientButton';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -134,22 +135,22 @@ const UserWorkPreviewScreen: React.FC = () => {
 
       {/* 对比模式切换按钮 */}
       <View style={styles.comparisonToggle}>
-        <TouchableOpacity
-          style={[styles.toggleButton, showComparison && styles.toggleButtonActive]}
+        <GradientButton
+          title="对比模式"
           onPress={() => setShowComparison(true)}
-        >
-          <Text style={[styles.toggleText, showComparison && styles.toggleTextActive]}>
-            对比模式
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.toggleButton, !showComparison && styles.toggleButtonActive]}
+          variant={showComparison ? "primary" : "secondary"}
+          size="medium"
+          style={styles.toggleButton}
+          colors={showComparison ? undefined : ['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.1)']}
+        />
+        <GradientButton
+          title="单图模式"
           onPress={() => setShowComparison(false)}
-        >
-          <Text style={[styles.toggleText, !showComparison && styles.toggleTextActive]}>
-            单图模式
-          </Text>
-        </TouchableOpacity>
+          variant={!showComparison ? "primary" : "secondary"}
+          size="medium"
+          style={styles.toggleButton}
+          colors={!showComparison ? undefined : ['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.1)']}
+        />
       </View>
 
       {/* 主图片展示区域 - 左右滑动 */}
@@ -293,14 +294,6 @@ const styles = StyleSheet.create({
   },
   toggleButton: {
     flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    alignItems: 'center',
-  },
-  toggleButtonActive: {
-    backgroundColor: '#5EE7DF',
   },
   toggleText: {
     color: 'rgba(255, 255, 255, 0.6)',

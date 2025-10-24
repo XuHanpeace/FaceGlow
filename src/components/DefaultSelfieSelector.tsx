@@ -10,6 +10,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { useUserSelfies } from '../hooks/useUser';
+import GradientButton from './GradientButton';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -84,16 +85,14 @@ const DefaultSelfieSelector: React.FC<DefaultSelfieSelectorProps> = ({
         </ScrollView>
 
         {/* 确认按钮 */}
-        <TouchableOpacity
-          style={[
-            styles.confirmButton,
-            !tempSelectedSelfie && styles.confirmButtonDisabled
-          ]}
+        <GradientButton
+          title="设为默认自拍"
           onPress={handleConfirm}
           disabled={!tempSelectedSelfie}
-        >
-          <Text style={styles.confirmButtonText}>设为默认自拍</Text>
-        </TouchableOpacity>
+          variant="primary"
+          size="large"
+          style={styles.confirmButton}
+        />
       </View>
     </Modal>
   );
@@ -182,20 +181,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   confirmButton: {
-    backgroundColor: '#5EE7DF',
     marginHorizontal: 20,
     marginTop: 20,
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  confirmButtonDisabled: {
-    backgroundColor: '#666',
-  },
-  confirmButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
 });
 

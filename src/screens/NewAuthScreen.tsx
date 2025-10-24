@@ -21,6 +21,7 @@ import { RootStackParamList } from '../types/navigation';
 import { useAuthState } from '../hooks/useAuthState';
 import { authService, verificationService } from '../services/auth';
 import { MMKV } from 'react-native-mmkv';
+import GradientButton from '../components/GradientButton';
 
 const storage = new MMKV();
 
@@ -134,11 +135,8 @@ const NewAuthScreen: React.FC = () => {
         setAuthData(result.data);
         Alert.alert('成功', '登录成功！', [
           { text: '确定', onPress: () => {
-            // 返回到根页面，关闭整个登录流程
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'MainTab' }],
-            });
+            // 返回到之前的页面
+            navigation.goBack();
           }}
         ]);
       } else {
@@ -248,20 +246,17 @@ const NewAuthScreen: React.FC = () => {
                   />
                 </View>
 
-                <TouchableOpacity
-                  style={[
-                    styles.sendCodeButton,
-                    (!validatePhoneNumber(phoneNumber) || isLoading) && styles.sendCodeButtonDisabled
-                  ]}
+                <GradientButton
+                  title="获取验证码"
                   onPress={handleSendCode}
-                  disabled={!validatePhoneNumber(phoneNumber) || isLoading}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Text style={styles.sendCodeButtonText}>获取验证码</Text>
-                  )}
-                </TouchableOpacity>
+                  disabled={!validatePhoneNumber(phoneNumber)}
+                  loading={isLoading}
+                  variant="primary"
+                  size="medium"
+                  fontSize={16}
+                  borderRadius={25}
+                  style={styles.sendCodeButton}
+                />
 
                 {/* 用户协议勾选 - 仅注册模式显示 */}
                 {authMode === 'register' && (
@@ -309,20 +304,17 @@ const NewAuthScreen: React.FC = () => {
               autoCapitalize="none"
             />
 
-            <TouchableOpacity
-              style={[
-                styles.submitButton,
-                (!username.trim() || !password.trim() || isLoading) && styles.submitButtonDisabled
-              ]}
+            <GradientButton
+              title="登录"
               onPress={handlePasswordLogin}
-              disabled={!username.trim() || !password.trim() || isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.submitButtonText}>登录</Text>
-              )}
-            </TouchableOpacity>
+              disabled={!username.trim() || !password.trim()}
+              loading={isLoading}
+              variant="primary"
+              size="medium"
+              fontSize={16}
+              borderRadius={22}
+              style={styles.submitButton}
+            />
           </View>
         )}
 
@@ -459,36 +451,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   sendCodeButton: {
-    backgroundColor: '#FF6B9D',
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
     marginTop: 8,
     width: '100%',
-  },
-  sendCodeButtonDisabled: {
-    backgroundColor: '#666',
-  },
-  sendCodeButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
   submitButton: {
-    backgroundColor: '#FF6B9D',
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
     marginTop: 8,
     width: '100%',
-  },
-  submitButtonDisabled: {
-    backgroundColor: '#666',
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
   agreementContainer: {
     marginTop: 20,

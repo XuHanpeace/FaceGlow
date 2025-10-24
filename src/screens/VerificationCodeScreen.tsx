@@ -20,6 +20,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { useAuthState } from '../hooks/useAuthState';
 import { authService, verificationService } from '../services/auth';
+import GradientButton from '../components/GradientButton';
 
 type VerificationCodeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -120,11 +121,8 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({ route }
           setAuthData(result.data);
           Alert.alert('成功', '注册成功！', [
             { text: '确定', onPress: () => {
-              // 返回到根页面，关闭整个登录流程
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'MainTab' }],
-              });
+              // 返回到之前的页面
+              navigation.goBack();
             }}
           ]);
         } else {
@@ -142,11 +140,8 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({ route }
           setAuthData(result.data);
           Alert.alert('成功', '登录成功！', [
             { text: '确定', onPress: () => {
-              // 返回到根页面，关闭整个登录流程
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'MainTab' }],
-              });
+              // 返回到之前的页面
+              navigation.goBack();
             }}
           ]);
         } else {
@@ -230,22 +225,17 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({ route }
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity
-                style={[
-                  styles.submitButton,
-                  (!verificationCode.trim() || isLoading) && styles.submitButtonDisabled
-                ]}
+              <GradientButton
+                title={authMode === 'register' ? '完成注册' : '登录'}
                 onPress={handlePhoneVerification}
-                disabled={!verificationCode.trim() || isLoading}
-              >
-                {isLoading ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.submitButtonText}>
-                    {authMode === 'register' ? '完成注册' : '登录'}
-                  </Text>
-                )}
-              </TouchableOpacity>
+                disabled={!verificationCode.trim()}
+                loading={isLoading}
+                variant="primary"
+                size="medium"
+                fontSize={16}
+                borderRadius={22}
+                style={styles.submitButton}
+              />
             </View>
 
             {/* 安全提示 */}
@@ -337,20 +327,8 @@ const styles = StyleSheet.create({
     color: '#999',
   },
   submitButton: {
-    backgroundColor: '#FF6B9D',
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
     marginTop: 8,
     width: '100%',
-  },
-  submitButtonDisabled: {
-    backgroundColor: '#666',
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
   securityText: {
     fontSize: 14,

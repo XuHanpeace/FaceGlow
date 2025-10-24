@@ -21,6 +21,13 @@ interface GradientButtonProps {
   style?: ViewStyle;
   textStyle?: TextStyle;
   icon?: React.ReactNode;
+  width?: number;
+  height?: number;
+  fontSize?: number;
+  borderRadius?: number;
+  colors?: string[];
+  start?: { x: number; y: number };
+  end?: { x: number; y: number };
 }
 
 const GradientButton: React.FC<GradientButtonProps> = ({
@@ -33,52 +40,75 @@ const GradientButton: React.FC<GradientButtonProps> = ({
   style,
   textStyle,
   icon,
+  width,
+  height,
+  fontSize,
+  borderRadius,
+  colors,
+  start,
+  end,
 }) => {
   const gradientConfig = themeColors[variant];
   const isDisabled = disabled || loading;
 
-  // 根据尺寸获取样式
-  const getSizeStyle = () => {
-    switch (size) {
-      case 'small':
-        return styles.small;
-      case 'large':
-        return styles.large;
-      default:
-        return styles.medium;
-    }
+  // 尺寸配置
+  const sizeConfig = {
+    small: { width: 70, height: 30, fontSize: 12, borderRadius: 20 },
+    medium: { width: 120, height: 40, fontSize: 16, borderRadius: 22 },
+    large: { width: undefined, height: 44, fontSize: 18, borderRadius: 25 },
   };
 
-  const getTextSizeStyle = () => {
-    switch (size) {
-      case 'small':
-        return styles.smallText;
-      case 'large':
-        return styles.largeText;
-      default:
-        return styles.mediumText;
-    }
-  };
+  const config = sizeConfig[size];
+  const buttonWidth = width || config.width;
+  const buttonHeight = height || config.height;
+  const buttonFontSize = fontSize || config.fontSize;
+  const buttonBorderRadius = borderRadius || config.borderRadius;
+
+  // 渐变配置
+  const gradientColors = colors || (isDisabled ? ['#CCCCCC', '#999999'] : gradientConfig.gradient);
+  const gradientStart = start || gradientConfig.start;
+  const gradientEnd = end || gradientConfig.end;
 
   return (
     <TouchableOpacity
       onPress={onPress}
       disabled={isDisabled}
       activeOpacity={0.8}
-      style={[styles.container, style]}
+      style={[
+        styles.container,
+        {
+          width: buttonWidth,
+          height: buttonHeight,
+          borderRadius: buttonBorderRadius,
+        },
+        style,
+      ]}
     >
       <LinearGradient
-        colors={isDisabled ? ['#CCCCCC', '#999999'] : gradientConfig.gradient}
-        start={gradientConfig.start}
-        end={gradientConfig.end}
-        style={[styles.gradient, getSizeStyle()]}
+        colors={gradientColors}
+        start={gradientStart}
+        end={gradientEnd}
+        style={[
+          styles.gradient,
+          {
+            borderRadius: buttonBorderRadius,
+          },
+        ]}
       >
         {loading ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color="#fff" size="small" />
         ) : (
           <View style={styles.content}>
             {icon && <View style={styles.iconContainer}>{icon}</View>}
-            <Text style={[styles.text, getTextSizeStyle(), textStyle]}>
+            <Text
+              style={[
+                styles.text,
+                {
+                  fontSize: buttonFontSize,
+                },
+                textStyle,
+              ]}
+            >
               {title}
             </Text>
           </View>
@@ -90,11 +120,10 @@ const GradientButton: React.FC<GradientButtonProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 16,
     overflow: 'hidden',
   },
   gradient: {
-    flexDirection: 'row',
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -104,39 +133,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconContainer: {
-    marginRight: 8,
+    marginRight: 6,
   },
   text: {
     color: '#fff',
-    fontWeight: '600',
-  },
-  // 尺寸样式
-  small: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  medium: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 16,
-  },
-  large: {
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 20,
-  },
-  // 文字尺寸样式
-  smallText: {
-    fontSize: 12,
-  },
-  mediumText: {
-    fontSize: 14,
-  },
-  largeText: {
-    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
 });
 
 export default GradientButton;
-

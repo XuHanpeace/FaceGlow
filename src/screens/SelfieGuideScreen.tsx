@@ -22,6 +22,7 @@ import { useUser } from '../hooks/useUser';
 import { cosService } from '../services/cos/COSService';
 import { userDataService } from '../services/database/userDataService';
 import { authService } from '../services/auth/authService';
+import GradientButton from '../components/GradientButton';
 
 type SelfieGuideScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -368,12 +369,16 @@ const SelfieGuideScreen: React.FC = () => {
             )}
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity
-            style={styles.continueButton}
+          <GradientButton
+            title="选择自拍"
             onPress={handleContinuePress}
-          >
-            <Text style={styles.continueButtonText}>选择自拍</Text>
-          </TouchableOpacity>
+            variant="primary"
+            size="large"
+            height={50}
+            fontSize={16}
+            borderRadius={25}
+            style={styles.continueButton}
+          />
         )}
       </View>
 
@@ -565,18 +570,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   continueButton: {
-    backgroundColor: '#FF6B6B',
-    borderRadius: 25,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  continueButtonDisabled: {
-    backgroundColor: '#666',
-  },
-  continueButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
+    width: '100%',
   },
   uploadButton: {
     backgroundColor: '#4CAF50',

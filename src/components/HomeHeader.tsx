@@ -5,6 +5,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { useUserAvatar, useUserBalance } from '../hooks/useUser';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import GradientButton from './GradientButton';
 
 type HomeHeaderNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -54,9 +55,15 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
 
       {/* 右侧按钮区域 */}
       <View style={styles.rightContainer}>
-        <TouchableOpacity style={styles.upgradeButton} onPress={handleUpgradePress}>
-          <Text style={styles.upgradeText}>升级</Text>
-        </TouchableOpacity>
+        <GradientButton
+          title="升级"
+          onPress={handleUpgradePress}
+          variant="primary"
+          size="small"
+          fontSize={12}
+          borderRadius={19}
+          style={styles.upgradeButton}
+        />
         <TouchableOpacity style={styles.profileButton} onPress={handleProfilePress}>
           {hasAvatar ? (
             <Image source={avatarSource} style={styles.profileAvatar} />
@@ -120,16 +127,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   upgradeButton: {
-    backgroundColor: '#FF6B9D',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 12,
-  },
-  upgradeText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
+    marginRight: 8,
   },
   profileButton: {
     width: 36,

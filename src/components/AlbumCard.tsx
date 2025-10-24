@@ -38,7 +38,7 @@ const AlbumCard: React.FC<AlbumCardProps> = ({
         />
         {album.level !== '0' && (
           <View style={styles.premiumBadge}>
-            <FontAwesome name="crown" size={12} color="#FFD700" />
+            <FontAwesome name="star" size={12} color="#FFD700" />
           </View>
         )}
         {/* 显示相册内模板数量 */}
