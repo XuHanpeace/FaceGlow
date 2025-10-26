@@ -114,11 +114,18 @@ RCT_EXPORT_METHOD(checkSubscriptionStatus:(RCTPromiseResolveBlock)resolve
         // 处理产品列表请求
         NSMutableArray *products = [NSMutableArray array];
         for (SKProduct *product in response.products) {
+            // 使用 NSNumberFormatter 格式化价格为本地货币格式
+            NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
+            formatter.numberStyle = NSNumberFormatterCurrencyStyle;
+            formatter.locale = product.priceLocale;
+            NSString *formattedPrice = [formatter stringFromNumber:product.price];
+            
             [products addObject:@{
                 @"productId": product.productIdentifier,
                 @"title": product.localizedTitle,
                 @"description": product.localizedDescription,
                 @"price": product.price,
+                @"priceFormatted": formattedPrice ?: @"",
                 @"priceLocale": product.priceLocale.localeIdentifier
             }];
         }

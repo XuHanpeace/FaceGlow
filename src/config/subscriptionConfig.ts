@@ -75,8 +75,8 @@ export const subscriptionConfig = {
   features: [
     '• 无限次AI换脸',
     '• 高清图片导出',
-    '• 100 PRO photos daily',
-    '• 3000 bonus coins for videos',
+    '• 每日100张PRO级别照片',
+    '• 视频创作赠送3000美美币',
   ],
   buttonText: '立即订阅',
   restoreText: '恢复购买',

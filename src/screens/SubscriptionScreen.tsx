@@ -77,10 +77,23 @@ const SubscriptionScreen: React.FC = () => {
         };
       });
       setAvailablePlans(localPlans);
+      
+      // 默认选中年会员
+      const yearlyPlan = localPlans.find(plan => plan.id === 'yearly');
+      if (yearlyPlan) {
+        setSelectedPlan(yearlyPlan);
+      }
     } catch (error) {
       console.error('加载订阅计划失败:', error);
       // 使用默认计划
-      setAvailablePlans(subscriptionPlans.map(plan => ({ ...plan, canPurchase: true, isActive: false })));
+      const defaultPlans = subscriptionPlans.map(plan => ({ ...plan, canPurchase: true, isActive: false }));
+      setAvailablePlans(defaultPlans);
+      
+      // 默认选中年会员
+      const yearlyPlan = defaultPlans.find(plan => plan.id === 'yearly');
+      if (yearlyPlan) {
+        setSelectedPlan(yearlyPlan);
+      }
     }
   };
 
@@ -237,7 +250,6 @@ const SubscriptionScreen: React.FC = () => {
               style={[
                 styles.planCard,
                 selectedPlan?.id === plan.id && styles.planCardSelected,
-                plan.isBestValue && styles.planCardBestValue,
                 !plan.canPurchase && styles.planCardDisabled,
               ]}
               onPress={() => plan.canPurchase && handlePlanSelect(plan)}
@@ -262,6 +274,31 @@ const SubscriptionScreen: React.FC = () => {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* 订阅信息详情 */}
+        {selectedPlan && (
+          <View style={styles.subscriptionInfoSection}>
+            <Text style={styles.infoSectionTitle}>订阅详情</Text>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>订阅标题：</Text>
+              <Text style={styles.infoValue}>美颜换换Pro - {selectedPlan.title}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>订阅时长：</Text>
+              <Text style={styles.infoValue}>{selectedPlan.period === 'month' ? '1个月' : '1年'}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>订阅价格：</Text>
+              <Text style={styles.infoValue}>{selectedPlan.price}</Text>
+            </View>
+            {selectedPlan.weeklyPrice && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>每周价格：</Text>
+                <Text style={styles.infoValue}>{selectedPlan.weeklyPrice}</Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* 法律链接 */}
         <View style={styles.legalLinksContainer}>
@@ -377,9 +414,6 @@ const styles = StyleSheet.create({
   planCardSelected: {
     borderColor: '#FF6B35',
     backgroundColor: 'rgba(255, 107, 53, 0.1)',
-  },
-  planCardBestValue: {
-    borderColor: '#FF6B35',
   },
   saveBadge: {
     position: 'absolute',
@@ -503,6 +537,35 @@ const styles = StyleSheet.create({
   legalLinkDivider: {
     color: 'rgba(255, 255, 255, 0.4)',
     fontSize: 13,
+  },
+  subscriptionInfoSection: {
+    backgroundColor: 'rgba(255, 107, 53, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 53, 0.3)',
+  },
+  infoSectionTitle: {
+    color: '#FF6B35',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  infoLabel: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 13,
+    minWidth: 90,
+  },
+  infoValue: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '500',
+    flex: 1,
   },
   subscriptionNotice: {
     marginBottom: 20,
