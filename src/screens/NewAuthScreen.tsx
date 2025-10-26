@@ -135,8 +135,11 @@ const NewAuthScreen: React.FC = () => {
         setAuthData(result.data);
         Alert.alert('成功', '登录成功！', [
           { text: '确定', onPress: () => {
-            // 返回到之前的页面
-            navigation.goBack();
+            // 重置导航栈，关闭整个登录流程
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'NewHome' }],
+            });
           }}
         ]);
       } else {
