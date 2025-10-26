@@ -89,7 +89,7 @@ const AlbumMarketScreen: React.FC = () => {
           />
           {item.level !== '0' && (
             <View style={styles.premiumBadge}>
-              <Text style={styles.premiumIcon}>👑</Text>
+              <FontAwesome name="star" size={12} color="#FFD700" />
             </View>
           )}
           {/* 显示相册内模板数量 */}
@@ -271,9 +271,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     borderRadius: 12,
     padding: 4,
-  },
-  premiumIcon: {
-    fontSize: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   templateCountBadge: {
     position: 'absolute',

@@ -8,7 +8,8 @@ interface ContentSectionProps {
   title: string;
   albums: Album[];
   categoryId: string;
-  onAlbumPress: (albumId: string) => void;
+  activityId: string;
+  onAlbumPress: (album: Album, activityId: string) => void;
   onViewAllPress: (categoryId: string, categoryName: string) => void;
 }
 
@@ -16,6 +17,7 @@ const ContentSection: React.FC<ContentSectionProps> = ({
   title,
   albums,
   categoryId,
+  activityId,
   onAlbumPress,
   onViewAllPress,
 }) => {
@@ -41,7 +43,7 @@ const ContentSection: React.FC<ContentSectionProps> = ({
           <AlbumCard
             key={index}
             album={album}
-            onPress={onAlbumPress}
+            onPress={() => onAlbumPress(album, activityId)}
           />
         ))}
       </ScrollView>
