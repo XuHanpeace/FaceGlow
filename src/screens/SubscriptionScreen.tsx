@@ -100,7 +100,7 @@ const SubscriptionScreen: React.FC = () => {
   const fetchAvailableProducts = async () => {
     try {
       const products = await ApplePayModule.getAvailableProducts([
-        'com.digitech.faceglow.subscribe.monthly',
+        'com.digitech.faceglow.subscribe.monthly1',
         'com.digitech.faceglow.subscribe.yearly',
       ]);
       setAvailableProducts(products);
@@ -211,7 +211,7 @@ const SubscriptionScreen: React.FC = () => {
   };
 
   const handleOpenTermsOfUse = () => {
-    Linking.openURL('https://xuhanpeace.github.io/facegolow-support/terms-of-use.html');
+    Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/');
   };
 
   return (
@@ -221,9 +221,7 @@ const SubscriptionScreen: React.FC = () => {
       {/* 头部 */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-                                  <FontAwesome name="chevron-left" size={14} color="#fff" />
-
-
+          <FontAwesome name="chevron-left" size={14} color="#fff" />
         </TouchableOpacity>
         <View style={styles.placeholder} />
       </View>
@@ -257,7 +255,7 @@ const SubscriptionScreen: React.FC = () => {
             >
               {plan.savePercent && (
                 <View style={styles.saveBadge}>
-                  <Text style={styles.saveText}>节省{plan.savePercent}</Text>
+                  <Text style={styles.saveText}>{plan.savePercent}</Text>
                 </View>
               )}
               
@@ -265,9 +263,9 @@ const SubscriptionScreen: React.FC = () => {
                 <Text style={styles.planTitle}>{plan.title}</Text>
                 <View style={styles.priceContainer}>
                   <Text style={styles.price}>{plan.price}</Text>
-                  <Text style={styles.period}> / {plan.period}</Text>
+                  <Text style={styles.period}> / {plan.period === 'month' ? '月' : '年'}</Text>
                   {plan.weeklyPrice && (
-                    <Text style={styles.weeklyPrice}>{plan.weeklyPrice} / week</Text>
+                    <Text style={styles.weeklyPrice}>{plan.weeklyPrice} / 周</Text>
                   )}
                 </View>
               </View>
@@ -468,7 +466,8 @@ const styles = StyleSheet.create({
   },
   weeklyPrice: {
     color: 'rgba(255, 255, 255, 0.9)',
-    fontSize: 14,
+    marginLeft: 8,
+    fontSize: 12,
   },
   termsSection: {
     marginBottom: 30,

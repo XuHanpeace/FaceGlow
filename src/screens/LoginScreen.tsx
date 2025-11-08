@@ -90,8 +90,6 @@ export const LoginScreen: React.FC = () => {
       const result = await verificationService.sendPhoneVerification(phoneNumber);
       setVerificationId(result.verification_id);
       
-      Alert.alert('成功', '验证码已发送，请查收');
-      
       // 转到验证码输入页面
       setStep('code');
       animateToCodeStep();

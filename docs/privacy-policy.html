@@ -20,11 +20,31 @@
             padding: 40px;
             border-radius: 20px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        .language-switcher {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #FF6B9D, #A855F7);
+            padding: 8px 16px;
+            border-radius: 20px;
+            text-decoration: none;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .language-switcher:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
         h1 {
             color: #FF6B9D;
             text-align: center;
             margin-bottom: 10px;
+            margin-top: 20px;
             font-size: 28px;
         }
         .last-updated {
@@ -83,6 +103,8 @@
 </head>
 <body>
     <div class="container">
+        <a href="privacy-policy-en.html" class="language-switcher">English</a>
+        
         <h1>隐私政策</h1>
         <p class="last-updated">最后更新日期：2025年10月14日</p>
         

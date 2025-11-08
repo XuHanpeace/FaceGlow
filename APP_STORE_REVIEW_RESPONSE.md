@@ -348,7 +348,7 @@ Translation: "Temporary processing photos: deleted immediately after completion.
 ```
 【订阅说明】
 • 月会员：HK$128/月，解锁所有AI功能
-• 年会员：HK$288/年，最优惠选择
+• 年会员：¥328/年，最优惠选择
 
 【自动续订说明】
 订阅将自动续订，除非在当前订阅期结束前至少24小时取消。您可以在Apple ID账户设置中管理订阅。
@@ -367,7 +367,7 @@ Translation: "Temporary processing photos: deleted immediately after completion.
 
 ✅ 订阅名称：美颜换换Pro会员  
 ✅ 订阅时长：月会员(1个月)、年会员(12个月)  
-✅ 订阅价格：HK$128/月、HK$288/年  
+✅ 订阅价格：HK$128/月、¥328/年  
 ✅ 功能链接到隐私政策  
 ✅ 功能链接到服务条款  
 ✅ 恢复购买功能  

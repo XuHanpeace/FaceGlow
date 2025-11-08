@@ -11,25 +11,25 @@ export class SubscriptionTesterSimulator {
   // 模拟产品数据
   private static readonly MOCK_PRODUCTS = [
     {
-        productIdentifier: 'com.digitech.faceglow.subscribe.monthly',
-      localizedTitle: '月会员',
+        productIdentifier: 'com.digitech.faceglow.subscribe.monthly1',
+      localizedTitle: '月度会员',
       localizedDescription: '解锁所有AI功能',
-      price: 128.0,
-      priceLocale: 'HKD',
+      price: 28.0,
+      priceLocale: 'CNY',
     },
     {
         productIdentifier: 'com.digitech.faceglow.subscribe.yearly',
-      localizedTitle: '年会员',
+      localizedTitle: '年度会员',
       localizedDescription: '最优惠的选择',
-      price: 288.0,
-      priceLocale: 'HKD',
+      price: 328.0,
+      priceLocale: 'CNY',
     },
     {
         productIdentifier: 'com.digitech.faceglow.assets.coins',
       localizedTitle: 'Face Coins',
       localizedDescription: '解锁AI创作功能',
       price: 6.0,
-      priceLocale: 'HKD',
+      priceLocale: 'CNY',
     },
   ];
 

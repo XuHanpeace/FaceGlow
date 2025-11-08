@@ -32,22 +32,22 @@ export interface CoinPackage {
 export const subscriptionPlans: SubscriptionPlan[] = [
   {
     id: 'monthly',
-    title: '月会员',
-    price: 'HK$128',
+    title: '月度会员',
+    price: '¥28',
     period: 'month',
     description: '解锁所有AI功能',
-    productId: 'com.digitech.faceglow.subscribe.monthly',
+    productId: 'com.digitech.faceglow.subscribe.monthly1',
   },
   {
     id: 'yearly',
-    title: '年会员',
-    price: 'HK$288',
-    originalPrice: 'HK$3016',
+    title: '年度会员',
+    price: '¥328',
+    originalPrice: '¥336',
     period: 'year',
     description: '最优惠的选择',
     isBestValue: true,
-    savePercent: '90%',
-    weeklyPrice: 'HK$5.52',
+    savePercent: '节省¥8',
+    weeklyPrice: '每周¥6.31',
     productId: 'com.digitech.faceglow.subscribe.yearly',
   },
 ];
@@ -71,12 +71,11 @@ export const coinPackages: CoinPackage[] = [
  * 订阅页面配置
  */
 export const subscriptionConfig = {
-  title: '美颜换换Pro',
+  title: '美颜换换会员',
   features: [
     '• 无限次AI换脸',
     '• 高清图片导出',
     '• 每日100张PRO级别照片',
-    '• 视频创作赠送3000美美币',
   ],
   buttonText: '立即订阅',
   restoreText: '恢复购买',

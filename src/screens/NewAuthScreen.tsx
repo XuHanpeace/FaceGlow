@@ -104,8 +104,6 @@ const NewAuthScreen: React.FC = () => {
     try {
       const result = await verificationService.sendPhoneVerification(phoneNumber);
       
-      Alert.alert('成功', '验证码已发送，请查收');
-      
       // 导航到验证码输入页面
       navigation.navigate('VerificationCode', {
         phoneNumber: phoneNumber,
@@ -133,15 +131,11 @@ const NewAuthScreen: React.FC = () => {
       
       if (result.success && result.data) {
         setAuthData(result.data);
-        Alert.alert('成功', '登录成功！', [
-          { text: '确定', onPress: () => {
-            // 重置导航栈，关闭整个登录流程
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'NewHome' }],
-            });
-          }}
-        ]);
+        // 重置导航栈，关闭整个登录流程
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'NewHome' }],
+        });
       } else {
         Alert.alert('登录失败', result.error?.message || '未知错误');
       }
@@ -191,7 +185,7 @@ const NewAuthScreen: React.FC = () => {
 
   // 打开用户协议
   const handleOpenUserAgreement = () => {
-    Linking.openURL('https://xuhanpeace.github.io/facegolow-support/user-agreement.html');
+    Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/');
   };
 
   // 打开隐私政策

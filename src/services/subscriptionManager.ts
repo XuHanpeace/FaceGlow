@@ -24,16 +24,16 @@ class SubscriptionManager {
   private subscriptionPlans: SubscriptionPlan[] = [
     {
       id: 'monthly',
-      productId: 'com.digitech.faceglow.subscribe.monthly',
-      title: '月会员',
-      price: 'HK$128',
+      productId: 'com.digitech.faceglow.subscribe.monthly1',
+      title: '月度会员',
+      price: '¥28',
       period: 'month',
     },
     {
       id: 'yearly',
       productId: 'com.digitech.faceglow.subscribe.yearly',
-      title: '年会员',
-      price: 'HK$288',
+      title: '年度会员',
+      price: '¥328',
       period: 'year',
     },
   ];

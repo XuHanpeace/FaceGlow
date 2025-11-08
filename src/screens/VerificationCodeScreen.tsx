@@ -80,8 +80,6 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({ route }
     try {
       const result = await verificationService.sendPhoneVerification(phoneNumber);
       
-      Alert.alert('成功', '验证码已重新发送，请查收');
-      
       // 重新开始倒计时
       setCountdown(60);
     } catch (error: any) {
@@ -164,7 +162,7 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({ route }
 
   // 打开用户协议
   const handleOpenUserAgreement = () => {
-    Linking.openURL('https://xuhanpeace.github.io/facegolow-support/user-agreement.html');
+    Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/');
   };
 
   // 打开隐私政策

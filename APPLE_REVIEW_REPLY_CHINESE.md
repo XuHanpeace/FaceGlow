@@ -17,7 +17,7 @@
 **1. 应用内订阅信息：**
 ✓ 订阅标题：美颜换换Pro - 月会员/年会员
 ✓ 订阅时长：月会员（1个月）/ 年会员（12个月）
-✓ 订阅价格：月会员 HK$128/月，年会员 HK$288/年
+✓ 订阅价格：月会员 HK$128/月，年会员 ¥328/年
 ✓ 功能链接：
   - 隐私政策：https://xuhanpeace.github.io/facegolow-support/privacy-policy.html
   - 服务条款：https://xuhanpeace.github.io/facegolow-support/terms-of-use.html

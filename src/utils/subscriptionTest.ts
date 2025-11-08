@@ -13,7 +13,7 @@ export interface SubscriptionTestResult {
 export class SubscriptionTester {
   // 测试订阅产品ID列表
   private static readonly SUBSCRIPTION_PRODUCT_IDS = [
-    'com.digitech.faceglow.subscribe.monthly', 
+    'com.digitech.faceglow.subscribe.monthly1', 
     'com.digitech.faceglow.subscribe.yearly',
   ];
 
