@@ -59,11 +59,11 @@ export const coinPackages: CoinPackage[] = [
   {
     id: 'coins',
     title: 'Face Coins',
-    coins: 100,
-    price: 'HK$6',
-    description: '解锁AI创作功能',
+    coins: 80,
+    price: '¥8',
+    description: '使用美美币，解锁高级AI写真模版',
     isPopular: true,
-    productId: 'com.digitech.faceglow.assets.coins',
+    productId: 'com.digitech.faceglow.assets.coins1',
   },
 ];
 

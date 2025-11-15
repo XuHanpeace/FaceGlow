@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Linking,
+  BackHandler,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -18,6 +19,7 @@ import { NativeModules } from 'react-native';
 import { subscriptionManager } from '../services/subscriptionManager';
 import { subscriptionDataService } from '../services/subscriptionDataService';
 import { useAuthState } from '../hooks/useAuthState';
+import { useUser } from '../hooks/useUser';
 import { subscriptionPlans, subscriptionConfig, SubscriptionPlan } from '../config/subscriptionConfig';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import GradientButton from '../components/GradientButton';
@@ -54,21 +56,64 @@ const getSubscriptionErrorMessage = (errorCode: string, errorMessage: string): s
 const SubscriptionScreen: React.FC = () => {
   const navigation = useNavigation<SubscriptionScreenNavigationProp>();
   const { user } = useAuthState();
+  const { userProfile } = useUser();
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [availableProducts, setAvailableProducts] = useState<any[]>([]);
   const [availablePlans, setAvailablePlans] = useState<SubscriptionPlan[]>([]);
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
+  
+  // 获取当前会员状态
+  const getCurrentMembershipStatus = () => {
+    if (!userProfile) return null;
+    
+    const isPremium = userProfile.is_premium || false;
+    const premiumExpiresAt = userProfile.premium_expires_at;
+    const subscriptionType = userProfile.subscription_type;
+    
+    if (isPremium && premiumExpiresAt) {
+      const now = Date.now();
+      if (now < premiumExpiresAt) {
+        return {
+          isActive: true,
+          type: subscriptionType,
+          expiresAt: premiumExpiresAt,
+        };
+      }
+    }
+    return null;
+  };
+  
+  const membershipStatus = getCurrentMembershipStatus();
+  
   useEffect(() => {
     // 初始化时获取可用产品
     fetchAvailableProducts();
-    loadAvailablePlans();
   }, []);
+  
+  useEffect(() => {
+    // 当会员状态变化时重新加载计划
+    loadAvailablePlans();
+  }, [membershipStatus]);
+
+  // 在订阅Loading时禁用返回按钮
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (isLoading) {
+        // 正在加载时阻止返回
+        return true;
+      }
+      return false;
+    });
+
+    return () => backHandler.remove();
+  }, [isLoading]);
 
   const loadAvailablePlans = async () => {
     try {
       const plans = await subscriptionManager.getAvailableSubscriptionPlans();
       // 将manager的plan转换为本地plan格式
-      const localPlans = subscriptionPlans.map(plan => {
+      let localPlans = subscriptionPlans.map(plan => {
         const managerPlan = plans.find(p => p.id === plan.id);
         return {
           ...plan,
@@ -76,23 +121,53 @@ const SubscriptionScreen: React.FC = () => {
           isActive: managerPlan?.isActive ?? false,
         };
       });
+      
+      // 根据当前会员状态过滤计划
+      if (membershipStatus) {
+        if (membershipStatus.type === 'monthly') {
+          // 月度会员：不显示月度选项
+          localPlans = localPlans.filter(plan => plan.id !== 'monthly');
+        } else if (membershipStatus.type === 'yearly') {
+          // 年度会员：不显示任何选项
+          localPlans = [];
+        }
+      }
+      
       setAvailablePlans(localPlans);
       
-      // 默认选中年会员
-      const yearlyPlan = localPlans.find(plan => plan.id === 'yearly');
-      if (yearlyPlan) {
-        setSelectedPlan(yearlyPlan);
+      // 默认选中年会员（如果可用）
+      if (localPlans.length > 0) {
+        const yearlyPlan = localPlans.find(plan => plan.id === 'yearly');
+        if (yearlyPlan) {
+          setSelectedPlan(yearlyPlan);
+        } else {
+          setSelectedPlan(localPlans[0]);
+        }
       }
     } catch (error) {
       console.error('加载订阅计划失败:', error);
       // 使用默认计划
-      const defaultPlans = subscriptionPlans.map(plan => ({ ...plan, canPurchase: true, isActive: false }));
+      let defaultPlans = subscriptionPlans.map(plan => ({ ...plan, canPurchase: true, isActive: false }));
+      
+      // 根据当前会员状态过滤计划
+      if (membershipStatus) {
+        if (membershipStatus.type === 'monthly') {
+          defaultPlans = defaultPlans.filter(plan => plan.id !== 'monthly');
+        } else if (membershipStatus.type === 'yearly') {
+          defaultPlans = [];
+        }
+      }
+      
       setAvailablePlans(defaultPlans);
       
-      // 默认选中年会员
-      const yearlyPlan = defaultPlans.find(plan => plan.id === 'yearly');
-      if (yearlyPlan) {
-        setSelectedPlan(yearlyPlan);
+      // 默认选中年会员（如果可用）
+      if (defaultPlans.length > 0) {
+        const yearlyPlan = defaultPlans.find(plan => plan.id === 'yearly');
+        if (yearlyPlan) {
+          setSelectedPlan(yearlyPlan);
+        } else {
+          setSelectedPlan(defaultPlans[0]);
+        }
       }
     }
   };
@@ -111,6 +186,11 @@ const SubscriptionScreen: React.FC = () => {
   };
 
   const handleBackPress = () => {
+    if (isLoading) {
+      // 正在加载时阻止返回
+      Alert.alert('提示', '订阅处理中，请稍候...');
+      return;
+    }
     navigation.goBack();
   };
 
@@ -121,6 +201,11 @@ const SubscriptionScreen: React.FC = () => {
   const handleSubscribe = async () => {
     if (!selectedPlan) {
       Alert.alert('请选择订阅方案');
+      return;
+    }
+
+    if (!agreeToTerms) {
+      Alert.alert('请先同意用户协议', '订阅前需要阅读并同意《会员订阅用户协议》');
       return;
     }
 
@@ -136,7 +221,7 @@ const SubscriptionScreen: React.FC = () => {
       
       // 调用原生支付模块
       const result = await ApplePayModule.purchaseProduct(selectedPlan.productId);
-      
+
       if (result.success) {
         // 更新用户数据库中的订阅信息
         if (user?.uid) {
@@ -170,14 +255,16 @@ const SubscriptionScreen: React.FC = () => {
               onPress: () => {
                 // 重新加载订阅状态
                 loadAvailablePlans();
-                navigation.navigate('NewHome');
+                navigation.popToTop();
               },
             },
           ]
         );
       } else {
         // 根据错误类型显示不同提示
-        const errorMessage = getSubscriptionErrorMessage(result.errorCode, result.error);
+        const errorCode = (result as any).errorCode || 'purchase_failed';
+        const error = (result as any).error || '订阅失败';
+        const errorMessage = getSubscriptionErrorMessage(errorCode, error);
         Alert.alert('订阅失败', errorMessage);
       }
     } catch (error: any) {
@@ -214,6 +301,10 @@ const SubscriptionScreen: React.FC = () => {
     Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/');
   };
 
+  const handleOpenSubscriptionAgreement = () => {
+    Linking.openURL('https://xuhanpeace.github.io/facegolow-support/subscription-agreement.html');
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
@@ -240,9 +331,32 @@ const SubscriptionScreen: React.FC = () => {
         </View>
 
         {/* 订阅方案 */}
-
-        <View style={styles.plansContainer}>
-          {availablePlans.map((plan) => (
+        {membershipStatus?.type === 'yearly' ? (
+          <View style={styles.premiumStatusContainer}>
+            <View style={styles.premiumStatusCard}>
+              <FontAwesome name="check-circle" size={48} color="#FF6B35" style={styles.premiumIcon} />
+              <Text style={styles.premiumTitle}>您已是年度会员</Text>
+              <Text style={styles.premiumDescription}>
+                恭喜您已拥有最高级别的会员权益！{'\n'}
+                享受所有高级功能和专属特权
+              </Text>
+              {membershipStatus.expiresAt && (
+                <View style={styles.expiresInfo}>
+                  <Text style={styles.expiresLabel}>会员到期时间：</Text>
+                  <Text style={styles.expiresDate}>
+                    {new Date(membershipStatus.expiresAt).toLocaleDateString('zh-CN', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        ) : (
+          <View style={styles.plansContainer}>
+            {availablePlans.map((plan) => (
             <TouchableOpacity
               key={plan.id}
               style={[
@@ -271,7 +385,17 @@ const SubscriptionScreen: React.FC = () => {
               </View>
             </TouchableOpacity>
           ))}
-        </View>
+          </View>
+        )}
+
+        {/* 年度会员时不显示订阅按钮 */}
+        {membershipStatus?.type === 'yearly' && (
+          <View style={styles.premiumNotice}>
+            <Text style={styles.premiumNoticeText}>
+              您可以在 Apple ID 账户设置中管理订阅
+            </Text>
+          </View>
+        )}
 
         {/* 订阅信息详情 */}
         {selectedPlan && (
@@ -324,20 +448,40 @@ const SubscriptionScreen: React.FC = () => {
 
       </ScrollView>
 
-      {/* 底部按钮 */}
-      <View style={styles.bottomContainer}>
-        <GradientButton
-          title={selectedPlan ? `订阅 ${selectedPlan.title}` : '选择套餐'}
-          onPress={handleSubscribe}
-          disabled={!selectedPlan}
-          loading={isLoading}
-          variant="primary"
-          size="medium"
-          fontSize={16}
-          borderRadius={22}
-          style={styles.subscribeButton}
-        />
-      </View>
+      {/* 协议勾选 - 年度会员时不显示 */}
+      {membershipStatus?.type !== 'yearly' && (
+        <View style={styles.agreementContainer}>
+          <TouchableOpacity 
+            style={styles.checkboxContainer}
+            onPress={() => setAgreeToTerms(!agreeToTerms)}
+          >
+            <View style={[styles.checkbox, agreeToTerms && styles.checkboxChecked]}>
+              {agreeToTerms && <Text style={styles.checkmark}>✓</Text>}
+            </View>
+            <Text style={styles.agreementText}>
+              我已阅读并同意
+              <Text style={styles.linkText} onPress={handleOpenSubscriptionAgreement}>《会员订阅用户协议》</Text>
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* 底部按钮 - 年度会员时不显示 */}
+      {membershipStatus?.type !== 'yearly' && (
+        <View style={styles.bottomContainer}>
+          <GradientButton
+            title={selectedPlan ? `订阅 ${selectedPlan.title}` : '选择套餐'}
+            onPress={handleSubscribe}
+            disabled={!selectedPlan || !agreeToTerms || isLoading}
+            loading={isLoading}
+            variant="primary"
+            size="medium"
+            fontSize={16}
+            borderRadius={22}
+            style={styles.subscribeButton}
+          />
+        </View>
+      )}
     </View>
   );
 };
@@ -508,6 +652,67 @@ const styles = StyleSheet.create({
     opacity: 0.5,
     backgroundColor: '#f5f5f5',
   },
+  premiumStatusContainer: {
+    marginBottom: 30,
+    paddingHorizontal: 20,
+  },
+  premiumStatusCard: {
+    backgroundColor: 'rgba(255, 107, 53, 0.1)',
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FF6B35',
+  },
+  premiumIcon: {
+    marginBottom: 16,
+  },
+  premiumTitle: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  premiumDescription: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 20,
+  },
+  expiresInfo: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.2)',
+    width: '100%',
+    alignItems: 'center',
+  },
+  expiresLabel: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  expiresDate: {
+    color: '#FF6B35',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  premiumNotice: {
+    marginTop: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  premiumNoticeText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
   statusContainer: {
     backgroundColor: '#f8f9fa',
     padding: 12,
@@ -575,6 +780,45 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 16,
     textAlign: 'center',
+  },
+  agreementContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    marginRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  checkboxChecked: {
+    backgroundColor: '#FF6B35',
+    borderColor: '#FF6B35',
+  },
+  checkmark: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  agreementText: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 13,
+    flex: 1,
+    lineHeight: 20,
+  },
+  linkText: {
+    color: '#FF6B35',
+    textDecorationLine: 'underline',
   },
 });
 

@@ -9,6 +9,8 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  Linking,
+  BackHandler,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -55,25 +57,46 @@ const CoinPurchaseScreen: React.FC = () => {
   const [selectedPackage, setSelectedPackage] = useState<CoinPackage | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [availableProducts, setAvailableProducts] = useState<any[]>([]);
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
 
   useEffect(() => {
     // 初始化时获取可用产品
     fetchAvailableProducts();
+    // 默认选中第一个美美币产品
+    if (coinPackages.length > 0) {
+      setSelectedPackage(coinPackages[0]);
+    }
   }, []);
+
+  // 在购买Loading时禁用返回按钮
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (isLoading) {
+        // 正在加载时阻止返回
+        return true;
+      }
+      return false;
+    });
+
+    return () => backHandler.remove();
+  }, [isLoading]);
 
   const fetchAvailableProducts = async () => {
     try {
       const products = await ApplePayModule.getAvailableProducts([
-        'com.digitech.faceglow.assets.coins',
+        'com.digitech.faceglow.assets.coins1',
       ]);
       setAvailableProducts(products);
-      console.log('可用金币产品:', products);
+      console.log('可用美美币产品:', products);
     } catch (error) {
-      console.error('获取金币产品失败:', error);
+      console.error('获取美美币产品失败:', error);
     }
   };
 
   const handleBackPress = () => {
+    if (isLoading) {
+      return;
+    }
     navigation.goBack();
   };
 
@@ -83,7 +106,12 @@ const CoinPurchaseScreen: React.FC = () => {
 
   const handlePurchase = async () => {
     if (!selectedPackage) {
-      Alert.alert('请选择金币包');
+      Alert.alert('请选择美美币包');
+      return;
+    }
+
+    if (!agreeToTerms) {
+      Alert.alert('请先同意用户协议', '购买前需要阅读并同意《美美币购买用户协议》');
       return;
     }
 
@@ -94,7 +122,7 @@ const CoinPurchaseScreen: React.FC = () => {
       const result = await ApplePayModule.purchaseProduct(selectedPackage.productId);
       
       if (result.success) {
-        // 更新用户数据库中的金币信息
+        // 更新用户数据库中的美美币信息
         if (user?.uid && selectedPackage.coins) {
           const updateSuccess = await subscriptionDataService.handleCoinPurchaseSuccess(
             user.uid,
@@ -102,19 +130,19 @@ const CoinPurchaseScreen: React.FC = () => {
           );
 
           if (updateSuccess) {
-            console.log('用户金币数据已更新到数据库');
+            console.log('用户美美币数据已更新到数据库');
           } else {
-            console.error('用户金币数据更新失败');
+            console.error('用户美美币数据更新失败');
           }
         }
 
         Alert.alert(
           '购买成功',
-          `恭喜您成功购买${selectedPackage.coins}金币！`,
+          `恭喜您成功购买${selectedPackage.coins}美美币！`,
           [
             {
               text: '确定',
-              onPress: () => navigation.navigate('NewHome'),
+              onPress: () => navigation.popToTop(),
             },
           ]
         );
@@ -149,6 +177,10 @@ const CoinPurchaseScreen: React.FC = () => {
     }
   };
 
+  const handleOpenAgreement = () => {
+    Linking.openURL('https://xuhanpeace.github.io/facegolow-support/coin-purchase-agreement.html');
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
@@ -171,7 +203,7 @@ const CoinPurchaseScreen: React.FC = () => {
           <Text style={styles.introSubtitle}>{coinConfig.description}</Text>
         </View>
 
-        {/* 金币包列表 */}
+        {/* 美美币包列表 */}
         <View style={styles.packagesContainer}>
           {coinPackages.map((coinPackage) => (
             <TouchableOpacity
@@ -199,7 +231,7 @@ const CoinPurchaseScreen: React.FC = () => {
                 <Text style={styles.packageTitle}>{coinPackage.title}</Text>
                 <View style={styles.coinsContainer}>
                   <Text style={styles.coinsAmount}>{coinPackage.coins}</Text>
-                  <Text style={styles.coinsLabel}>金币</Text>
+                  <Text style={styles.coinsLabel}>美美币</Text>
                 </View>
               </View>
               
@@ -210,29 +242,30 @@ const CoinPurchaseScreen: React.FC = () => {
             </TouchableOpacity>
           ))}
         </View>
-
-        {/* 其他链接 */}
-        <View style={styles.linksSection}>
-          <View style={styles.legalLinks}>
-            <TouchableOpacity style={styles.legalLink}>
-              <Text style={styles.legalLinkText}>条款</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.legalLink}>
-              <Text style={styles.legalLinkText}>隐私</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.legalLink} onPress={handleRestorePurchases}>
-              <Text style={styles.legalLinkText}>恢复</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
       </ScrollView>
+
+      {/* 协议勾选 */}
+      <View style={styles.agreementContainer}>
+        <TouchableOpacity 
+          style={styles.checkboxContainer}
+          onPress={() => setAgreeToTerms(!agreeToTerms)}
+        >
+          <View style={[styles.checkbox, agreeToTerms && styles.checkboxChecked]}>
+            {agreeToTerms && <Text style={styles.checkmark}>✓</Text>}
+          </View>
+          <Text style={styles.agreementText}>
+            我已阅读并同意
+            <Text style={styles.linkText} onPress={handleOpenAgreement}>《美美币购买用户协议》</Text>
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {/* 底部按钮 */}
       <View style={styles.bottomContainer}>
         <GradientButton
-          title={`购买 ${selectedPackage?.coins || 0} 金币`}
+          title={selectedPackage ? `购买 ${selectedPackage.coins} 美美币` : '请选择美美币包'}
           onPress={handlePurchase}
-          disabled={!selectedPackage}
+          disabled={!selectedPackage || !agreeToTerms || isLoading}
           loading={isLoading}
           variant="primary"
           size="medium"
@@ -407,6 +440,45 @@ const styles = StyleSheet.create({
   purchaseButton: {
     marginBottom: 12,
     width: '100%',
+  },
+  agreementContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    marginRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  checkboxChecked: {
+    backgroundColor: '#FF6B35',
+    borderColor: '#FF6B35',
+  },
+  checkmark: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  agreementText: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 13,
+    flex: 1,
+    lineHeight: 20,
+  },
+  linkText: {
+    color: '#FF6B35',
+    textDecorationLine: 'underline',
   },
 });
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
-import { useUser, useUserAvatar, useUserBalance } from '../hooks/useUser';
+import { useUser, useUserBalance } from '../hooks/useUser';
+import UserAvatar from './UserAvatar';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
 /**
@@ -9,7 +10,6 @@ import FontAwesome from 'react-native-vector-icons/FontAwesome';
  */
 const UserInfoCard: React.FC = () => {
   const { userInfo, isLoggedIn } = useUser();
-  const { avatarSource, hasAvatar } = useUserAvatar();
   const { balanceFormatted } = useUserBalance();
 
   if (!isLoggedIn) {
@@ -23,13 +23,7 @@ const UserInfoCard: React.FC = () => {
   return (
     <View style={styles.container}>
       <View style={styles.avatarContainer}>
-        {hasAvatar ? (
-          <Image source={avatarSource} style={styles.avatar} />
-        ) : (
-          <View style={styles.defaultAvatar}>
-            <FontAwesome name="user-circle" size={40} color="#999" />
-          </View>
-        )}
+        <UserAvatar size={50} />
       </View>
       
       <View style={styles.userInfo}>
@@ -63,19 +57,6 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     marginRight: 16,
-  },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-  },
-  defaultAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   userInfo: {
     flex: 1,

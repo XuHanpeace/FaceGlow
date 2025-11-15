@@ -3,7 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
-import { useUserAvatar, useUserBalance } from '../hooks/useUser';
+import { useUser, useUserBalance } from '../hooks/useUser';
+import UserAvatar from './UserAvatar';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import GradientButton from './GradientButton';
 
@@ -21,8 +22,24 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
   const navigation = useNavigation<HomeHeaderNavigationProp>();
   
   // 使用用户hooks获取数据
-  const { avatarSource, hasAvatar } = useUserAvatar();
+  const { userProfile } = useUser();
   const { balance, balanceFormatted } = useUserBalance();
+  
+  // 检查是否是年度会员
+  const isYearlyMember = () => {
+    if (!userProfile) return false;
+    const isPremium = userProfile.is_premium || false;
+    const premiumExpiresAt = userProfile.premium_expires_at;
+    const subscriptionType = userProfile.subscription_type;
+    
+    if (isPremium && premiumExpiresAt && subscriptionType === 'yearly') {
+      const now = Date.now();
+      return now < premiumExpiresAt;
+    }
+    return false;
+  };
+  
+  const showUpgradeButton = !isYearlyMember();
 
   const handleProfilePress = () => {
     if (onProfilePress) {
@@ -55,21 +72,19 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
 
       {/* 右侧按钮区域 */}
       <View style={styles.rightContainer}>
-        <GradientButton
-          title="升级"
-          onPress={handleUpgradePress}
-          variant="primary"
-          size="small"
-          fontSize={12}
-          borderRadius={19}
-          style={styles.upgradeButton}
-        />
+        {showUpgradeButton && (
+          <GradientButton
+            title="升级"
+            onPress={handleUpgradePress}
+            variant="primary"
+            size="small"
+            fontSize={12}
+            borderRadius={19}
+            style={styles.upgradeButton}
+          />
+        )}
         <TouchableOpacity style={styles.profileButton} onPress={handleProfilePress}>
-          {hasAvatar ? (
-            <Image source={avatarSource} style={styles.profileAvatar} />
-          ) : (
-            <FontAwesome name="user" size={18} color="#fff" />
-          )}
+          <UserAvatar size={36} />
         </TouchableOpacity>
       </View>
     </View>
@@ -136,11 +151,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  profileAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
   },
 });
 

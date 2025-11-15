@@ -73,7 +73,7 @@ const CreationResultScreen: React.FC = () => {
           setIsProcessing(false);
           Alert.alert(
             '💎 余额不足',
-            `换脸需要${templatePrice}金币，当前余额${balanceCheck.currentBalance}金币\n是否前往充值？`,
+            `换脸需要${templatePrice}美美币，当前余额${balanceCheck.currentBalance}美美币\n是否前往充值？`,
             [
               { text: '取消', style: 'cancel' },
               { 
@@ -97,7 +97,7 @@ const CreationResultScreen: React.FC = () => {
         console.log(`✅ 模板 ${templateId} 换脸成功`);
         console.log(`🖼️ 换脸结果: ${result.data.FusedImage}`);
         
-        // 扣除用户金币
+        // 扣除用户美美币
         if (user?.uid && templatePrice > 0) {
           const deductResult = await balanceService.deductBalance({
             userId: user.uid,
@@ -114,10 +114,10 @@ const CreationResultScreen: React.FC = () => {
           });
 
           if (!deductResult.success) {
-            console.error('扣除金币失败:', deductResult.error);
-            // 即使扣除金币失败，也显示换脸结果，但记录错误
+            console.error('扣除美美币失败:', deductResult.error);
+            // 即使扣除美美币失败，也显示换脸结果，但记录错误
           } else {
-            console.log(`💰 已扣除${templatePrice}金币，当前余额: ${deductResult.newBalance}`);
+            console.log(`💰 已扣除${templatePrice}美美币，当前余额: ${deductResult.newBalance}`);
           }
         }
         

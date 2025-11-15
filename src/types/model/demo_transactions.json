@@ -10,7 +10,7 @@
       "balance_after": 150,
       "payment_method": "apple_pay",
       "apple_transaction_id": "1000000123456789",
-      "apple_product_id": "com.digitech.faceglow.assets.coins",
+      "apple_product_id": "com.digitech.faceglow.assets.coins1",
       "description": "购买Face Coins金币包",
       "metadata": {
         "coin_package": {

@@ -49,7 +49,10 @@ export const useUser = () => {
     const currentUserId = authService.getCurrentUserId();
     if (currentUserId) {
       try {
-        await dispatch(fetchUserProfile({ userId: currentUserId })).unwrap();
+        console.log('🔄 开始刷新用户数据...');
+        const result = await dispatch(fetchUserProfile({ userId: currentUserId })).unwrap();
+        // 打印会在 useEffect 中自动触发
+        return result;
       } catch (error) {
         console.error('[useUser] 刷新用户数据失败:', error);
         throw error;
@@ -102,7 +105,7 @@ export const useUser = () => {
   // 格式化方法
   const formatBalance = (balance?: number) => {
     const amount = balance || userInfo.balance;
-    return (amount / 100).toFixed(2); // 转换为元，保留2位小数
+    return amount; // 转换为元，保留2位小数
   };
 
   const formatDate = (timestamp?: number) => {
@@ -216,7 +219,7 @@ export const useUserBalance = () => {
 
   const balance = userInfo.balance;
   const balanceFormatted = formatBalance();
-  const balanceYuan = (balance / 100).toFixed(2);
+  const balanceYuan = balance;
 
   const deductBalance = async (amount: number) => {
     // 这里可以调用扣除余额的API

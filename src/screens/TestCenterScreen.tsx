@@ -65,8 +65,8 @@ const testItems: TestItem[] = [
   },
   {
     id: 'coinPurchase',
-    title: '金币购买',
-    description: '测试应用内购买金币功能',
+    title: '美美币购买',
+    description: '测试应用内购买美美币功能',
     icon: '🪙',
     route: 'CoinPurchase',
     color: '#FFD700',

@@ -19,7 +19,7 @@ export class SubscriptionTester {
 
   // 测试金币产品ID列表
   private static readonly COIN_PRODUCT_IDS = [
-    'com.digitech.faceglow.assets.coins',
+    'com.digitech.faceglow.assets.coins1',
   ];
 
   /**

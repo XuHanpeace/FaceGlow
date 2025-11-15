@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { cloudbaseConfig } from '../../config/cloudbase';
+import { CLOUDBASE_CONFIG } from '../../config/cloudbase';
 import { 
   Transaction, 
   CreateTransactionRequest, 
@@ -11,7 +11,7 @@ import {
  * 交易记录服务
  */
 class TransactionService {
-  private baseUrl = `${cloudbaseConfig.baseUrl}/database`;
+  private baseUrl = `${CLOUDBASE_CONFIG.API.BASE_URL}/model/prod/transactions`;
 
   /**
    * 创建交易记录
@@ -25,7 +25,7 @@ class TransactionService {
       console.log('创建交易记录:', request);
 
       const response = await axios.post(`${this.baseUrl}/collection`, {
-        envId: cloudbaseConfig.envId,
+        envId: CLOUDBASE_CONFIG.ENV_ID,
         collectionName: 'transactions',
         data: {
           ...request,
@@ -70,7 +70,7 @@ class TransactionService {
   }> {
     try {
       const response = await axios.post(`${this.baseUrl}/query`, {
-        envId: cloudbaseConfig.envId,
+        envId: CLOUDBASE_CONFIG.ENV_ID,
         collectionName: 'transactions',
         query: {
           where: {
@@ -140,7 +140,7 @@ class TransactionService {
       }
 
       const response = await axios.post(`${this.baseUrl}/query`, {
-        envId: cloudbaseConfig.envId,
+        envId: CLOUDBASE_CONFIG.ENV_ID,
         collectionName: 'transactions',
         query: {
           where,
@@ -210,7 +210,7 @@ class TransactionService {
       }
 
       const response = await axios.put(`${this.baseUrl}/update`, {
-        envId: cloudbaseConfig.envId,
+        envId: CLOUDBASE_CONFIG.ENV_ID,
         collectionName: 'transactions',
         query: {
           where: {

@@ -25,6 +25,7 @@ class SubscriptionDataService {
 
       // 准备更新数据
       const updateData: Partial<User> = {
+        uid,
         is_premium: true,
         premium_expires_at: expirationTimestamp,
         subscription_type: subscriptionData.subscriptionType,
@@ -32,22 +33,11 @@ class SubscriptionDataService {
         updated_at: Date.now(),
       };
 
-      // 如果购买了金币，也更新余额
-      if (subscriptionData.coins) {
-        // 先获取当前用户数据
-        const currentUser = await userDataService.getUserData(uid);
-        if (currentUser) {
-          updateData.balance = (currentUser.balance || 0) + subscriptionData.coins;
-        } else {
-          updateData.balance = subscriptionData.coins;
-        }
-      }
-
       console.log('更新数据:', updateData);
 
       // 更新用户数据
-      const result = await userDataService.updateUserData(uid, updateData);
-      
+      const result = await userDataService.updateUserData(updateData);
+        
       if (result.success) {
         console.log('用户订阅数据更新成功');
         
@@ -101,25 +91,28 @@ class SubscriptionDataService {
       console.log('开始更新用户金币数据:', { uid, coinsAmount });
 
       // 先获取当前用户数据
-      const currentUser = await userDataService.getUserData(uid);
+      const currentUser = await userDataService.getUserByUid(uid);
       if (!currentUser) {
         console.error('用户不存在');
         return false;
       }
 
       // 计算新的金币数量
-      const newCoinsAmount = (currentUser.balance || 0) + coinsAmount;
+      const newCoinsAmount = (currentUser.data?.record.balance || 0) + coinsAmount;
 
       // 准备更新数据
       const updateData: Partial<User> = {
         balance: newCoinsAmount,
-        updated_at: Date.now(),
+        uid: uid,
       };
 
       console.log('金币更新数据:', updateData);
 
       // 更新用户数据
-      const result = await userDataService.updateUserData(uid, updateData);
+      const result = await userDataService.updateUserData({
+        uid: uid,
+        balance: newCoinsAmount,
+      });
       
       if (result.success) {
         console.log('用户金币数据更新成功');
@@ -129,11 +122,9 @@ class SubscriptionDataService {
           user_id: uid,
           transaction_type: 'coin_purchase',
           coin_amount: coinsAmount,
-          balance_before: currentUser.balance || 0,
-          balance_after: newCoinsAmount,
           payment_method: 'apple_pay',
           description: `购买${coinsAmount}金币`,
-          apple_product_id: 'com.digitech.faceglow.assets.coins',
+          apple_product_id: 'com.digitech.faceglow.assets.coins1',
           metadata: {
             coin_package: {
               package_id: 'coins_pack',
@@ -175,7 +166,7 @@ class SubscriptionDataService {
     balance: number;
   }> {
     try {
-      const user = await userDataService.getUserData(uid);
+      const user = await userDataService.getUserByUid(uid);
       if (!user) {
         return {
           isPremium: false,
@@ -185,15 +176,16 @@ class SubscriptionDataService {
         };
       }
 
-      const isPremium = user.is_premium && 
-        user.premium_expires_at && 
-        user.premium_expires_at > Date.now();
+      const isPremium = user.data?.record.is_premium ? true : false;
+      const subscriptionType = user.data?.record.subscription_type || null;
+      const expirationDate = user.data?.record.premium_expires_at ? new Date(user.data?.record.premium_expires_at) : null;
+      const balance = user.data?.record.balance || 0;
 
       return {
-        isPremium,
-        subscriptionType: user.subscription_type || null,
-        expirationDate: user.premium_expires_at ? new Date(user.premium_expires_at) : null,
-        balance: user.balance || 0,
+        isPremium: isPremium,
+        subscriptionType: subscriptionType,
+        expirationDate: expirationDate,
+        balance: balance,
       };
     } catch (error) {
       console.error('检查用户订阅状态时出错:', error);

@@ -2,16 +2,27 @@
 #import <React/RCTLog.h>
 #import <React/RCTUtils.h>
 #import <StoreKit/StoreKit.h>
+#import <UIKit/UIKit.h>
+
 
 @implementation ApplePayModule
 
+// 确保模块在主线程初始化
++ (BOOL)requiresMainQueueSetup {
+    return YES;
+}
+
 RCT_EXPORT_MODULE();
+
 
 - (instancetype)init {
     self = [super init];
     if (self) {
-        // 添加支付队列观察者
-        [[SKPaymentQueue defaultQueue] addTransactionObserver:self];
+        self.restoredTransactions = [NSMutableArray array];
+        // 确保在主线程添加观察者
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [[SKPaymentQueue defaultQueue] addTransactionObserver:self];
+        });
     }
     return self;
 }
@@ -42,29 +53,43 @@ RCT_EXPORT_METHOD(purchaseProduct:(NSString *)productIdentifier
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject) {
     
-    // 检查是否可以支付
-    if (![SKPaymentQueue canMakePayments]) {
-        reject(@"payment_disabled", @"设备不支持支付", nil);
-        return;
-    }
     
-    // 保存回调和产品ID
-    self.resolveBlock = resolve;
-    self.rejectBlock = reject;
-    self.pendingProductId = productIdentifier;
-    
-    // 获取产品信息
-    NSSet *productSet = [NSSet setWithObject:productIdentifier];
-    SKProductsRequest *request = [[SKProductsRequest alloc] initWithProductIdentifiers:productSet];
-    request.delegate = self;
-    
-    [request start];
+    // 确保在主线程执行
+    dispatch_async(dispatch_get_main_queue(), ^{
+        // 检查是否可以支付
+        if (![SKPaymentQueue canMakePayments]) {
+            reject(@"payment_disabled", @"设备不支持支付", nil);
+            return;
+        }
+        
+        // 确保观察者已添加（多次添加是安全的，系统会自动去重）
+        [[SKPaymentQueue defaultQueue] addTransactionObserver:self];
+        
+        // 如果已有待处理的购买，先拒绝之前的请求
+        if (self.resolveBlock || self.rejectBlock) {
+            if (self.rejectBlock) {
+                self.rejectBlock(@"purchase_in_progress", @"已有购买请求在处理中", nil);
+            }
+        }
+        
+        // 保存回调和产品ID
+        self.resolveBlock = resolve;
+        self.rejectBlock = reject;
+        self.pendingProductId = productIdentifier;
+        
+        
+        // 获取产品信息
+        NSSet *productSet = [NSSet setWithObject:productIdentifier];
+        SKProductsRequest *request = [[SKProductsRequest alloc] initWithProductIdentifiers:productSet];
+        request.delegate = self;
+        
+        [request start];
+    });
 }
 
 // 恢复购买
 RCT_EXPORT_METHOD(restorePurchases:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject) {
-    
     self.resolveBlock = resolve;
     self.rejectBlock = reject;
     self.isRestoring = YES;
@@ -72,22 +97,6 @@ RCT_EXPORT_METHOD(restorePurchases:(RCTPromiseResolveBlock)resolve
     [[SKPaymentQueue defaultQueue] restoreCompletedTransactions];
 }
 
-// 检查订阅状态
-RCT_EXPORT_METHOD(checkSubscriptionStatus:(RCTPromiseResolveBlock)resolve
-                  rejecter:(RCTPromiseRejectBlock)reject) {
-    
-    // 这里需要实现服务器端验证
-    // 暂时返回本地存储的状态
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    BOOL isSubscribed = [defaults boolForKey:@"isSubscribed"];
-    NSString *subscriptionType = [defaults stringForKey:@"subscriptionType"];
-    
-    resolve(@{
-        @"isSubscribed": @(isSubscribed),
-        @"subscriptionType": subscriptionType ?: @"",
-        @"expirationDate": [defaults objectForKey:@"expirationDate"] ?: @""
-    });
-}
 
 #pragma mark - SKProductsRequestDelegate
 
@@ -106,15 +115,15 @@ RCT_EXPORT_METHOD(checkSubscriptionStatus:(RCTPromiseResolveBlock)resolve
             SKPayment *payment = [SKPayment paymentWithProduct:product];
             [[SKPaymentQueue defaultQueue] addPayment:payment];
             // 不清除回调，等待购买完成
+            // 注意：这里不清除 pendingProductId，因为需要在交易回调中验证
         } else {
             if (self.rejectBlock) {
                 self.rejectBlock(@"product_not_found", @"产品不存在", nil);
                 self.resolveBlock = nil;
                 self.rejectBlock = nil;
+                self.pendingProductId = nil;
             }
         }
-        
-        self.pendingProductId = nil;
     } else {
         // 处理产品列表请求
         NSMutableArray *products = [NSMutableArray array];
@@ -146,10 +155,24 @@ RCT_EXPORT_METHOD(checkSubscriptionStatus:(RCTPromiseResolveBlock)resolve
     self.pendingProductId = nil;
 }
 
+
 #pragma mark - SKPaymentTransactionObserver
 
 - (void)paymentQueue:(SKPaymentQueue *)queue updatedTransactions:(NSArray<SKPaymentTransaction *> *)transactions {
+    
     for (SKPaymentTransaction *transaction in transactions) {
+        
+        // 只处理当前待购买的产品
+        if (self.pendingProductId && ![transaction.payment.productIdentifier isEqualToString:self.pendingProductId]) {
+            // 如果不是当前购买的产品，完成交易但不回调
+            if (transaction.transactionState == SKPaymentTransactionStatePurchased ||
+                transaction.transactionState == SKPaymentTransactionStateFailed ||
+                transaction.transactionState == SKPaymentTransactionStateRestored) {
+                [[SKPaymentQueue defaultQueue] finishTransaction:transaction];
+            }
+            continue;
+        }
+        
         switch (transaction.transactionState) {
             case SKPaymentTransactionStatePurchased:
                 [self handlePurchasedTransaction:transaction];
@@ -161,45 +184,51 @@ RCT_EXPORT_METHOD(checkSubscriptionStatus:(RCTPromiseResolveBlock)resolve
                 [self handleRestoredTransaction:transaction];
                 break;
             case SKPaymentTransactionStateDeferred:
-                // 等待外部操作（如家长同意）
+                // 等待外部操作（如家长同意）- 不完成交易，等待后续状态更新
+                // 可以通知用户等待确认
                 break;
             case SKPaymentTransactionStatePurchasing:
-                // 正在处理中
+                // 正在处理中 - 不完成交易，等待后续状态更新
                 break;
         }
     }
 }
 
 - (void)handlePurchasedTransaction:(SKPaymentTransaction *)transaction {
-    // 保存购买信息
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    [defaults setBool:YES forKey:@"isSubscribed"];
-    [defaults setObject:transaction.payment.productIdentifier forKey:@"subscriptionType"];
-    [defaults setObject:transaction.transactionDate forKey:@"purchaseDate"];
-    
-    // 计算过期时间（这里需要根据实际产品类型计算）
-    NSDate *expirationDate = [self calculateExpirationDate:transaction.payment.productIdentifier];
-    [defaults setObject:expirationDate forKey:@"expirationDate"];
+    // 保存回调块，避免在异步操作中丢失
+    RCTPromiseResolveBlock resolveBlock = self.resolveBlock;
+    RCTPromiseRejectBlock rejectBlock = self.rejectBlock;
+    NSString *pendingProductId = self.pendingProductId;
     
     // 完成交易
     [[SKPaymentQueue defaultQueue] finishTransaction:transaction];
     
-    // 通知React Native
-    if (self.resolveBlock) {
-        self.resolveBlock(@{
-            @"success": @YES,
-            @"productId": transaction.payment.productIdentifier,
-            @"transactionId": transaction.transactionIdentifier
+    // 在主线程通知React Native
+    if (resolveBlock) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            resolveBlock(@{
+                @"success": @YES,
+                @"productId": transaction.payment.productIdentifier,
+                @"transactionId": transaction.transactionIdentifier ?: @"",
+                @"transactionDate": transaction.transactionDate ? @((long long)([transaction.transactionDate timeIntervalSince1970] * 1000)) : @0
+            });
         });
+        // 清除回调，避免重复调用
         self.resolveBlock = nil;
         self.rejectBlock = nil;
+        self.pendingProductId = nil;
     }
 }
 
 - (void)handleFailedTransaction:(SKPaymentTransaction *)transaction {
+    
+    // 保存回调块，避免在异步操作中丢失
+    RCTPromiseRejectBlock rejectBlock = self.rejectBlock;
+    NSString *pendingProductId = self.pendingProductId;
+    
     [[SKPaymentQueue defaultQueue] finishTransaction:transaction];
     
-    if (self.rejectBlock) {
+    if (rejectBlock) {
         // 根据错误类型分类处理
         NSString *errorCode;
         NSString *errorMessage;
@@ -243,54 +272,68 @@ RCT_EXPORT_METHOD(checkSubscriptionStatus:(RCTPromiseResolveBlock)resolve
                 break;
         }
         
-        self.rejectBlock(errorCode, errorMessage, transaction.error);
+        // 在主线程调用回调
+        dispatch_async(dispatch_get_main_queue(), ^{
+            rejectBlock(errorCode, errorMessage, transaction.error);
+        });
+        // 清除回调，避免重复调用
         self.resolveBlock = nil;
         self.rejectBlock = nil;
+        self.pendingProductId = nil;
+    } else {
     }
 }
 
 - (void)handleRestoredTransaction:(SKPaymentTransaction *)transaction {
-    // 保存恢复的购买信息
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    [defaults setBool:YES forKey:@"isSubscribed"];
-    [defaults setObject:transaction.payment.productIdentifier forKey:@"subscriptionType"];
+    // 收集恢复的交易
+    if (self.isRestoring && self.resolveBlock) {
+        if (!self.restoredTransactions) {
+            self.restoredTransactions = [NSMutableArray array];
+        }
+        [self.restoredTransactions addObject:transaction];
+    }
     
     [[SKPaymentQueue defaultQueue] finishTransaction:transaction];
 }
 
 - (void)paymentQueueRestoreCompletedTransactionsFinished:(SKPaymentQueue *)queue {
     if (self.isRestoring) {
-        self.resolveBlock(@{@"success": @YES, @"message": @"恢复购买完成"});
+        // 构建恢复的交易列表
+        NSMutableArray *transactions = [NSMutableArray array];
+        for (SKPaymentTransaction *transaction in self.restoredTransactions) {
+            [transactions addObject:@{
+                @"productId": transaction.payment.productIdentifier,
+                @"transactionId": transaction.transactionIdentifier ?: @"",
+                @"transactionDate": transaction.transactionDate ? @((long long)([transaction.transactionDate timeIntervalSince1970] * 1000)) : @0,
+                @"originalTransactionId": transaction.originalTransaction.transactionIdentifier ?: @""
+            }];
+        }
+        
+        if (self.resolveBlock) {
+            self.resolveBlock(@{
+                @"success": @YES,
+                @"transactions": transactions
+            });
+        }
+        
         self.resolveBlock = nil;
         self.rejectBlock = nil;
         self.isRestoring = NO;
+        [self.restoredTransactions removeAllObjects];
     }
 }
 
 - (void)paymentQueue:(SKPaymentQueue *)queue restoreCompletedTransactionsFailedWithError:(NSError *)error {
     if (self.isRestoring) {
-        self.rejectBlock(@"restore_failed", error.localizedDescription, error);
+        if (self.rejectBlock) {
+            self.rejectBlock(@"restore_failed", error.localizedDescription, error);
+        }
         self.resolveBlock = nil;
         self.rejectBlock = nil;
         self.isRestoring = NO;
+        [self.restoredTransactions removeAllObjects];
     }
 }
 
-#pragma mark - Helper Methods
-
-- (NSDate *)calculateExpirationDate:(NSString *)productId {
-    NSDate *now = [NSDate date];
-    NSCalendar *calendar = [NSCalendar currentCalendar];
-    
-    if ([productId containsString:@"weekly"]) {
-        return [calendar dateByAddingUnit:NSCalendarUnitWeekOfYear value:1 toDate:now options:0];
-    } else if ([productId containsString:@"monthly"]) {
-        return [calendar dateByAddingUnit:NSCalendarUnitMonth value:1 toDate:now options:0];
-    } else if ([productId containsString:@"yearly"]) {
-        return [calendar dateByAddingUnit:NSCalendarUnitYear value:1 toDate:now options:0];
-    }
-    
-    return now;
-}
 
 @end

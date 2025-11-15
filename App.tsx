@@ -6,8 +6,8 @@
  */
 
 import React, { useEffect } from 'react';
-import {NavigationContainer} from '@react-navigation/native';
-import {StyleSheet, View, SafeAreaView, StatusBar} from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { StyleSheet, View, StatusBar} from 'react-native';
 import { Provider } from 'react-redux';
 import StackNavigator from './src/navigation/StackNavigator';
 import {RootStackParamList} from './src/types/navigation';

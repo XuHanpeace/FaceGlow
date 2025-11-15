@@ -17,25 +17,6 @@ export interface UpdateLoginInfoRequest {
   last_login_at: number;
 }
 
-// 更新用户数据请求参数（扩展版本）
-export interface UpdateUserDataRequest {
-  uid: string;
-  username?: string;
-  name?: string;
-  selfie_url?: string;
-  selfie_list?: string[];
-  work_list?: string[];
-  balance?: number;
-  picture?: string;
-  gender?: string;
-  is_premium?: boolean;
-  premium_expires_at?: number;
-  status?: string;
-  preferences?: any;
-  device_info?: any;
-  statistics?: any;
-}
-
 // 用户数据服务类
 export class UserDataService {
   private readonly modelName = 'users'; // 数据模型名称
@@ -122,6 +103,8 @@ export class UserDataService {
             balance: true,
             is_premium: true,
             premium_expires_at: true,
+            subscription_type: true,
+            subscription_product_id: true,
             status: true,
             preferences: true,
             statistics: true,
@@ -157,7 +140,7 @@ export class UserDataService {
   }
 
   // 更新用户数据信息（支持多个字段）
-  async updateUserData(userData: UpdateUserDataRequest) {
+  async updateUserData(userData: Partial<User>) {
     try {
       // 构建更新数据，只包含非undefined的字段
       const updateData: any = {
@@ -175,6 +158,8 @@ export class UserDataService {
       if (userData.gender !== undefined) updateData.gender = userData.gender;
       if (userData.is_premium !== undefined) updateData.is_premium = userData.is_premium;
       if (userData.premium_expires_at !== undefined) updateData.premium_expires_at = userData.premium_expires_at;
+      if (userData.subscription_type !== undefined) updateData.subscription_type = userData.subscription_type;
+      if (userData.subscription_product_id !== undefined) updateData.subscription_product_id = userData.subscription_product_id;
       if (userData.status !== undefined) updateData.status = userData.status;
       if (userData.preferences !== undefined) updateData.preferences = userData.preferences;
       if (userData.device_info !== undefined) updateData.device_info = userData.device_info;
@@ -186,7 +171,7 @@ export class UserDataService {
           filter: {
             where: {
               uid: {
-                $eq: userData.uid
+                $eq: userData.uid || ''
               }
             }
           },

@@ -13,7 +13,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { useTypedSelector, useAppDispatch } from '../store/hooks';
 import { addSelfie } from '../store/slices/selfieSlice';
-import { useUser, useUserAvatar, useUserSelfies } from '../hooks/useUser';
+import { useUser, useUserSelfies } from '../hooks/useUser';
+import UserAvatar from '../components/UserAvatar';
 import { userWorkService } from '../services/database/userWorkService';
 import { UserWorkModel } from '../types/model/user_works';
 import { useAuthState } from '../hooks/useAuthState';
@@ -22,7 +23,7 @@ import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
 type NewProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-type TabType = 'works' | 'posts' | 'selfies';
+type TabType = 'works' | 'membership' | 'selfies';
 
 interface SelfieItem {
   id: string;
@@ -34,10 +35,32 @@ const NewProfileScreen: React.FC = () => {
   const navigation = useNavigation<NewProfileScreenNavigationProp>();
   const dispatch = useAppDispatch();
   const [activeTab, setActiveTab] = useState<TabType>('works');
-
+  
   // 使用用户hooks获取数据
-  const { userInfo, isLoggedIn } = useUser();
-  const { avatarSource, hasAvatar } = useUserAvatar();
+  const { userInfo, isLoggedIn, userProfile } = useUser();
+  
+  // 获取当前会员状态
+  const getCurrentMembershipStatus = () => {
+    if (!userProfile) return null;
+    
+    const isPremium = userProfile.is_premium || false;
+    const premiumExpiresAt = userProfile.premium_expires_at;
+    const subscriptionType = userProfile.subscription_type;
+    
+    if (isPremium && premiumExpiresAt) {
+      const now = Date.now();
+      if (now < premiumExpiresAt) {
+        return {
+          isActive: true,
+          type: subscriptionType,
+          expiresAt: premiumExpiresAt,
+        };
+      }
+    }
+    return null;
+  };
+  
+  const membershipStatus = getCurrentMembershipStatus();
   const { selfies, hasSelfies, defaultSelfieUrl } = useUserSelfies();
   
   // 用户作品状态
@@ -95,6 +118,10 @@ const NewProfileScreen: React.FC = () => {
     if (tab === 'works') {
       fetchUserWorks();
     }
+  };
+  
+  const handleManageMembership = () => {
+    navigation.navigate('Subscription');
   };
 
   const handleWorkPress = (work: UserWorkModel) => {
@@ -159,13 +186,7 @@ const NewProfileScreen: React.FC = () => {
         {/* 用户信息 */}
         <View style={styles.userInfo}>
           <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              {hasAvatar ? (
-                <Image source={avatarSource} style={styles.avatarImage} />
-              ) : (
-                <FontAwesome name="user-circle" size={30} color="#ccc" />
-              )}
-            </View>
+            <UserAvatar size={48} />
           </View>
           <View style={styles.userDetails}>
             <Text style={styles.username}>{userInfo.name || userInfo.username || '未设置用户名'}</Text>
@@ -195,14 +216,6 @@ const NewProfileScreen: React.FC = () => {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'posts' && styles.activeTab]}
-            onPress={() => handleTabPress('posts')}
-          >
-            <Text style={[styles.tabText, activeTab === 'posts' && styles.activeTabText]}>
-              帖子
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
             style={[styles.tab, activeTab === 'selfies' && styles.activeTab]}
             onPress={() => handleTabPress('selfies')}
           >
@@ -210,15 +223,66 @@ const NewProfileScreen: React.FC = () => {
               我的自拍
             </Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'membership' && styles.activeTab]}
+            onPress={() => handleTabPress('membership')}
+          >
+            <Text style={[styles.tabText, activeTab === 'membership' && styles.activeTabText]}>
+              会员管理
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* 内容区域 */}
         <View style={styles.contentArea}>
-          {activeTab === 'posts' && (
-            <TouchableOpacity style={styles.addPostCard} onPress={handleAddPostPress}>
-              <FontAwesome name="plus" size={32} color="rgba(255,255,255,0.5)" />
-              <Text style={styles.addPostText}>添加帖子</Text>
-            </TouchableOpacity>
+          {activeTab === 'membership' && (
+            <View style={styles.membershipContainer}>
+              {membershipStatus ? (
+                <View style={styles.membershipCard}>
+                  <View style={styles.membershipHeader}>
+                    <FontAwesome 
+                      name={membershipStatus.type === 'yearly' ? 'star' : 'star-o'} 
+                      size={32} 
+                      color={membershipStatus.type === 'yearly' ? '#FFD700' : '#C0C0C0'} 
+                    />
+                    <Text style={styles.membershipTitle}>
+                      {membershipStatus.type === 'yearly' ? '年度会员' : '月度会员'}
+                    </Text>
+                  </View>
+                  <Text style={styles.membershipStatusText}>会员状态：有效</Text>
+                  {membershipStatus.expiresAt && (
+                    <View style={styles.membershipExpires}>
+                      <Text style={styles.membershipExpiresLabel}>到期时间：</Text>
+                      <Text style={styles.membershipExpiresDate}>
+                        {new Date(membershipStatus.expiresAt).toLocaleDateString('zh-CN', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </Text>
+                    </View>
+                  )}
+                  <TouchableOpacity 
+                    style={styles.manageLink}
+                    onPress={handleManageMembership}
+                  >
+                    <Text style={styles.manageLinkText}>去管理</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.membershipCard}>
+                  <FontAwesome name="user-circle" size={48} color="rgba(255,255,255,0.3)" />
+                  <Text style={styles.membershipTitle}>普通用户</Text>
+                  <Text style={styles.membershipStatusText}>您还不是会员</Text>
+                  <TouchableOpacity 
+                    style={styles.manageLink}
+                    onPress={handleManageMembership}
+                  >
+                    <Text style={styles.manageLinkText}>去订阅</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
           )}
           {activeTab === 'works' && (
             <View style={styles.worksContainer}>
@@ -392,22 +456,6 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     marginRight: 12,
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#333',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarIcon: {
-    fontSize: 24,
-  },
-  avatarImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
   },
   userDetails: {
     flex: 1,
@@ -631,6 +679,65 @@ const styles = StyleSheet.create({
   },
   addFirstSelfieButton: {
     marginTop: 8,
+  },
+  addFirstSelfieText: {
+    fontSize: 14,
+    color: '#FF6B9D',
+    textDecorationLine: 'underline',
+  },
+  membershipContainer: {
+    flex: 1,
+    paddingVertical: 20,
+  },
+  membershipCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+  },
+  membershipHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  membershipTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginLeft: 12,
+  },
+  membershipStatusText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 16,
+    marginBottom: 12,
+  },
+  membershipExpires: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    width: '100%',
+    justifyContent: 'center',
+  },
+  membershipExpiresLabel: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 14,
+    marginRight: 8,
+  },
+  membershipExpiresDate: {
+    color: '#FF6B9D',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  manageLink: {
+    marginTop: 16,
+  },
+  manageLinkText: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 14,
+    textDecorationLine: 'underline',
   },
 });
 
