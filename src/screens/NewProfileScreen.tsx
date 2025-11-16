@@ -38,6 +38,7 @@ const NewProfileScreen: React.FC = () => {
   
   // 使用用户hooks获取数据
   const { userInfo, isLoggedIn, userProfile } = useUser();
+  const isAutoRenew = userInfo.subscriptionAutoRenew;
   
   // 获取当前会员状态
   const getCurrentMembershipStatus = () => {
@@ -266,7 +267,9 @@ const NewProfileScreen: React.FC = () => {
                     style={styles.manageLink}
                     onPress={handleManageMembership}
                   >
-                    <Text style={styles.manageLinkText}>去管理</Text>
+                    <Text style={styles.manageLinkText}>
+                      {isAutoRenew ? '去管理' : '去续订'}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               ) : (

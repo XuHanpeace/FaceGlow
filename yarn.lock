@@ -2436,6 +2436,23 @@
     redux-thunk "^3.1.0"
     reselect "^5.1.0"
 
+"@revenuecat/purchases-js-hybrid-mappings@17.17.0":
+  version "17.17.0"
+  resolved "https://registry.npmjs.org/@revenuecat/purchases-js-hybrid-mappings/-/purchases-js-hybrid-mappings-17.17.0.tgz"
+  integrity sha512-nUOGqN6IrhWrY8y3gzvjb8lYl1b1rqUjPaOrwYekQmR168oxA8cmnL/jgzd0xt0Hw9ysX03BUJmQUduIOtneDw==
+  dependencies:
+    "@revenuecat/purchases-js" "1.18.0"
+
+"@revenuecat/purchases-js@1.18.0":
+  version "1.18.0"
+  resolved "https://registry.npmjs.org/@revenuecat/purchases-js/-/purchases-js-1.18.0.tgz"
+  integrity sha512-KvRMvqC3hf+uzF7Fh1okofHW64SmGnuEV/fCi3e8RKfcwtoo0FP1DbkBTPUeOR5yIe5HcrodshNcPjI9OhNuxg==
+
+"@revenuecat/purchases-typescript-internal@17.17.0":
+  version "17.17.0"
+  resolved "https://registry.npmjs.org/@revenuecat/purchases-typescript-internal/-/purchases-typescript-internal-17.17.0.tgz"
+  integrity sha512-8v4tmQ2G2eZFVRiR4HUZU73uKTMjy7NYJm8yMXGo1ZvQj6hGzrGPOI2MecJBMv/xfuuX6ojSUg8EnWMwN0yIvw==
+
 "@sideway/address@^4.1.5":
   version "4.1.5"
   resolved "https://registry.npmjs.org/@sideway/address/-/address-4.1.5.tgz"
@@ -7308,6 +7325,21 @@ react-native-pager-view@^6.7.0:
   resolved "https://registry.npmjs.org/react-native-pager-view/-/react-native-pager-view-6.8.1.tgz"
   integrity sha512-XIyVEMhwq7sZqM7GobOJZXxFCfdFgVNq/CFB2rZIRNRSVPJqE1k1fsc8xfQKfdzsp6Rpt6I7VOIvhmP7/YHdVg==
 
+react-native-purchases-ui@^9.6.5:
+  version "9.6.5"
+  resolved "https://registry.npmjs.org/react-native-purchases-ui/-/react-native-purchases-ui-9.6.5.tgz"
+  integrity sha512-jyAeOjhzPWcH1+SuNPt01RUnm10mZxGetGXH+khGnQ7smXzPKTbJ+N8EQzwE5CAc/5G84cxlu4tTGE4jJuWarA==
+  dependencies:
+    "@revenuecat/purchases-typescript-internal" "17.17.0"
+
+react-native-purchases@^9.6.5, react-native-purchases@9.6.5:
+  version "9.6.5"
+  resolved "https://registry.npmjs.org/react-native-purchases/-/react-native-purchases-9.6.5.tgz"
+  integrity sha512-7+tvFzWJSiJHjHzgixoOIPQE6t/8re4VDDNFnjMooeVAV9czpmhBvXJnekxNVd+poxy9VQs7bbZLY6V2bRX7sg==
+  dependencies:
+    "@revenuecat/purchases-js-hybrid-mappings" "17.17.0"
+    "@revenuecat/purchases-typescript-internal" "17.17.0"
+
 react-native-ratings@8.0.4:
   version "8.0.4"
   resolved "https://registry.npmjs.org/react-native-ratings/-/react-native-ratings-8.0.4.tgz"
@@ -7349,7 +7381,7 @@ react-native-wechat-lib@^1.1.27:
   dependencies:
     events "1.0.1"
 
-react-native@*, "react-native@^0.0.0-0 || >=0.65 <1.0", react-native@>=0.40, react-native@>=0.57, react-native@>=0.59, react-native@>=0.60.0, react-native@0.76.4:
+react-native@*, "react-native@^0.0.0-0 || >=0.65 <1.0", "react-native@>= 0.73.0", react-native@>=0.40, react-native@>=0.57, react-native@>=0.59, react-native@>=0.60.0, react-native@0.76.4:
   version "0.76.4"
   resolved "https://registry.npmjs.org/react-native/-/react-native-0.76.4.tgz"
   integrity sha512-c4K5dLmIAeeoGIxRM/Z2h9LjZVGDs8jwamksmFRSZFDt/j/A1wByVG/AnOpa6V39X40MQYSKEO0grKC7W5HpMQ==
@@ -7423,7 +7455,7 @@ react-test-renderer@18.3.1:
     react-shallow-renderer "^16.15.0"
     scheduler "^0.23.2"
 
-react@*, "react@^16.0.0 || ^17.0.0 || ^18.0.0", "react@^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0", "react@^16.9.0 || ^17.0.0 || ^18 || ^19", "react@^17 || ^18", "react@^18.0 || ^19", react@^18.2.0, react@^18.3.1, "react@>= 18.2.0", react@>=16, react@>=16.8, react@>=17.0.0, react@18.3.1:
+react@*, "react@^16.0.0 || ^17.0.0 || ^18.0.0", "react@^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0", "react@^16.9.0 || ^17.0.0 || ^18 || ^19", "react@^17 || ^18", "react@^18.0 || ^19", react@^18.2.0, react@^18.3.1, "react@>= 16.6.3", "react@>= 18.2.0", react@>=16, react@>=16.8, react@>=17.0.0, react@18.3.1:
   version "18.3.1"
   resolved "https://registry.npmjs.org/react/-/react-18.3.1.tgz"
   integrity sha512-wS+hAgJShR0KhEvPJArfuPVN1+Hz1t0Y6n5jLrGQbkb4urgPE/0Rve+1kMB1v/oWgHgm4WIcV+i7F2pTVj+2iQ==

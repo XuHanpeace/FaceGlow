@@ -105,6 +105,7 @@ export class UserDataService {
             premium_expires_at: true,
             subscription_type: true,
             subscription_product_id: true,
+            subscription_auto_renew: true,
             status: true,
             preferences: true,
             statistics: true,
@@ -161,6 +162,7 @@ export class UserDataService {
       if (userData.subscription_type !== undefined) updateData.subscription_type = userData.subscription_type;
       if (userData.subscription_product_id !== undefined) updateData.subscription_product_id = userData.subscription_product_id;
       if (userData.status !== undefined) updateData.status = userData.status;
+      if (userData.subscription_auto_renew !== undefined) updateData.subscription_auto_renew = userData.subscription_auto_renew;
       if (userData.preferences !== undefined) updateData.preferences = userData.preferences;
       if (userData.device_info !== undefined) updateData.device_info = userData.device_info;
       if (userData.statistics !== undefined) updateData.statistics = userData.statistics;

@@ -74,7 +74,7 @@ const NewHomeScreen: React.FC = () => {
   };
 
   const handleUpgradePress = () => {
-    navigation.navigate('TestCenter');
+    navigation.navigate('Subscription');
   };
 
   const handleProfilePress = () => {

@@ -57,7 +57,7 @@ const DatabaseTestScreen = () => {
       };
 
       const result = await userDataService.createUser(mockUserData);
-      console.log('frog.result.createUser', result);
+
       if (result.success) {
         // 记录创建的测试用户uid，用于后续操作
         setLastCreatedUserId(mockUserData.uid);
@@ -85,7 +85,6 @@ const DatabaseTestScreen = () => {
       const testUid = lastCreatedUserId || currentUserId;
       const result = await userDataService.getUserByUid(testUid);
       
-      console.log('frog.result.getUserByUid', result);
       if (result.success && result.data) {
         addTestResult(`✅ 用户信息获取成功: ${result.data.username}`);
         addTestResult(`📋 用户详情: ID=${result.data.uid}, 昵称=${result.data.name || '未设置'}`);
@@ -121,7 +120,7 @@ const DatabaseTestScreen = () => {
       };
 
       const result = await userWorkService.createWork(mockWorkData);
-      console.log('frog.result.createWork', result);
+
       if (result.success) {
         addTestResult(`✅ 用户作品创建成功: ${result.data?.id}`);
         addTestResult(`🎨 作品信息: 模板=${mockWorkData.template_id}`);
@@ -149,8 +148,7 @@ const DatabaseTestScreen = () => {
       const result = await userWorkService.getUserWorks({
         uid: testUid,
         limit: 10
-      });
-      console.log('frog.result.getUserWorks', result);      
+      });    
       if (result.success && result.data) {
         addTestResult(`✅ 用户作品获取成功: 共 ${result.data.length} 个作品`);
         addTestResult(`🔍 查询用户UID: ${testUid}`);
@@ -196,8 +194,7 @@ const DatabaseTestScreen = () => {
         name: '更新后的昵称',
         gender: '女',
         picture: 'https://via.placeholder.com/100x100/E91E63/FFFFFF?text=Updated'
-      });
-      console.log('frog.result.createUser', result);      
+      }); 
       if (result.success) {
         addTestResult(`✅ 用户信息更新成功`);
         addTestResult(`📝 新用户名: ${newUsername}`);

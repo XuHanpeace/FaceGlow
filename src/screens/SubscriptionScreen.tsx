@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,50 +16,32 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { NativeModules } from 'react-native';
-import { subscriptionManager } from '../services/subscriptionManager';
 import { subscriptionDataService } from '../services/subscriptionDataService';
 import { useAuthState } from '../hooks/useAuthState';
 import { useUser } from '../hooks/useUser';
 import { subscriptionPlans, subscriptionConfig, SubscriptionPlan } from '../config/subscriptionConfig';
+import { useRevenueCat } from '../hooks/useRevenueCat';
+import { ENTITLEMENTS } from '../config/revenueCatConfig';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import GradientButton from '../components/GradientButton';
 
-const { ApplePayModule } = NativeModules;
 
 type SubscriptionScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-// 错误消息处理函数
-const getSubscriptionErrorMessage = (errorCode: string, errorMessage: string): string => {
-  switch (errorCode) {
-    case 'purchase_cancelled':
-      return '您取消了订阅，如需订阅请重新选择套餐';
-    case 'payment_not_allowed':
-      return '设备不允许进行支付，请检查设备设置';
-    case 'payment_invalid':
-      return '支付信息无效，请重试';
-    case 'client_invalid':
-      return '客户端无效，请重新启动应用';
-    case 'product_not_available':
-      return '产品暂不可用，请稍后再试';
-    case 'network_connection_failed':
-      return '网络连接失败，请检查网络设置';
-    case 'cloud_service_denied':
-      return '云服务权限被拒绝，请检查设置';
-    case 'cloud_service_revoked':
-      return '云服务被撤销，请联系客服';
-    default:
-      return errorMessage || '订阅失败，请重试';
-  }
-};
 
 
 const SubscriptionScreen: React.FC = () => {
   const navigation = useNavigation<SubscriptionScreenNavigationProp>();
   const { user } = useAuthState();
   const { userProfile } = useUser();
+  const {
+    getOfferings,
+    purchasePackage,
+    restorePurchases,
+    isPurchaseCancelled,
+  } = useRevenueCat(user?.uid);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [availableProducts, setAvailableProducts] = useState<any[]>([]);
   const [availablePlans, setAvailablePlans] = useState<SubscriptionPlan[]>([]);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   
@@ -84,17 +66,13 @@ const SubscriptionScreen: React.FC = () => {
     return null;
   };
   
-  const membershipStatus = getCurrentMembershipStatus();
-  
-  useEffect(() => {
-    // 初始化时获取可用产品
-    fetchAvailableProducts();
-  }, []);
+  const membershipStatus = useMemo(() => getCurrentMembershipStatus(), [userProfile]);
   
   useEffect(() => {
     // 当会员状态变化时重新加载计划
     loadAvailablePlans();
-  }, [membershipStatus]);
+    // 只在会员类型或到期时间变化时重新加载，避免无限循环
+  }, [membershipStatus?.type, membershipStatus?.expiresAt]);
 
   // 在订阅Loading时禁用返回按钮
   useEffect(() => {
@@ -111,16 +89,12 @@ const SubscriptionScreen: React.FC = () => {
 
   const loadAvailablePlans = async () => {
     try {
-      const plans = await subscriptionManager.getAvailableSubscriptionPlans();
-      // 将manager的plan转换为本地plan格式
-      let localPlans = subscriptionPlans.map(plan => {
-        const managerPlan = plans.find(p => p.id === plan.id);
-        return {
-          ...plan,
-          canPurchase: managerPlan?.canPurchase ?? true,
-          isActive: managerPlan?.isActive ?? false,
-        };
-      });
+      // 使用本地配置的订阅计划作为 UI 数据源，保持原有样式
+      let localPlans = subscriptionPlans.map(plan => ({
+        ...plan,
+        canPurchase: true,
+        isActive: false,
+      }));
       
       // 根据当前会员状态过滤计划
       if (membershipStatus) {
@@ -146,8 +120,12 @@ const SubscriptionScreen: React.FC = () => {
       }
     } catch (error) {
       console.error('加载订阅计划失败:', error);
-      // 使用默认计划
-      let defaultPlans = subscriptionPlans.map(plan => ({ ...plan, canPurchase: true, isActive: false }));
+      // 兜底：使用默认计划
+      let defaultPlans = subscriptionPlans.map(plan => ({
+        ...plan,
+        canPurchase: true,
+        isActive: false,
+      }));
       
       // 根据当前会员状态过滤计划
       if (membershipStatus) {
@@ -169,19 +147,6 @@ const SubscriptionScreen: React.FC = () => {
           setSelectedPlan(defaultPlans[0]);
         }
       }
-    }
-  };
-
-  const fetchAvailableProducts = async () => {
-    try {
-      const products = await ApplePayModule.getAvailableProducts([
-        'com.digitech.faceglow.subscribe.monthly1',
-        'com.digitech.faceglow.subscribe.yearly',
-      ]);
-      setAvailableProducts(products);
-      console.log('可用产品:', products);
-    } catch (error) {
-      console.error('获取产品失败:', error);
     }
   };
 
@@ -209,68 +174,105 @@ const SubscriptionScreen: React.FC = () => {
       return;
     }
 
-    // 检查是否允许购买
-    const canPurchase = await subscriptionManager.canPurchaseProduct(selectedPlan.productId);
-    if (!canPurchase.canPurchase) {
-      Alert.alert('无法购买', canPurchase.reason || '您已有有效订阅');
-      return;
-    }
-
     try {
       setIsLoading(true);
-      
-      // 调用原生支付模块
-      const result = await ApplePayModule.purchaseProduct(selectedPlan.productId);
 
-      if (result.success) {
-        // 更新用户数据库中的订阅信息
-        if (user?.uid) {
-          const subscriptionType = subscriptionDataService.parseSubscriptionType(selectedPlan.productId);
-          if (subscriptionType) {
-            const expirationDate = subscriptionDataService.calculateExpirationDate(subscriptionType);
-            
-            const updateSuccess = await subscriptionDataService.handleSubscriptionSuccess(
-              user.uid,
-              {
-                subscriptionType,
-                productId: selectedPlan.productId,
-                expirationDate,
-              }
-            );
+      // 从 RevenueCat Offerings 中查找与当前订阅计划匹配的 package
+      const offering = await getOfferings();
+      const availablePackages = offering?.availablePackages ?? [];
 
-            if (updateSuccess) {
-              console.log('用户订阅数据已更新到数据库');
-            } else {
-              console.error('用户订阅数据更新失败');
-            }
-          }
+      // 打印一下 Offerings 和当前选择，方便你验证配置
+      console.log('🧾 RevenueCat Offerings 当前可用包:', availablePackages.map(p => ({
+        identifier: p.identifier,
+        packageType: p.packageType,
+        productId: p.product.identifier,
+        price: p.product.priceString,
+      })));
+      console.log('🧾 当前选中方案:', {
+        id: selectedPlan.id,
+        productId: selectedPlan.productId,
+        title: selectedPlan.title,
+      });
+
+      const matchedPackage = availablePackages.find(pkg =>
+        pkg.product.identifier === selectedPlan.productId
+      );
+
+      if (!matchedPackage) {
+        Alert.alert('产品不可用', '当前订阅产品暂不可用，请检查 RevenueCat 产品配置是否与本地 productId 一致');
+        return;
+      }
+
+      // 再次打印实际用于购买的 package
+      console.log('🧾 准备购买的 RevenueCat Package:', {
+        identifier: matchedPackage.identifier,
+        packageType: matchedPackage.packageType,
+        productId: matchedPackage.product.identifier,
+        price: matchedPackage.product.priceString,
+      });
+
+      // 使用 RevenueCat SDK 购买订阅（基于 package）
+      const customerInfo = await purchasePackage(matchedPackage);
+
+      // 从 RevenueCat 的 entitlement 中读取真实的到期时间和续订状态
+      const entitlement = customerInfo.entitlements.active[ENTITLEMENTS.PRO];
+      const isProActive = typeof entitlement !== 'undefined';
+
+      if (isProActive && user?.uid) {
+        // 解析订阅类型
+        const subscriptionType = subscriptionDataService.parseSubscriptionType(selectedPlan.productId);
+
+        // 优先使用 RevenueCat 返回的 expirationDate（服务器时间）
+        let expirationDate: Date;
+        if (entitlement?.expirationDate) {
+          expirationDate = new Date(entitlement.expirationDate);
+        } else if (subscriptionType) {
+          // 兜底：如果服务端没有给到期时间，仍使用本地计算
+          expirationDate = subscriptionDataService.calculateExpirationDate(subscriptionType);
+        } else {
+          // 极端兜底，避免传入无效时间
+          expirationDate = new Date();
         }
 
-        Alert.alert(
-          '订阅成功',
-          `恭喜您成功订阅${selectedPlan.title}！`,
-          [
-            {
-              text: '确定',
-              onPress: () => {
-                // 重新加载订阅状态
-                loadAvailablePlans();
-                navigation.popToTop();
-              },
-            },
-          ]
+        const updateSuccess = await subscriptionDataService.handleSubscriptionSuccess(
+          user.uid,
+          {
+            subscriptionType: subscriptionType ?? 'monthly',
+            productId: selectedPlan.productId,
+            expirationDate,
+            willRenew: entitlement?.willRenew ?? true,
+          }
         );
-      } else {
-        // 根据错误类型显示不同提示
-        const errorCode = (result as any).errorCode || 'purchase_failed';
-        const error = (result as any).error || '订阅失败';
-        const errorMessage = getSubscriptionErrorMessage(errorCode, error);
-        Alert.alert('订阅失败', errorMessage);
+
+        if (updateSuccess) {
+          console.log('用户订阅数据已更新到数据库');
+        } else {
+          console.error('用户订阅数据更新失败');
+        }
       }
-    } catch (error: any) {
-      // 根据错误类型显示不同提示
-      const errorMessage = getSubscriptionErrorMessage(error.code, error.message);
-      Alert.alert('订阅失败', errorMessage);
+
+      Alert.alert(
+        '订阅成功',
+        `恭喜您成功订阅${selectedPlan.title}！`,
+        [
+          {
+            text: '确定',
+            onPress: () => {
+              // 重新加载订阅状态
+              loadAvailablePlans();
+              navigation.popToTop();
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      if (isPurchaseCancelled(error)) {
+        // 用户取消，不弹错误
+        return;
+      }
+
+      const message = error instanceof Error ? error.message : '订阅失败，请重试';
+      Alert.alert('订阅失败', message);
     } finally {
       setIsLoading(false);
     }
@@ -279,15 +281,18 @@ const SubscriptionScreen: React.FC = () => {
   const handleRestorePurchases = async () => {
     try {
       setIsLoading(true);
-      const result = await ApplePayModule.restorePurchases();
-      
-      if (result.success) {
+      const customerInfo = await restorePurchases();
+
+      const isProActive = typeof customerInfo.entitlements.active[ENTITLEMENTS.PRO] !== 'undefined';
+
+      if (isProActive) {
         Alert.alert('恢复成功', '已恢复您的购买记录');
       } else {
-        Alert.alert('恢复失败', result.error || '没有找到可恢复的购买记录');
+        Alert.alert('恢复失败', '没有找到可恢复的购买记录');
       }
-    } catch (error: any) {
-      Alert.alert('恢复失败', error.message || '恢复购买时出现错误');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '恢复购买时出现错误';
+      Alert.alert('恢复失败', message);
     } finally {
       setIsLoading(false);
     }

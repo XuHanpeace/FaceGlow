@@ -1,3 +1,5 @@
+import type { PurchasesPackage } from 'react-native-purchases';
+
 export interface SubscriptionPlan {
   id: string;
   title: string;
@@ -12,6 +14,7 @@ export interface SubscriptionPlan {
   productId: string;
   canPurchase?: boolean;
   isActive?: boolean;
+  rcPackage?: PurchasesPackage;
 }
 
 export interface CoinPackage {

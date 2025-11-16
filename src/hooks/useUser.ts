@@ -82,6 +82,7 @@ export const useUser = () => {
     balance: userProfile?.balance || 0,
     isPremium: userProfile?.is_premium || false,
     premiumExpiresAt: userProfile?.premium_expires_at,
+    subscriptionAutoRenew: userProfile?.subscription_auto_renew ?? false,
     
     // 状态信息
     status: userProfile?.status || 'inactive',

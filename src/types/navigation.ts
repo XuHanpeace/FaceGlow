@@ -30,6 +30,8 @@ export type RootStackParamList = {
     authMode: 'phone-verify' | 'register';
   };
   Subscription: undefined;
+  RevenueCatSubscription: undefined;
+  RevenueCatPaywall: undefined;
   CoinPurchase: undefined;
   ServiceTest: undefined;
   SubscriptionTest: undefined;

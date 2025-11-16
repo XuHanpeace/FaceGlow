@@ -31,6 +31,8 @@
     "react-native-linear-gradient": "^2.8.3",
     "react-native-mmkv": "^3.3.0",
     "react-native-pager-view": "^6.7.0",
+    "react-native-purchases": "^9.6.5",
+    "react-native-purchases-ui": "^9.6.5",
     "react-native-safe-area-context": "^5.0.0",
     "react-native-screens": "^4.3.0",
     "react-native-vector-icons": "^10.2.0",

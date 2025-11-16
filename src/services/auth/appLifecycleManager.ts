@@ -1,5 +1,8 @@
 import { AppState, AppStateStatus } from 'react-native';
 import { longTermAuthService } from './longTermAuthService';
+import { revenueCatService } from '../revenueCat/revenueCatService';
+import { authService } from './authService';
+import { subscriptionDataService } from '../subscriptionDataService';
 
 /**
  * 应用生命周期管理器
@@ -58,6 +61,25 @@ export class AppLifecycleManager {
       
       // 更新长期认证状态
       await longTermAuthService.onAppForeground();
+
+      // 同步订阅状态（RevenueCat）
+      try {
+        console.log('🔄 [RevenueCat] 应用前台同步订阅状态...');
+        await revenueCatService.syncPurchases();
+        const status = await revenueCatService.checkSubscriptionStatus();
+        console.log('📊 [RevenueCat] 当前订阅状态:', status);
+
+        // 将订阅状态写入用户 Profile（自动续订 + 失效同步）
+        const currentUserId = authService.getCurrentUserId();
+        if (currentUserId) {
+          await subscriptionDataService.syncSubscriptionStatusFromRemote(
+            currentUserId,
+            status
+          );
+        }
+      } catch (subscriptionError) {
+        console.error('❌ [RevenueCat] 前台同步订阅状态失败:', subscriptionError);
+      }
       
       console.log('✅ 应用进入前台处理完成');
     } catch (error: any) {
@@ -91,7 +113,6 @@ export class AppLifecycleManager {
     longTermAuthService.stop();
     
     // 移除应用状态监听
-    AppState.removeEventListener('change', this.handleAppStateChange);
     
     this.isInitialized = false;
     console.log('✅ 应用生命周期管理器已停止');

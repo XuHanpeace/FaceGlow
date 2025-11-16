@@ -15,6 +15,8 @@ import { ModalProvider } from './src/components/modal';
 import { store } from './src/store';
 import { shareService } from './src/services/shareService';
 import { appLifecycleManager } from './src/services/auth/appLifecycleManager';
+import { revenueCatService } from './src/services/revenueCat/revenueCatService';
+import { authService } from './src/services/auth/authService';
 import CLOUDBASE_CONFIG from './src/config/cloudbase';
 
 declare global {
@@ -32,6 +34,18 @@ function App(): JSX.Element {
         console.log('🚀 初始化应用生命周期管理器...');
         await appLifecycleManager.initialize();
         console.log('✅ 应用生命周期管理器初始化完成');
+
+        // 初始化 RevenueCat SDK
+        try {
+          // 获取当前用户 ID（如果有）
+          const currentUserId = authService.getCurrentUserId();
+          console.log('🔄 初始化 RevenueCat SDK...');
+          await revenueCatService.initialize(currentUserId || undefined);
+          console.log('✅ RevenueCat SDK 初始化成功');
+        } catch (error) {
+          console.error('❌ RevenueCat SDK 初始化失败:', error);
+          // RevenueCat 初始化失败不影响其他功能
+        }
 
         // 初始化微信SDK
         const { APP_ID, UNIVERSAL_LINK } = CLOUDBASE_CONFIG.WECHAT;

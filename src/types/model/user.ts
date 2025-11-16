@@ -78,6 +78,8 @@ export interface User {
   subscription_type?: 'monthly' | 'yearly' | null;
   /** 会员产品ID */
   subscription_product_id?: string;
+  /** 会员是否自动续订（由 RevenueCat willRenew 决定） */
+  subscription_auto_renew?: boolean;
   /** 用户偏好设置 */
   preferences?: UserPreferences;
   /** 用户状态 */
