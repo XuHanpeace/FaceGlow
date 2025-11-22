@@ -22,7 +22,7 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
   const navigation = useNavigation<HomeHeaderNavigationProp>();
   
   // 使用用户hooks获取数据
-  const { userProfile } = useUser();
+  const { userProfile, isLoggedIn } = useUser();
   const { balance, balanceFormatted } = useUserBalance();
   
   // 检查是否是年度会员
@@ -51,6 +51,12 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
   };
 
   const handleUpgradePress = () => {
+    // 检查是否已登录，如果没有登录则导航到登录页面
+    if (!isLoggedIn) {
+      navigation.navigate('NewAuth');
+      return;
+    }
+    // 已登录，导航到订阅页面
     navigation.navigate('Subscription');
   };
 

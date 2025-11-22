@@ -21,7 +21,6 @@ interface SelfieModuleProps {
 }
 
 const SelfieModule: React.FC<SelfieModuleProps> = ({ onAddSelfiePress, onSelfieSelect }) => {
-  const navigation = useNavigation<SelfieModuleNavigationProp>();
   const { selfies, defaultSelfieUrl } = useUserSelfies();
 
   // 最多6个头像（useUserSelfies已经倒序了）

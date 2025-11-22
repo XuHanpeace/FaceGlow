@@ -1,7 +1,9 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { MMKV } from 'react-native-mmkv';
 import { getCloudbaseConfig } from '../../config/cloudbase';
-import { CloudBaseAuthResponse, RegisterRequest, LoginRequest, AuthCredentials } from '../../types/auth';
+import { CloudBaseAuthResponse, RegisterRequest, LoginRequest, AuthCredentials, STORAGE_KEYS } from '../../types/auth';
+import { userDataService } from '../database/userDataService';
+import { authService } from './authService';
 
 // 获取腾讯云开发配置
 const CLOUDBASE_CONFIG = getCloudbaseConfig();
@@ -102,13 +104,85 @@ export class CloudBaseAuthService {
         }
       );
 
+      // 登录成功后，检查账户状态（是否已被删除）
+      // 注意：在查询用户信息之前，需要临时保存 access_token，以便 databaseService 能够使用它
+      if (response.data && response.data.sub && response.data.access_token) {
+        try {
+          // 临时保存 access_token 到存储中，以便 databaseService 的请求拦截器能够获取到
+          const originalToken = storage.getString(STORAGE_KEYS.ACCESS_TOKEN);
+          storage.set(STORAGE_KEYS.ACCESS_TOKEN, response.data.access_token);
+          
+          try {
+            // 临时保存 UID，以便 authService.getCurrentUserId() 能够获取到
+            const originalUid = storage.getString(STORAGE_KEYS.UID);
+            storage.set(STORAGE_KEYS.UID, response.data.sub);
+            
+            const userResult = await userDataService.getUserByUid(response.data.sub);
+            
+            // 恢复原始 token 和 UID（如果存在）或清除临时数据
+            if (originalToken) {
+              storage.set(STORAGE_KEYS.ACCESS_TOKEN, originalToken);
+            } else {
+              storage.delete(STORAGE_KEYS.ACCESS_TOKEN);
+            }
+            
+            if (originalUid) {
+              storage.set(STORAGE_KEYS.UID, originalUid);
+            } else {
+              storage.delete(STORAGE_KEYS.UID);
+            }
+            
+            if (userResult.success && userResult.data?.record) {
+              const accountStatus = userResult.data.record.accountStatus;
+              // 如果账户已被删除（accountStatus === '1'），阻止登录
+              if (accountStatus === '1') {
+                throw new Error('您的账户已被删除。如需恢复账户，请发送邮件至 support@faceglow.app 申请恢复。');
+              }
+            }
+          } catch (checkError: any) {
+            // 恢复原始 token 和 UID（如果存在）或清除临时数据
+            if (originalToken) {
+              storage.set(STORAGE_KEYS.ACCESS_TOKEN, originalToken);
+            } else {
+              storage.delete(STORAGE_KEYS.ACCESS_TOKEN);
+            }
+            
+            const originalUid = storage.getString(STORAGE_KEYS.UID);
+            if (originalUid && originalUid !== response.data.sub) {
+              storage.set(STORAGE_KEYS.UID, originalUid);
+            } else if (!originalUid) {
+              storage.delete(STORAGE_KEYS.UID);
+            }
+            
+            // 如果是账户已删除的错误，直接抛出
+            if (checkError.message && checkError.message.includes('账户已被删除')) {
+              throw checkError;
+            }
+            // 其他错误（如用户不存在或网络错误）不影响登录流程
+            console.warn('检查账户状态时出错:', checkError);
+          }
+        } catch (error: any) {
+          // 如果是账户已删除的错误，直接抛出
+          if (error.message && error.message.includes('账户已被删除')) {
+            throw error;
+          }
+          // 其他错误不影响登录流程
+          console.warn('检查账户状态时出错:', error);
+        }
+      }
+
       console.log('✅ 登录成功');
       return response.data;
     } catch (error: any) {
+      // 如果是账户已删除的错误，直接抛出
+      if (error.message && error.message.includes('账户已被删除')) {
+        throw error;
+      }
+      
       if (error.response?.data) {
         throw new Error(error.response.data.error_description || error.response.data.error || '登录失败');
       }
-      throw new Error('网络请求失败');
+      throw new Error(error.message || '网络请求失败');
     }
   }
 

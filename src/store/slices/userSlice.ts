@@ -78,9 +78,22 @@ const userSlice = createSlice({
     },
     clearProfile: (state) => {
       state.profile = null;
+      state.default_selfie_url = null; // 同时清除默认自拍URL
     },
     setDefaultSelfie: (state, action: PayloadAction<string | null>) => {
       state.default_selfie_url = action.payload;
+    },
+    resetUser: (state) => {
+      // 重置所有用户状态为初始值
+      state.profile = null;
+      state.default_selfie_url = null;
+      state.loading = false;
+      state.error = null;
+      state.preferences = {
+        theme: 'dark',
+        language: 'zh',
+        notifications: true,
+      };
     },
   },
   extraReducers: (builder) => {
@@ -133,6 +146,7 @@ export const {
   setNotifications,
   clearProfile,
   setDefaultSelfie,
+  resetUser,
 } = userSlice.actions;
 
 export default userSlice.reducer;

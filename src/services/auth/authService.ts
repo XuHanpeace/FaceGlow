@@ -473,6 +473,11 @@ export class AuthService {
     // 确保匿名标记被正确保存
     const isAnonymousValue = credentials.isAnonymous === true;
     storage.set(STORAGE_KEYS.IS_ANONYMOUS, isAnonymousValue);
+    
+    // 如果不是匿名用户，标记为曾经登录过
+    if (!isAnonymousValue) {
+      storage.set(STORAGE_KEYS.HAS_LOGGED_IN_BEFORE, true);
+    }
   }
 
   /**
@@ -681,6 +686,14 @@ export class AuthService {
     console.log('🧹 清除所有认证数据...');
     this.clearAuthCredentials();
     console.log('✅ 认证数据已清除');
+  }
+
+  /**
+   * 检查用户是否曾经登录过
+   * @returns boolean
+   */
+  hasLoggedInBefore(): boolean {
+    return storage.getBoolean(STORAGE_KEYS.HAS_LOGGED_IN_BEFORE) || false;
   }
 
   /**

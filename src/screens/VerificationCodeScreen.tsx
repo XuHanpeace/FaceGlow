@@ -13,13 +13,14 @@ import {
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
-  Linking,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { useAuthState } from '../hooks/useAuthState';
 import { authService, verificationService } from '../services/auth';
+import { userDataService } from '../services/database/userDataService';
+import { Linking } from 'react-native';
 import GradientButton from '../components/GradientButton';
 
 type VerificationCodeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -116,6 +117,7 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({ route }
         );
         
         if (result.success && result.data) {
+          // 账户状态已在 authService 中检查，直接保存 token 并登录
           setAuthData(result.data);
           Alert.alert('成功', '注册成功！', [
             { text: '确定', onPress: () => {
@@ -137,7 +139,23 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({ route }
           verificationId
         );
         
+        // 检查账户是否被删除（已在 authService 中检查，但需要处理错误）
+        if (!result.success && result.error?.code === 'ACCOUNT_DELETED') {
+          Alert.alert(
+            '账户已删除',
+            result.error.message || '您的账户已被删除。如需恢复账户，请发送邮件至 support@faceglow.app 申请恢复。',
+            [
+              { text: '确定', onPress: () => {
+                // 尝试打开邮件客户端
+                Linking.openURL('mailto:support@faceglow.app?subject=申请恢复账户&body=您好，我想申请恢复我的账户。');
+              }}
+            ]
+          );
+          return;
+        }
+        
         if (result.success && result.data) {
+          // 账户状态已在 authService 中检查，直接保存 token 并登录
           setAuthData(result.data);
           Alert.alert('成功', '登录成功！', [
             { text: '确定', onPress: () => {

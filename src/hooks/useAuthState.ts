@@ -13,6 +13,7 @@ const STORAGE_KEYS = {
   UID: 'uid',
   EXPIRES_AT: 'expiresAt',
   USER_INFO: 'userInfo',
+  HAS_LOGGED_IN_BEFORE: 'hasLoggedInBefore', // 是否曾经登录过（用于决定登录页默认模式）
 } as const;
 
 export interface AuthUser {
@@ -119,6 +120,10 @@ export const useAuthState = () => {
     storage.set(STORAGE_KEYS.UID, authData.uid);
     storage.set(STORAGE_KEYS.EXPIRES_AT, authData.expiresAt);
     storage.set(STORAGE_KEYS.USER_INFO, JSON.stringify(authData));
+    
+    // 标记为曾经登录过（因为 setAuthData 通常用于真实用户登录/注册）
+    // 匿名用户通常不会调用 setAuthData
+    storage.set(STORAGE_KEYS.HAS_LOGGED_IN_BEFORE, true);
     
     setUser(authData);
     setIsLoggedIn(true);

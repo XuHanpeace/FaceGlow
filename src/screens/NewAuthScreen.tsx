@@ -20,24 +20,9 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { useAuthState } from '../hooks/useAuthState';
 import { authService, verificationService } from '../services/auth';
-import { MMKV } from 'react-native-mmkv';
 import GradientButton from '../components/GradientButton';
 
-const storage = new MMKV();
-
 type NewAuthScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
-// 判断是否是新设备（从未登录过正式账号）
-const isNewDevice = (): boolean => {
-  const accessToken = storage.getString('accessToken');
-  const isAnonymous = storage.getBoolean('isAnonymous');
-  
-  // 如果没有token，或者只有匿名token，则认为是新设备
-  if (!accessToken || isAnonymous) {
-    return true;
-  }
-  return false;
-};
 
 type AuthMode = 'phone-verify' | 'password' | 'register';
 
@@ -45,8 +30,15 @@ const NewAuthScreen: React.FC = () => {
   const navigation = useNavigation<NewAuthScreenNavigationProp>();
   const { setAuthData } = useAuthState();
   
-  // 判断初始模式：新设备显示注册，老设备显示登录
-  const [authMode, setAuthMode] = useState<AuthMode>(isNewDevice() ? 'register' : 'phone-verify');
+  // 判断初始模式：根据是否曾经登录过决定默认模式
+  // 曾经登录过 -> 默认手机号登录 (phone-verify)
+  // 未登录过 -> 默认注册 (register)
+  const getInitialAuthMode = (): AuthMode => {
+    const hasLoggedInBefore = authService.hasLoggedInBefore();
+    return hasLoggedInBefore ? 'phone-verify' : 'register';
+  };
+  
+  const [authMode, setAuthMode] = useState<AuthMode>(getInitialAuthMode());
   
   // 表单数据
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -132,10 +124,7 @@ const NewAuthScreen: React.FC = () => {
       if (result.success && result.data) {
         setAuthData(result.data);
         // 重置导航栈，关闭整个登录流程
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'NewHome' }],
-        });
+        navigation.popToTop();
       } else {
         Alert.alert('登录失败', result.error?.message || '未知错误');
       }

@@ -156,7 +156,7 @@ export const fetchUserProfile = createAsyncThunk<
       if (result.success && result.data) {
         // 检查数据结构，可能是直接返回数据或包装在record中
         const userData = result.data.record
-        if (userData && userData.username) {
+        if (userData && userData.username && userData.accountStatus !== '1') {
           return userData;
         } else {
           return rejectWithValue('用户数据格式错误');

@@ -84,6 +84,8 @@ export interface User {
   preferences?: UserPreferences;
   /** 用户状态 */
   status: UserStatus;
+  /** 账户状态：0=正常，1=已删除 */
+  accountStatus?: string;
   /** 创建时间戳 */
   created_at: number;
   /** 更新时间戳 */

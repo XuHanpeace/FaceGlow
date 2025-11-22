@@ -107,6 +107,7 @@ export class UserDataService {
             subscription_product_id: true,
             subscription_auto_renew: true,
             status: true,
+            accountStatus: true,
             preferences: true,
             statistics: true,
           }
@@ -163,6 +164,7 @@ export class UserDataService {
       if (userData.subscription_product_id !== undefined) updateData.subscription_product_id = userData.subscription_product_id;
       if (userData.status !== undefined) updateData.status = userData.status;
       if (userData.subscription_auto_renew !== undefined) updateData.subscription_auto_renew = userData.subscription_auto_renew;
+      if (userData.accountStatus !== undefined) updateData.accountStatus = userData.accountStatus;
       if (userData.preferences !== undefined) updateData.preferences = userData.preferences;
       if (userData.device_info !== undefined) updateData.device_info = userData.device_info;
       if (userData.statistics !== undefined) updateData.statistics = userData.statistics;
@@ -204,6 +206,52 @@ export class UserDataService {
         error: {
           code: error instanceof DatabaseError ? error.code : 'UPDATE_USER_DATA_ERROR',
           message: error instanceof Error ? error.message : '更新用户数据时发生未知错误',
+        },
+      };
+    }
+  }
+
+  // 删除账户（软删除，将 accountStatus 设置为 1）
+  async deleteAccount(uid: string): Promise<{ success: boolean; error?: { code: string; message: string } }> {
+    try {
+      const updateData = {
+        accountStatus: '1', // 1 表示已删除
+        updated_at: Date.now(),
+      };
+
+      const response = await databaseService.put<DatabaseUpdateResponse<{ count: number }>>(
+        `/model/prod/${this.modelName}/update`,
+        {
+          filter: {
+            where: {
+              uid: {
+                $eq: uid
+              }
+            }
+          },
+          data: updateData
+        }
+      );
+
+      if (response.data?.count && response.success) {
+        return {
+          success: true,
+        };
+      }
+
+      return {
+        success: false,
+        error: {
+          code: response.error?.code || 'DELETE_ACCOUNT_ERROR',
+          message: response.error?.message || '删除账户失败',
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: {
+          code: error instanceof DatabaseError ? error.code : 'DELETE_ACCOUNT_ERROR',
+          message: error instanceof Error ? error.message : '删除账户时发生未知错误',
         },
       };
     }

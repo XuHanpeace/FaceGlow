@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useMemo } from 'react';
 import { useTypedSelector, useAppDispatch } from '../store/hooks';
 import { fetchUserProfile } from '../store/middleware/asyncMiddleware';
 import { authService } from '../services/auth/authService';
@@ -21,12 +21,18 @@ export const useUser = () => {
   useEffect(() => {
     const loadUserData = async () => {
       const currentUserId = authService.getCurrentUserId();
+      // 如果有用户ID且没有用户资料，则加载数据
+      // 或者如果用户资料为 null（可能被 resetUser 清除了），也应该检查是否需要重新加载
       if (currentUserId && !userProfile) {
         try {
           await dispatch(fetchUserProfile({ userId: currentUserId })).unwrap();
         } catch (error) {
           console.error('[useUser] 获取用户数据失败:', error);
         }
+      } else if (!currentUserId && userProfile) {
+        // 如果没有用户ID但有用户资料，说明可能是 logout 或 resetUser，应该清空
+        // 但这里不直接修改 Redux，而是等待外部调用 resetUser
+        console.log('[useUser] 检测到用户已登出，等待状态更新');
       }
     };
 
@@ -65,43 +71,69 @@ export const useUser = () => {
     dispatch(setDefaultSelfie(selfieUrl));
   }, [dispatch]);
 
-  // 用户信息计算属性
-  const userInfo = {
-    // 基本信息
-    uid: userProfile?.uid || '',
-    username: userProfile?.username || '',
-    name: userProfile?.name || userProfile?.username || '',
-    phoneNumber: userProfile?.phone_number || '',
+  // 用户信息计算属性（使用 useMemo 确保正确响应 userProfile 变化）
+  const userInfo = useMemo(() => {
+    if (!userProfile) {
+      // 如果 userProfile 为 null，返回所有空值
+      return {
+        uid: '',
+        username: '',
+        name: '',
+        phoneNumber: '',
+        avatar: '',
+        selfieUrl: '',
+        selfieList: [],
+        balance: 0,
+        isPremium: false,
+        premiumExpiresAt: undefined,
+        subscriptionAutoRenew: false,
+        status: 'inactive',
+        createdAt: 0,
+        updatedAt: 0,
+        workList: [],
+        preferences: undefined,
+        deviceInfo: undefined,
+        statistics: undefined,
+      };
+    }
     
-    // 头像相关
-    avatar: userProfile?.picture || '',
-    selfieUrl: userProfile?.selfie_url || '',
-    selfieList: userProfile?.selfie_list || [],
-    
-    // 业务数据
-    balance: userProfile?.balance || 0,
-    isPremium: userProfile?.is_premium || false,
-    premiumExpiresAt: userProfile?.premium_expires_at,
-    subscriptionAutoRenew: userProfile?.subscription_auto_renew ?? false,
-    
-    // 状态信息
-    status: userProfile?.status || 'inactive',
-    createdAt: userProfile?.created_at || 0,
-    updatedAt: userProfile?.updated_at || 0,
-    
-    // 其他数据
-    workList: userProfile?.work_list || [],
-    preferences: userProfile?.preferences,
-    deviceInfo: userProfile?.device_info,
-    statistics: userProfile?.statistics,
-  };
+    return {
+      // 基本信息
+      uid: userProfile.uid || '',
+      username: userProfile.username || '',
+      name: userProfile.name || userProfile.username || '',
+      phoneNumber: userProfile.phone_number || '',
+      
+      // 头像相关
+      avatar: userProfile.picture || '',
+      selfieUrl: userProfile.selfie_url || '',
+      selfieList: userProfile.selfie_list || [],
+      
+      // 业务数据
+      balance: userProfile.balance || 0,
+      isPremium: userProfile.is_premium || false,
+      premiumExpiresAt: userProfile.premium_expires_at,
+      subscriptionAutoRenew: userProfile.subscription_auto_renew ?? false,
+      
+      // 状态信息
+      status: userProfile.status || 'inactive',
+      createdAt: userProfile.created_at || 0,
+      updatedAt: userProfile.updated_at || 0,
+      
+      // 其他数据
+      workList: userProfile.work_list || [],
+      preferences: userProfile.preferences,
+      deviceInfo: userProfile.device_info,
+      statistics: userProfile.statistics,
+    };
+  }, [userProfile]);
 
-  // 用户状态判断
-  const isLoggedIn = !!userProfile;
-  const hasAvatar = !!userInfo.avatar;
-  const hasSelfies = userInfo.selfieList.length > 0;
-  const isVip = userInfo.isPremium;
-  const hasWorks = userInfo.workList.length > 0;
+  // 用户状态判断（使用 useMemo 确保正确响应变化）
+  const isLoggedIn = useMemo(() => !!userProfile, [userProfile]);
+  const hasAvatar = useMemo(() => !!(userInfo.avatar && userInfo.avatar.trim()), [userInfo.avatar]);
+  const hasSelfies = useMemo(() => userInfo.selfieList.length > 0, [userInfo.selfieList]);
+  const isVip = useMemo(() => userInfo.isPremium, [userInfo.isPremium]);
+  const hasWorks = useMemo(() => userInfo.workList.length > 0, [userInfo.workList]);
 
   // 格式化方法
   const formatBalance = (balance?: number) => {
@@ -168,11 +200,17 @@ export const useUserAvatar = () => {
  * 专门处理用户自拍相关的逻辑
  */
 export const useUserSelfies = () => {
-  const { userInfo, hasSelfies, refreshUserData, setDefaultSelfieUrl } = useUser();
+  const { userInfo, hasSelfies, refreshUserData, setDefaultSelfieUrl, userProfile } = useUser();
   const defaultSelfieUrl = useTypedSelector((state) => state.user.default_selfie_url);
 
   // 处理自拍照显示顺序：默认自拍永远在第一位，其余按倒序排列
-  const selfies = (() => {
+  // 使用 useMemo 确保正确响应 userProfile 和 defaultSelfieUrl 的变化
+  const selfies = useMemo(() => {
+    // 如果 userProfile 为 null 或没有自拍列表，返回空数组
+    if (!userProfile || !userInfo.selfieList || userInfo.selfieList.length === 0) {
+      return [];
+    }
+    
     const reversedList = userInfo.selfieList.slice().reverse();
     
     if (defaultSelfieUrl && reversedList.includes(defaultSelfieUrl)) {
@@ -183,7 +221,7 @@ export const useUserSelfies = () => {
     }
     
     return reversedList;
-  })().map((url, index) => ({
+  }, [userProfile?.uid, userInfo.selfieList.length, defaultSelfieUrl]).map((url, index) => ({
     id: `selfie_${index}`,
     url,
     source: { uri: url },

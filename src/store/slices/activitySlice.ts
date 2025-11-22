@@ -16,74 +16,6 @@ const initialState: ActivityState = {
   error: null,
 };
 
-// 默认活动数据
-const defaultActivities: Activity[] = [
-  {
-    activiy_id: 'activity_001',
-    activity_title: '艺术风格活动',
-    activity_type: ActivityType.ALBUM,
-    activity_status: ActivityStatus.ACTIVE,
-    album_id_list: [
-      {
-        album_id: 'album_001',
-        album_name: '艺术风格相册',
-        album_description: '包含多种艺术风格的模板',
-        album_image: 'https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=400&h=400&fit=crop',
-        level: '0' as any,
-        price: 0,
-        template_list: [
-          {
-            template_id: 'template_001',
-            template_url: 'https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=400&h=400&fit=crop',
-            template_name: '艺术风格模板1',
-            template_description: '经典艺术风格',
-            price: 10
-          },
-          {
-            template_id: 'template_002',
-            template_url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=400&fit=crop',
-            template_name: '艺术风格模板2',
-            template_description: '现代艺术风格',
-            price: 15
-          }
-        ]
-      }
-    ]
-  },
-  {
-    activiy_id: 'activity_002',
-    activity_title: '社区精选活动',
-    activity_type: ActivityType.ALBUM,
-    activity_status: ActivityStatus.ACTIVE,
-    album_id_list: [
-      {
-        album_id: 'album_002',
-        album_name: '社区精选相册',
-        album_description: '社区用户喜爱的精选模板',
-        album_image: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=400&h=400&fit=crop',
-        level: '1' as any,
-        price: 1999,
-        template_list: [
-          {
-            template_id: 'template_003',
-            template_url: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=400&h=400&fit=crop',
-            template_name: '社区精选模板1',
-            template_description: '社区热门模板',
-            price: 20
-          },
-          {
-            template_id: 'template_004',
-            template_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop',
-            template_name: '社区精选模板2',
-            template_description: '用户推荐模板',
-            price: 25
-          }
-        ]
-      }
-    ]
-  }
-];
-
 // 异步获取活动数据
 export const fetchActivities = createAsyncThunk(
   'activity/fetchActivities',
@@ -98,12 +30,12 @@ export const fetchActivities = createAsyncThunk(
       } else {
         // 如果API调用失败，返回默认数据
         console.log('⚠️ API调用失败，使用默认数据');
-        return defaultActivities;
+        return [];
       }
     } catch (error) {
       console.error('❌ 获取活动数据失败:', error);
       // 发生错误时返回默认数据
-      return defaultActivities;
+      return [];
     }
   }
 );
@@ -152,7 +84,7 @@ const activitySlice = createSlice({
         state.isLoading = false;
         state.error = action.error.message || '获取活动数据失败';
         // 发生错误时使用默认数据
-        state.activities = defaultActivities;
+        state.activities = [];
         console.error('❌ 活动数据获取失败:', action.error);
       });
   },
@@ -170,4 +102,3 @@ export const selectActivitiesLoading = (state: { activity: ActivityState }) => s
 export const selectActivitiesError = (state: { activity: ActivityState }) => state.activity.error;
 
 // 导出默认数据供其他模块使用
-export { defaultActivities };

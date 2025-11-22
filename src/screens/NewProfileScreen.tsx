@@ -7,23 +7,28 @@ import {
   ScrollView,
   StatusBar,
   Image,
+  Modal,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { useTypedSelector, useAppDispatch } from '../store/hooks';
-import { addSelfie } from '../store/slices/selfieSlice';
+import { clearAllSelfies } from '../store/slices/selfieSlice';
+import { resetUser } from '../store/slices/userSlice';
+import { logoutUser } from '../store/middleware/asyncMiddleware';
 import { useUser, useUserSelfies } from '../hooks/useUser';
 import UserAvatar from '../components/UserAvatar';
 import { userWorkService } from '../services/database/userWorkService';
 import { UserWorkModel } from '../types/model/user_works';
 import { useAuthState } from '../hooks/useAuthState';
+import { userDataService } from '../services/database/userDataService';
 import UserWorkCard from '../components/UserWorkCard';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
 type NewProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-type TabType = 'works' | 'membership' | 'selfies';
+type TabType = 'works' | 'account' | 'selfies';
 
 interface SelfieItem {
   id: string;
@@ -35,6 +40,8 @@ const NewProfileScreen: React.FC = () => {
   const navigation = useNavigation<NewProfileScreenNavigationProp>();
   const dispatch = useAppDispatch();
   const [activeTab, setActiveTab] = useState<TabType>('works');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // 使用用户hooks获取数据
   const { userInfo, isLoggedIn, userProfile } = useUser();
@@ -67,7 +74,7 @@ const NewProfileScreen: React.FC = () => {
   // 用户作品状态
   const [userWorks, setUserWorks] = useState<UserWorkModel[]>([]);
   const [worksLoading, setWorksLoading] = useState(false);
-  const { user } = useAuthState();
+  const { user, logout } = useAuthState();
 
   // 从Redux获取其他数据
   const handleBackPress = () => {
@@ -125,6 +132,53 @@ const NewProfileScreen: React.FC = () => {
     navigation.navigate('Subscription');
   };
 
+  const handleDeleteAccount = async () => {
+    if (!user?.uid) {
+      Alert.alert('错误', '无法获取用户信息');
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      // 步骤1: 调用服务器端软删除（设置 accountStatus = 1）
+      const result = await userDataService.deleteAccount(user.uid);
+      debugger
+      if (result.success) {
+        // 步骤2: 清除所有用户相关的 Redux 状态
+        dispatch(resetUser()); // 重置用户状态为初始值（包括头像和默认自拍）
+        dispatch(clearAllSelfies()); // 清除所有自拍数据
+        // 注意：活动数据是公共数据，匿名用户也能访问，不需要清除
+        dispatch(logoutUser()); // 清除认证状态
+        
+        // 步骤3: 清除本地存储的认证数据（MMKV）
+        await logout();
+        
+        // 步骤4: 清除本地 state（作品列表等）
+        setUserWorks([]); // 清空作品列表
+        setShowDeleteConfirm(false);
+        
+        Alert.alert(
+          '账户已删除',
+          '您的账户已成功删除。感谢您使用 FaceGlow！',
+          [
+            {
+              text: '确定',
+              onPress: () => {
+                
+              }
+            }
+          ]
+        );
+      } else {
+        Alert.alert('删除失败', result.error?.message || '删除账户失败，请稍后重试');
+      }
+    } catch (error: any) {
+      Alert.alert('删除失败', error.message || '删除账户时发生错误');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleWorkPress = (work: UserWorkModel) => {
     navigation.navigate('UserWorkPreview', { work });
   };
@@ -157,12 +211,15 @@ const NewProfileScreen: React.FC = () => {
     }
   };
 
-  // 组件加载时获取用户作品
+  // 组件加载时获取用户作品，或当用户状态变化时清空作品列表
   useEffect(() => {
-    if (isLoggedIn && user?.uid) {
+    if (isLoggedIn && user?.uid && userProfile) {
       fetchUserWorks();
+    } else {
+      // 用户已登出或用户资料为空，清空作品列表
+      setUserWorks([]);
     }
-  }, [isLoggedIn, user?.uid]);
+  }, [isLoggedIn, user?.uid, userProfile]);
 
   return (
     <View style={styles.container}>
@@ -225,18 +282,18 @@ const NewProfileScreen: React.FC = () => {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'membership' && styles.activeTab]}
-            onPress={() => handleTabPress('membership')}
+            style={[styles.tab, activeTab === 'account' && styles.activeTab]}
+            onPress={() => handleTabPress('account')}
           >
-            <Text style={[styles.tabText, activeTab === 'membership' && styles.activeTabText]}>
-              会员管理
+            <Text style={[styles.tabText, activeTab === 'account' && styles.activeTabText]}>
+              账户管理
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* 内容区域 */}
         <View style={styles.contentArea}>
-          {activeTab === 'membership' && (
+          {activeTab === 'account' && (
             <View style={styles.membershipContainer}>
               {membershipStatus ? (
                 <View style={styles.membershipCard}>
@@ -285,6 +342,16 @@ const NewProfileScreen: React.FC = () => {
                   </TouchableOpacity>
                 </View>
               )}
+              
+              {/* 删除账户入口（不显眼） */}
+              <View style={styles.accountActions}>
+                <TouchableOpacity 
+                  style={styles.deleteAccountButton}
+                  onPress={() => setShowDeleteConfirm(true)}
+                >
+                  <Text style={styles.deleteAccountText}>删除账户</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
           {activeTab === 'works' && (
@@ -341,6 +408,46 @@ const NewProfileScreen: React.FC = () => {
           )}
         </View>
       </ScrollView>
+
+      {/* 删除账户确认弹窗 */}
+      <Modal
+        visible={showDeleteConfirm}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => !isDeleting && setShowDeleteConfirm(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>确定要删除账户吗？</Text>
+            <Text style={styles.modalMessage}>
+              删除账户后，您的所有数据将被永久删除，包括：
+              {'\n'}• 所有作品和自拍照
+              {'\n'}• 账户余额和会员权益
+              {'\n'}• 所有个人数据
+              {'\n\n'}
+              此操作无法撤销，请谨慎操作。
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonCancel]}
+                onPress={() => setShowDeleteConfirm(false)}
+                disabled={isDeleting}
+              >
+                <Text style={styles.modalButtonCancelText}>取消</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonConfirm, isDeleting && styles.modalButtonDisabled]}
+                onPress={handleDeleteAccount}
+                disabled={isDeleting}
+              >
+                <Text style={styles.modalButtonConfirmText}>
+                  {isDeleting ? '删除中...' : '确认删除'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -741,6 +848,82 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.6)',
     fontSize: 14,
     textDecorationLine: 'underline',
+  },
+  accountActions: {
+    marginTop: 40,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  deleteAccountButton: {
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  deleteAccountText: {
+    color: 'rgba(255, 255, 255, 0.4)',
+    fontSize: 12,
+    textDecorationLine: 'underline',
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  modalContent: {
+    backgroundColor: '#1f1f1f',
+    borderRadius: 16,
+    padding: 24,
+    width: '85%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  modalMessage: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 14,
+    lineHeight: 22,
+    marginBottom: 24,
+    textAlign: 'left',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalButtonCancel: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  modalButtonConfirm: {
+    backgroundColor: '#FF3B30',
+  },
+  modalButtonCancelText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalButtonConfirmText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalButtonDisabled: {
+    opacity: 0.5,
   },
 });
 

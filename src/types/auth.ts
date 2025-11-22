@@ -77,6 +77,7 @@ export const STORAGE_KEYS = {
   EXPIRES_AT: 'expiresAt',
   USER_INFO: 'userInfo',
   IS_ANONYMOUS: 'isAnonymous', // 是否是匿名用户
+  HAS_LOGGED_IN_BEFORE: 'hasLoggedInBefore', // 是否曾经登录过（用于决定登录页默认模式）
 } as const;
 
 

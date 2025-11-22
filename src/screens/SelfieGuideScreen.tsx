@@ -324,7 +324,7 @@ const SelfieGuideScreen: React.FC = () => {
               <View style={styles.photoPlaceholder} />
               <View style={styles.photoPlaceholder} />
             </View>
-            <Text style={styles.processText}>Your photos</Text>
+            <Text style={styles.processText}>您的自拍</Text>
           </View>
 
           <View style={styles.arrowContainer}>
@@ -336,12 +336,12 @@ const SelfieGuideScreen: React.FC = () => {
             <View style={styles.photoContainer}>
               <View style={styles.photoPlaceholder} />
             </View>
-            <Text style={styles.processText}>AI profile</Text>
+            <Text style={styles.processText}>AI头像</Text>
           </View>
         </View>
 
         {/* 结果说明 */}
-        <Text style={styles.resultText}>Amazing results in one tap</Text>
+        <Text style={styles.resultText}>AI写真就在这一瞬间</Text>
 
         {/* 预览图片区域 */}
         <View style={styles.previewContainer}>

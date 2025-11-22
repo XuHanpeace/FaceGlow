@@ -23,6 +23,7 @@ import { UserWorkModel, ResultData } from '../types/model/user_works';
 import { authService } from '../services/auth/authService';
 import { shareService } from '../services/shareService';
 import { ShareModal } from '../components/ShareModal';
+import GradientButton from '../components/GradientButton';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -349,7 +350,7 @@ const CreationResultScreen: React.FC = () => {
       <View style={styles.bottomContainer}>
         {/* 模板选择列表 */}
         <View style={styles.templateListContainer}>
-          <Text style={styles.templateListTitle}>选择模板</Text>
+          <Text style={styles.templateListTitle}>选择作品</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -420,13 +421,25 @@ const CreationResultScreen: React.FC = () => {
 
         {/* 操作按钮 */}
         <View style={styles.actionButtonsContainer}>
-          <TouchableOpacity style={styles.saveButton} onPress={handleSavePress}>
-            <Text style={styles.saveButtonText}>保存作品</Text>
-          </TouchableOpacity>
+          <GradientButton
+            title="保存作品"
+            onPress={handleSavePress}
+            variant="primary"
+            size="large"
+            style={styles.saveButton}
+            fontSize={16}
+            borderRadius={22}
+          />
           
-          <TouchableOpacity style={styles.shareButton} onPress={handleSharePress}>
-            <Text style={styles.shareButtonText}>分享</Text>
-          </TouchableOpacity>
+          {/* <GradientButton
+            title="分享"
+            onPress={handleSharePress}
+            variant="secondary"
+            size="large"
+            style={styles.shareButton}
+            fontSize={16}
+            borderRadius={22}
+          /> */}
         </View>
       </View>
 
@@ -514,6 +527,7 @@ const styles = StyleSheet.create({
   },
   templateListContainer: {
     marginBottom: 20,
+    marginTop: 20,
   },
   templateListTitle: {
     color: '#fff',
@@ -597,6 +611,7 @@ const styles = StyleSheet.create({
   actionButtonsContainer: {
     flexDirection: 'row',
     gap: 12,
+    marginTop: 10,
   },
   saveButton: {
     flex: 1,

@@ -66,32 +66,32 @@ const UserWorkPreviewScreen: React.FC = () => {
         }
       },
     },
-    {
-      id: 'wechat',
-      icon: '💬',
-      iconName: 'wechat',
-      iconColor: '#07C160', // 微信绿
-      label: '微信好友',
-      onPress: async () => {
-        const result = await shareService.shareToWeChatSession(shareImageUrl);
-        if (!result.success) {
-          Alert.alert('提示', result.error || '分享失败');
-        }
-      },
-    },
-    {
-      id: 'moments',
-      icon: '🔗',
-      iconName: 'link',
-      iconColor: '#2196F3', // 蓝色 - 链接
-      label: '朋友圈',
-      onPress: async () => {
-        const result = await shareService.shareToWeChatTimeline(shareImageUrl);
-        if (!result.success) {
-          Alert.alert('提示', result.error || '分享失败');
-        }
-      },
-    },
+    // {
+    //   id: 'wechat',
+    //   icon: '💬',
+    //   iconName: 'wechat',
+    //   iconColor: '#07C160', // 微信绿
+    //   label: '微信好友',
+    //   onPress: async () => {
+    //     const result = await shareService.shareToWeChatSession(shareImageUrl);
+    //     if (!result.success) {
+    //       Alert.alert('提示', result.error || '分享失败');
+    //     }
+    //   },
+    // },
+    // {
+    //   id: 'moments',
+    //   icon: '🔗',
+    //   iconName: 'link',
+    //   iconColor: '#2196F3', // 蓝色 - 链接
+    //   label: '朋友圈',
+    //   onPress: async () => {
+    //     const result = await shareService.shareToWeChatTimeline(shareImageUrl);
+    //     if (!result.success) {
+    //       Alert.alert('提示', result.error || '分享失败');
+    //     }
+    //   },
+    // },
   ];
 
   const handleScroll = (event: any) => {

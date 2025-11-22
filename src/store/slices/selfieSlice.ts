@@ -98,6 +98,13 @@ const selfieSlice = createSlice({
       state.uploadProgress = 0;
       state.error = null;
     },
+    clearAllSelfies: (state) => {
+      state.selfies = [];
+      state.loading = false;
+      state.error = null;
+      state.uploading = false;
+      state.uploadProgress = 0;
+    },
   },
   extraReducers: (builder) => {
     // 处理上传自拍照异步操作
@@ -161,6 +168,7 @@ export const {
   setSelfieProgress,
   addAiGeneratedImage,
   clearUploadState,
+  clearAllSelfies,
 } = selfieSlice.actions;
 
 export default selfieSlice.reducer;
