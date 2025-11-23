@@ -239,7 +239,11 @@ const NewProfileScreen: React.FC = () => {
         </View> */}
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
 
         {/* 用户信息 */}
         <View style={styles.userInfo}>
@@ -407,7 +411,18 @@ const NewProfileScreen: React.FC = () => {
             </View>
           )}
         </View>
+
       </ScrollView>
+
+      {/* 关于我们入口 - 固定在底部 */}
+      <View style={styles.aboutUsContainer}>
+        <TouchableOpacity 
+          style={styles.aboutUsButton}
+          onPress={() => navigation.navigate('AboutUs')}
+        >
+          <Text style={styles.aboutUsText}>关于我们</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* 删除账户确认弹窗 */}
       <Modal
@@ -508,6 +523,9 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
     paddingTop: 20,
+  },
+  scrollContent: {
+    paddingBottom: 20,
   },
   greenBanner: {
     backgroundColor: '#4CAF50',
@@ -924,6 +942,22 @@ const styles = StyleSheet.create({
   },
   modalButtonDisabled: {
     opacity: 0.5,
+  },
+  aboutUsContainer: {
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 30,
+    alignItems: 'center',
+    backgroundColor: '#131313',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  aboutUsButton: {
+    paddingVertical: 8,
+  },
+  aboutUsText: {
+    color: 'rgba(255, 255, 255, 0.4)',
+    fontSize: 12,
   },
 });
 

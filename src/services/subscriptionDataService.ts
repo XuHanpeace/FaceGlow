@@ -212,7 +212,7 @@ class SubscriptionDataService {
           metadata: {
             coin_package: {
               package_id: 'coins_pack',
-              package_name: 'Face Coins',
+              package_name: '美美币',
               bonus_coins: 0
             }
           }

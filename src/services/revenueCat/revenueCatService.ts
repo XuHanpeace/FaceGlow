@@ -283,6 +283,67 @@ class RevenueCatService {
   }
 
   /**
+   * 检查是否为支付权限错误（包括 Sandbox 权限错误）
+   */
+  isPaymentNotAllowedError(error: unknown): boolean {
+    if (error && typeof error === 'object') {
+      const errorObj = error as Record<string, unknown>;
+      
+      // 检查错误代码
+      if ('code' in errorObj) {
+        const errorCode = String(errorObj.code);
+        // RevenueCat 错误代码
+        if (errorCode === 'PURCHASE_NOT_ALLOWED' || 
+            errorCode === 'PAYMENT_PENDING' ||
+            errorCode === 'STORE_PROBLEM') {
+          return true;
+        }
+      }
+      
+      // 检查错误消息中是否包含 Sandbox 或权限相关关键词
+      if ('message' in errorObj || 'underlyingErrorMessage' in errorObj) {
+        const message = String(
+          errorObj.message || errorObj.underlyingErrorMessage || ''
+        ).toLowerCase();
+        
+        if (
+          message.includes('sandbox') ||
+          message.includes('permission') ||
+          message.includes('权限') ||
+          message.includes('无权') ||
+          message.includes('not allowed')
+        ) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * 获取友好的错误消息
+   */
+  getFriendlyErrorMessage(error: unknown): string {
+    if (this.isPurchaseCancelledError(error)) {
+      return '您取消了购买';
+    }
+    
+    if (this.isNetworkError(error)) {
+      return '网络连接失败，请检查网络设置后重试';
+    }
+    
+    if (this.isPaymentNotAllowedError(error)) {
+      return '您的 Apple 账号没有购买权限。\n\n如果您使用的是测试账号，请在 App Store Connect 中配置该账号的 Sandbox 测试权限。\n\n如果是正式环境，请检查您的 Apple ID 设置。';
+    }
+    
+    if (error && typeof error === 'object' && 'message' in error) {
+      return String((error as { message: string }).message);
+    }
+    
+    return '订阅失败，请重试';
+  }
+
+  /**
    * 处理错误
    */
   private handleError(error: unknown): RevenueCatError {

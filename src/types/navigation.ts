@@ -38,6 +38,7 @@ export type RootStackParamList = {
   UserWorkPreview: {
     work: UserWorkModel;
   };
+  AboutUs: undefined;
   Detail: {
     id: string;
     title: string;

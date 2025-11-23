@@ -1,6 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { LoginScreen } from '../screens/LoginScreen';
+
 import COSUploadTestScreen from '../screens/COSUploadTestScreen';
 import DatabaseTestScreen from '../screens/DatabaseTestScreen';
 import NewHomeScreen from '../screens/NewHomeScreen';
@@ -17,6 +17,7 @@ import CoinPurchaseScreen from '../screens/CoinPurchaseScreen';
 import ServiceTestScreen from '../screens/ServiceTestScreen';
 import SubscriptionTestScreen from '../screens/SubscriptionTestScreen';
 import UserWorkPreviewScreen from '../screens/UserWorkPreviewScreen';
+import AboutUsScreen from '../screens/AboutUsScreen';
 import { RootStackParamList } from '../types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -82,15 +83,7 @@ const StackNavigator = () => {
           animationDuration: 250,
         }}
       />
-      <Stack.Screen
-        name="Login"
-        component={LoginScreen}
-        options={{
-          headerShown: true,
-          headerBackTitle: '返回',
-          title: '登录',
-        }}
-      />
+
       <Stack.Screen
         name="NewAuth"
         component={NewAuthScreen}
@@ -146,6 +139,15 @@ const StackNavigator = () => {
         component={UserWorkPreviewScreen}
         options={{
           headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="AboutUs"
+        component={AboutUsScreen}
+        options={{
+          headerShown: false,
+          animation: 'slide_from_bottom',
+          animationDuration: 250,
         }}
       />
       <Stack.Screen

@@ -61,7 +61,7 @@ export const subscriptionPlans: SubscriptionPlan[] = [
 export const coinPackages: CoinPackage[] = [
   {
     id: 'coins',
-    title: 'Face Coins',
+    title: '美美币',
     coins: 80,
     price: '¥8',
     description: '使用美美币，解锁高级AI写真模版',
@@ -76,9 +76,8 @@ export const coinPackages: CoinPackage[] = [
 export const subscriptionConfig = {
   title: '美颜换换会员',
   features: [
-    '• 无限次AI换脸',
+    '• 解锁全部写真模版',
     '• 高清图片导出',
-    '• 每日100张PRO级别照片',
   ],
   buttonText: '立即订阅',
   restoreText: '恢复购买',
@@ -89,6 +88,6 @@ export const subscriptionConfig = {
  */
 export const coinConfig = {
   title: '购买美美币',
-  description: '美美币可用于AI创作功能',
+  description: '消耗美美币，参与更加专业的AI写真创作，解锁更多创意模板',
   buttonText: '立即购买',
 };

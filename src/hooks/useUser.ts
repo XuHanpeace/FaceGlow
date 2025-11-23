@@ -180,7 +180,7 @@ export const useUserAvatar = () => {
 
   const avatarSource = hasAvatar 
     ? { uri: userInfo.avatar }
-    : require('../assets/icons/default-avatar.webp'); // 需要添加默认头像
+    : ''; // 需要添加默认头像
 
   const updateAvatar = async (newAvatarUrl: string) => {
     // 这里可以调用更新头像的API

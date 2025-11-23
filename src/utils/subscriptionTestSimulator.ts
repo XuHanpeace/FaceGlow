@@ -26,7 +26,7 @@ export class SubscriptionTesterSimulator {
     },
     {
         productIdentifier: 'com.digitech.faceglow.assets.coins1',
-      localizedTitle: 'Face Coins',
+      localizedTitle: '美美币',
       localizedDescription: '解锁AI创作功能',
       price: 6.0,
       priceLocale: 'CNY',

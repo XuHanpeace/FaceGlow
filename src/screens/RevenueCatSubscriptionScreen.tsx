@@ -138,12 +138,8 @@ const RevenueCatSubscriptionScreen: React.FC = () => {
         return;
       }
 
-      if (isNetworkError(err)) {
-        Alert.alert('网络错误', '网络连接失败，请检查网络设置后重试');
-        return;
-      }
-
-      const errorMessage = err instanceof Error ? err.message : '订阅失败，请重试';
+      // 使用 RevenueCat 服务的友好错误消息
+      const errorMessage = revenueCatService.getFriendlyErrorMessage(err);
       Alert.alert('订阅失败', errorMessage);
     } finally {
       setIsPurchasing(false);
