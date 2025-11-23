@@ -3,13 +3,13 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Image,
   StyleSheet,
   Modal,
   ScrollView,
   Dimensions,
   Alert,
 } from 'react-native';
+import FastImage from 'react-native-fast-image';
 import { useUserSelfies } from '../hooks/useUser';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
@@ -122,10 +122,10 @@ const SelfieSelector: React.FC<SelfieSelectorProps> = ({
         style={[styles.selfieContainer, { width: size, height: size, borderRadius: size / 2 }]}
         onPress={handleSelfiePress}
       >
-        <Image
+        <FastImage
           source={{ uri: currentSelectedSelfie || selfies[0]?.url }}
           style={[styles.selfieImage, { width: size, height: size, borderRadius: size / 2 }]}
-          resizeMode="cover"
+          resizeMode={FastImage.resizeMode.cover}
         />
         {/* 选择指示器 */}
         <View style={styles.selectIndicator}>
@@ -169,10 +169,10 @@ const SelfieSelector: React.FC<SelfieSelectorProps> = ({
                   ]}
                   onPress={() => handleTempSelfieSelect(selfie.url)}
                 >
-                  <Image
+                  <FastImage
                     source={selfie.source}
                     style={styles.selfieItemImage}
-                    resizeMode="cover"
+                    resizeMode={FastImage.resizeMode.cover}
                   />
                   {tempSelectedSelfie === selfie.url && (
                     <View style={styles.checkmark}>

@@ -3,10 +3,10 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Image,
   ScrollView,
   StyleSheet,
 } from 'react-native';
+import FastImage from 'react-native-fast-image';
 import { useUserSelfies } from '../hooks/useUser';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
@@ -56,12 +56,13 @@ const SelfieModule: React.FC<SelfieModuleProps> = ({ onAddSelfiePress, onSelfieS
         {/* 自拍照列表 */}
         {displaySelfies.map((selfie) => (
           <View key={selfie.id} style={styles.selfieContainer}>
-            <Image 
+            <FastImage 
               source={selfie.source} 
               style={[
                 styles.selfieImage,
                 selfie.url === defaultSelfieUrl && styles.defaultSelfieImage
-              ]} 
+              ]}
+              resizeMode={FastImage.resizeMode.cover}
             />
           </View>
         ))}

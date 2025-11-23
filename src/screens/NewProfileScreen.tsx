@@ -6,11 +6,12 @@ import {
   StyleSheet,
   ScrollView,
   StatusBar,
-  Image,
   Modal,
   Alert,
   TextInput,
+  Dimensions,
 } from 'react-native';
+import FastImage from 'react-native-fast-image';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
@@ -38,6 +39,11 @@ interface SelfieItem {
   imageUrl: string;
   createdAt: string;
 }
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_GAP = 12; // 卡片之间的固定间隔
+const CONTAINER_PADDING = 20; // 容器左右padding
+const CARD_WIDTH = (SCREEN_WIDTH - CONTAINER_PADDING * 2 - CARD_GAP) / 2; // 计算卡片宽度
 
 const NewProfileScreen: React.FC = () => {
   const navigation = useNavigation<NewProfileScreenNavigationProp>();
@@ -429,6 +435,7 @@ const NewProfileScreen: React.FC = () => {
                       key={work._id}
                       work={work}
                       onPress={handleWorkPress}
+                      cardWidth={CARD_WIDTH}
                     />
                   ))}
                 </View>
@@ -447,12 +454,13 @@ const NewProfileScreen: React.FC = () => {
                 {hasSelfies ? (
                   selfies.map((selfie) => (
                     <TouchableOpacity key={selfie.id} style={styles.selfieItem}>
-                      <Image 
+                      <FastImage 
                         source={selfie.source} 
                         style={[
                           styles.selfieImage,
                           selfie.url === defaultSelfieUrl && styles.defaultSelfieImage
-                        ]} 
+                        ]}
+                        resizeMode={FastImage.resizeMode.cover}
                       />
                     </TouchableOpacity>
                   ))
@@ -819,7 +827,7 @@ const styles = StyleSheet.create({
   worksGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    gap: CARD_GAP,
   },
   workItem: {
     width: '48%',

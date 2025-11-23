@@ -10,6 +10,7 @@ import {
   ScrollView,
   FlatList,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
@@ -30,6 +31,7 @@ const UserWorkPreviewScreen: React.FC = () => {
   const navigation = useNavigation<UserWorkPreviewScreenNavigationProp>();
   const route = useRoute<UserWorkPreviewScreenRouteProp>();
   const { work } = route.params;
+  const insets = useSafeAreaInsets();
   
   const [selectedResultIndex, setSelectedResultIndex] = useState(0);
   const [showComparison, setShowComparison] = useState(true);
@@ -133,26 +135,6 @@ const UserWorkPreviewScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      {/* 对比模式切换按钮 */}
-      <View style={styles.comparisonToggle}>
-        <GradientButton
-          title="对比模式"
-          onPress={() => setShowComparison(true)}
-          variant={showComparison ? "primary" : "secondary"}
-          size="medium"
-          style={styles.toggleButton}
-          colors={showComparison ? undefined : ['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.1)']}
-        />
-        <GradientButton
-          title="单图模式"
-          onPress={() => setShowComparison(false)}
-          variant={!showComparison ? "primary" : "secondary"}
-          size="medium"
-          style={styles.toggleButton}
-          colors={!showComparison ? undefined : ['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.1)']}
-        />
-      </View>
-
       {/* 主图片展示区域 - 左右滑动 */}
       <FlatList
         ref={flatListRef}
@@ -171,7 +153,7 @@ const UserWorkPreviewScreen: React.FC = () => {
                 beforeImage={item.template_image}
                 afterImage={item.result_image}
                 width={screenWidth}
-                height={screenHeight * 0.6}
+                height={screenHeight * 0.7}
               />
             ) : (
               // 单图模式：只显示换脸结果
@@ -181,19 +163,12 @@ const UserWorkPreviewScreen: React.FC = () => {
                 resizeMode="cover"
               />
             )}
-            
-            {/* 图片信息覆盖层 */}
-            <View style={styles.imageOverlay}>
-              <Text style={styles.imageTitle}>
-                换脸结果 {index + 1} / {work.result_data?.length || 0}
-              </Text>
-            </View>
           </View>
         )}
       />
 
       {/* 底部信息区域 */}
-      <View style={styles.bottomContainer}>
+      <View style={[styles.bottomContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
         {/* 指示器 */}
         {work.result_data && work.result_data.length > 1 && (
           <View style={styles.indicatorContainer}>
@@ -208,23 +183,25 @@ const UserWorkPreviewScreen: React.FC = () => {
             ))}
           </View>
         )}
-
-        {/* 作品统计 */}
-        <View style={styles.workStats}>
-          <View style={styles.statItem}>
-            <FontAwesome name="heart" size={18} color="#FF6B9D" />
-            <Text style={styles.statText}>{work.likes || '0'}</Text>
-          </View>
-          <View style={styles.statItem}>
-            <FontAwesome name="download" size={18} color="#4CAF50" />
-            <Text style={styles.statText}>{work.download_count || '0'}</Text>
-          </View>
-          <View style={styles.statItem}>
-            <FontAwesome name="calendar" size={18} color="#2196F3" />
-            <Text style={styles.statText}>
-              {work.created_at ? new Date(work.created_at).toLocaleDateString() : '未知'}
-            </Text>
-          </View>
+        
+        {/* 对比模式切换按钮 */}
+        <View style={styles.comparisonToggle}>
+          <GradientButton
+            title="对比模式"
+            onPress={() => setShowComparison(true)}
+            variant={showComparison ? "primary" : "secondary"}
+            size="medium"
+            style={styles.toggleButton}
+            colors={showComparison ? undefined : ['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.1)']}
+          />
+          <GradientButton
+            title="单图模式"
+            onPress={() => setShowComparison(false)}
+            variant={!showComparison ? "primary" : "secondary"}
+            size="medium"
+            style={styles.toggleButton}
+            colors={!showComparison ? undefined : ['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.1)']}
+          />
         </View>
       </View>
 
@@ -288,8 +265,6 @@ const styles = StyleSheet.create({
   },
   comparisonToggle: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
     gap: 12,
   },
   toggleButton: {
@@ -306,36 +281,23 @@ const styles = StyleSheet.create({
   },
   imageSlide: {
     width: screenWidth,
-    height: screenHeight * 0.6,
+    height: screenHeight * 0.7,
     position: 'relative',
   },
   resultImage: {
     width: '100%',
     height: '100%',
   },
-  imageOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    padding: 16,
-  },
-  imageTitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '500',
-  },
   bottomContainer: {
     paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingTop: 4,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.1)',
   },
   indicatorContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   indicator: {
     width: 8,
@@ -345,23 +307,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 4,
   },
   activeIndicator: {
-    backgroundColor: '#5EE7DF',
-  },
-  workStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statIcon: {
-    fontSize: 20,
-    marginBottom: 4,
-  },
-  statText: {
-    color: '#fff',
-    fontSize: 12,
-    opacity: 0.7,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
   },
 });
 

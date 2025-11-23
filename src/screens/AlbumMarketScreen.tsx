@@ -101,12 +101,14 @@ const AlbumMarketScreen: React.FC = () => {
         </View>
         
         <View style={styles.itemInfo}>
-          <Text style={styles.itemTitle} numberOfLines={1}>
-            {item.album_name}
-          </Text>
-          <Text style={styles.itemDescription} numberOfLines={2}>
-            {item.album_description}
-          </Text>
+          <View style={styles.textContent}>
+            <Text style={styles.itemTitle} numberOfLines={1}>
+              {item.album_name}
+            </Text>
+            <Text style={styles.itemDescription} numberOfLines={2}>
+              {item.album_description}
+            </Text>
+          </View>
           <View style={styles.likesContainer}>
             <FontAwesome name="heart" size={14} color="#FF6B9D" style={styles.likesIcon} />
             <Text style={styles.likesText}>
@@ -254,6 +256,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 16,
     overflow: 'hidden',
+    flexDirection: 'column',
   },
   imageContainer: {
     position: 'relative',
@@ -289,7 +292,13 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   itemInfo: {
-    padding: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 12,
+    flex: 1,
+    flexDirection: 'column',
+  },
+  textContent: {
+    flex: 1,
   },
   itemTitle: {
     color: '#fff',
@@ -300,11 +309,12 @@ const styles = StyleSheet.create({
   itemDescription: {
     color: 'rgba(255, 255, 255, 0.7)',
     fontSize: 12,
-    marginBottom: 8,
   },
   likesContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginTop: 'auto',
+    paddingTop: 8,
   },
   likesIcon: {
     fontSize: 12,

@@ -3,12 +3,12 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Image,
   StyleSheet,
   Modal,
   ScrollView,
   Dimensions,
 } from 'react-native';
+import FastImage from 'react-native-fast-image';
 import { useUserSelfies } from '../hooks/useUser';
 import GradientButton from './GradientButton';
 
@@ -67,13 +67,13 @@ const DefaultSelfieSelector: React.FC<DefaultSelfieSelectorProps> = ({
               ]}
               onPress={() => setTempSelectedSelfie(selfie.url)}
             >
-              <Image
+              <FastImage
                 source={selfie.source}
                 style={[
                   styles.selfieItemImage,
                   selfie.url === defaultSelfieUrl && styles.defaultSelfieImage
                 ]}
-                resizeMode="cover"
+                resizeMode={FastImage.resizeMode.cover}
               />
               {tempSelectedSelfie === selfie.url && (
                 <View style={styles.checkmark}>

@@ -12,9 +12,10 @@ import FontAwesome from 'react-native-vector-icons/FontAwesome';
 interface UserWorkCardProps {
   work: UserWorkModel;
   onPress: (work: UserWorkModel) => void;
+  cardWidth?: number;
 }
 
-const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress }) => {
+const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress, cardWidth = 180 }) => {
   const handlePress = () => {
     onPress(work);
   };
@@ -29,34 +30,57 @@ const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress }) => {
 
   // 格式化创建时间
   const formatDate = (timestamp?: number) => {
-    if (!timestamp) return '未知时间';
-    return new Date(timestamp).toLocaleDateString();
+    if (!timestamp) return null;
+    return new Date(timestamp).toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
   };
 
+  // 获取subtitle内容（优先级：描述 > 结果数量 > 时间）
+  const getSubtitle = () => {
+    // 优先使用活动描述
+    if (work.activity_description && work.activity_description.trim()) {
+      return work.activity_description.trim();
+    }
+    // 其次显示结果数量
+    if (work.result_data && work.result_data.length > 0) {
+      return `${work.result_data.length} 张作品`;
+    }
+    // 最后显示时间（如果有）
+    return formatDate(work.created_at);
+  };
+
+  const subtitle = getSubtitle();
+
+  // 根据宽度计算高度（保持比例）
+  const cardHeight = (cardWidth / 180) * 280;
+  const imageHeight = (cardWidth / 180) * 220;
+
   return (
-    <TouchableOpacity style={styles.workItem} onPress={handlePress} activeOpacity={0.8}>
+    <TouchableOpacity 
+      style={[styles.workItem, { width: cardWidth, height: cardHeight }]} 
+      onPress={handlePress} 
+      activeOpacity={0.8}
+    >
       <Image 
         source={{ uri: getCoverImage() }} 
-        style={styles.workImage}
+        style={[styles.workImage, { height: imageHeight }]}
         resizeMode="cover"
       />
       <View style={styles.workInfo}>
         <Text style={styles.workTitle} numberOfLines={1}>
           {work.activity_title}
         </Text>
-        <Text style={styles.workDate}>
-          {formatDate(work.created_at)}
-        </Text>
-        <View style={styles.workStats}>
-          <View style={styles.statItem}>
+        {subtitle && (
+          <View style={styles.subtitleContainer}>
+            <Text style={styles.workSubtitle} numberOfLines={1}>
+              {subtitle}
+            </Text>
             <FontAwesome name="heart" size={12} color="#FF6B9D" />
-            <Text style={styles.statText}>{work.likes || '0'}</Text>
           </View>
-          <View style={styles.statItem}>
-            <FontAwesome name="download" size={12} color="#4CAF50" />
-            <Text style={styles.statText}>{work.download_count || '0'}</Text>
-          </View>
-        </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -64,8 +88,6 @@ const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress }) => {
 
 const styles = StyleSheet.create({
   workItem: {
-    width: 160,
-    height: 249, // 9:14 比例 (160 * 14 / 9 = 248.89)
     marginBottom: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 12,
@@ -73,11 +95,11 @@ const styles = StyleSheet.create({
   },
   workImage: {
     width: '100%',
-    height: 180, // 固定图片高度
   },
   workInfo: {
     padding: 12,
-    flex: 1, // 让文案区域占用剩余空间
+    flex: 1,
+    justifyContent: 'center',
   },
   workTitle: {
     color: '#fff',
@@ -85,25 +107,17 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginBottom: 4,
   },
-  workDate: {
+  subtitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 6,
+  },
+  workSubtitle: {
+    flex: 1,
     color: '#fff',
     fontSize: 12,
     opacity: 0.6,
-    marginBottom: 8,
-  },
-  workStats: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  statText: {
-    color: '#fff',
-    fontSize: 11,
-    opacity: 0.7,
   },
 });
 
