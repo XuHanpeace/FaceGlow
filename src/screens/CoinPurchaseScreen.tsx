@@ -178,7 +178,10 @@ const CoinPurchaseScreen: React.FC = () => {
   };
 
   const handleOpenAgreement = () => {
-    Linking.openURL('https://xuhanpeace.github.io/facegolow-support/coin-purchase-agreement.html');
+    navigation.navigate('WebView', {
+      url: 'https://xuhanpeace.github.io/facegolow-support/coin-purchase-agreement.html',
+      title: '金币购买协议',
+    });
   };
 
   return (

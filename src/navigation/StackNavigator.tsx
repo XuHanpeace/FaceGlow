@@ -18,6 +18,7 @@ import ServiceTestScreen from '../screens/ServiceTestScreen';
 import SubscriptionTestScreen from '../screens/SubscriptionTestScreen';
 import UserWorkPreviewScreen from '../screens/UserWorkPreviewScreen';
 import AboutUsScreen from '../screens/AboutUsScreen';
+import WebViewScreen from '../screens/WebViewScreen';
 import { RootStackParamList } from '../types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -144,6 +145,15 @@ const StackNavigator = () => {
       <Stack.Screen
         name="AboutUs"
         component={AboutUsScreen}
+        options={{
+          headerShown: false,
+          animation: 'slide_from_bottom',
+          animationDuration: 250,
+        }}
+      />
+      <Stack.Screen
+        name="WebView"
+        component={WebViewScreen}
         options={{
           headerShown: false,
           animation: 'slide_from_bottom',

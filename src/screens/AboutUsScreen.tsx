@@ -7,7 +7,6 @@ import {
   ScrollView,
   StatusBar,
   Image,
-  Linking,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -23,19 +22,31 @@ const AboutUsScreen: React.FC = () => {
   };
 
   const handleOpenPrivacyPolicy = () => {
-    Linking.openURL('https://xuhanpeace.github.io/facegolow-support/privacy-policy.html');
+    navigation.navigate('WebView', {
+      url: 'https://xuhanpeace.github.io/facegolow-support/privacy-policy.html',
+      title: '隐私政策',
+    });
   };
 
   const handleOpenTermsOfUse = () => {
-    Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/');
+    navigation.navigate('WebView', {
+      url: 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
+      title: '服务条款',
+    });
   };
 
   const handleOpenUserAgreement = () => {
-    Linking.openURL('https://xuhanpeace.github.io/facegolow-support/user-agreement.html');
+    navigation.navigate('WebView', {
+      url: 'https://xuhanpeace.github.io/facegolow-support/user-agreement.html',
+      title: '用户协议',
+    });
   };
 
   const handleOpenSubscriptionAgreement = () => {
-    Linking.openURL('https://xuhanpeace.github.io/facegolow-support/subscription-agreement.html');
+    navigation.navigate('WebView', {
+      url: 'https://xuhanpeace.github.io/facegolow-support/subscription-agreement.html',
+      title: '订阅协议',
+    });
   };
 
   return (

@@ -39,6 +39,10 @@ export type RootStackParamList = {
     work: UserWorkModel;
   };
   AboutUs: undefined;
+  WebView: {
+    url: string;
+    title?: string;
+  };
   Detail: {
     id: string;
     title: string;

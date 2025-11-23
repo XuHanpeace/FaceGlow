@@ -180,12 +180,18 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({ route }
 
   // 打开用户协议
   const handleOpenUserAgreement = () => {
-    Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/');
+    navigation.navigate('WebView', {
+      url: 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
+      title: '服务条款',
+    });
   };
 
   // 打开隐私政策
   const handleOpenPrivacyPolicy = () => {
-    Linking.openURL('https://xuhanpeace.github.io/facegolow-support/privacy-policy.html');
+    navigation.navigate('WebView', {
+      url: 'https://xuhanpeace.github.io/facegolow-support/privacy-policy.html',
+      title: '隐私政策',
+    });
   };
 
   // 渲染标题

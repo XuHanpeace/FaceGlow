@@ -9,7 +9,6 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
-  Linking,
   BackHandler,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -299,15 +298,24 @@ const SubscriptionScreen: React.FC = () => {
   };
 
   const handleOpenPrivacyPolicy = () => {
-    Linking.openURL('https://xuhanpeace.github.io/facegolow-support/privacy-policy.html');
+    navigation.navigate('WebView', {
+      url: 'https://xuhanpeace.github.io/facegolow-support/privacy-policy.html',
+      title: '隐私政策',
+    });
   };
 
   const handleOpenTermsOfUse = () => {
-    Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/');
+    navigation.navigate('WebView', {
+      url: 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
+      title: '服务条款',
+    });
   };
 
   const handleOpenSubscriptionAgreement = () => {
-    Linking.openURL('https://xuhanpeace.github.io/facegolow-support/subscription-agreement.html');
+    navigation.navigate('WebView', {
+      url: 'https://xuhanpeace.github.io/facegolow-support/subscription-agreement.html',
+      title: '订阅协议',
+    });
   };
 
   return (
