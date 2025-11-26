@@ -22,6 +22,8 @@ import { authService, verificationService } from '../services/auth';
 import { userDataService } from '../services/database/userDataService';
 import { Linking } from 'react-native';
 import GradientButton from '../components/GradientButton';
+import { showSuccessToast } from '../utils/toast';
+import BackButton from '../components/BackButton';
 
 type VerificationCodeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -119,15 +121,11 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({ route }
         if (result.success && result.data) {
           // 账户状态已在 authService 中检查，直接保存 token 并登录
           setAuthData(result.data);
-          Alert.alert('成功', '注册成功！', [
-            { text: '确定', onPress: () => {
-              // 重置导航栈，关闭整个登录流程
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'NewHome' }],
-              });
-            }}
-          ]);
+          showSuccessToast('注册成功！');
+          // 返回首页
+          setTimeout(() => {
+            navigation.popToTop();
+          }, 500);
         } else {
           Alert.alert('注册失败', result.error?.message || '未知错误');
         }
@@ -157,15 +155,11 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({ route }
         if (result.success && result.data) {
           // 账户状态已在 authService 中检查，直接保存 token 并登录
           setAuthData(result.data);
-          Alert.alert('成功', '登录成功！', [
-            { text: '确定', onPress: () => {
-              // 重置导航栈，关闭整个登录流程
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'NewHome' }],
-              });
-            }}
-          ]);
+          showSuccessToast('登录成功！');
+          // 返回首页
+          setTimeout(() => {
+            navigation.popToTop();
+          }, 500);
         } else {
           Alert.alert('登录失败', result.error?.message || '未知错误');
         }
@@ -209,9 +203,7 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({ route }
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.innerContainer}>
           {/* 返回按钮 */}
-          <TouchableOpacity style={styles.closeButton} onPress={handleClosePress}>
-            <Text style={styles.closeIcon}>←</Text>
-          </TouchableOpacity>
+          <BackButton iconType="arrow" onPress={handleClosePress} />
 
           {/* 主要内容 */}
           <View style={styles.content}>
@@ -266,10 +258,6 @@ const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({ route }
               />
             </View>
 
-            {/* 安全提示 */}
-            <Text style={styles.securityText}>
-              您的个人信息将受到严格保护
-            </Text>
           </View>
         </View>
       </TouchableWithoutFeedback>

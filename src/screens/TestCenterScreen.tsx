@@ -10,6 +10,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
+import BackButton from '../components/BackButton';
 
 type TestCenterScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -106,9 +107,7 @@ const TestCenterScreen: React.FC = () => {
       
       {/* 头部 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <Text style={styles.backIcon}>‹</Text>
-        </TouchableOpacity>
+        <BackButton iconType="arrow" onPress={handleBackPress} absolute={false} />
         <Text style={styles.title}>测试中心</Text>
         <View style={styles.placeholder} />
       </View>

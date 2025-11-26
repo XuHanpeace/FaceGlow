@@ -9,7 +9,9 @@ import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { StyleSheet, View, StatusBar} from 'react-native';
 import { Provider } from 'react-redux';
+import ToastProvider from 'toastify-react-native';
 import StackNavigator from './src/navigation/StackNavigator';
+import CustomToast from './src/components/CustomToast';
 import {RootStackParamList} from './src/types/navigation';
 import { ModalProvider } from './src/components/modal';
 import { store } from './src/store';
@@ -17,7 +19,10 @@ import { shareService } from './src/services/shareService';
 import { appLifecycleManager } from './src/services/auth/appLifecycleManager';
 import { revenueCatService } from './src/services/revenueCat/revenueCatService';
 import { authService } from './src/services/auth/authService';
+import { loginPromptService } from './src/services/loginPromptService';
 import CLOUDBASE_CONFIG from './src/config/cloudbase';
+import LoginPromptManager from './src/components/LoginPromptManager';
+import { navigationRef } from './src/navigation/navigationUtils';
 
 declare global {
   namespace ReactNavigation {
@@ -34,6 +39,11 @@ function App(): JSX.Element {
         console.log('🚀 初始化应用生命周期管理器...');
         await appLifecycleManager.initialize();
         console.log('✅ 应用生命周期管理器初始化完成');
+
+        // 初始化登录提示服务
+        console.log('🚀 初始化登录提示服务...');
+        loginPromptService.initialize();
+        console.log('✅ 登录提示服务初始化完成');
 
         // 初始化 RevenueCat SDK
         try {
@@ -73,6 +83,7 @@ function App(): JSX.Element {
     return () => {
       console.log('🛑 应用卸载，停止生命周期管理器...');
       appLifecycleManager.stop();
+      loginPromptService.cleanup();
     };
   }, []);
   
@@ -81,10 +92,21 @@ function App(): JSX.Element {
       <ModalProvider>
         <StatusBar barStyle="light-content" translucent={true} backgroundColor="transparent" />
         <View style={styles.container}>
-          <NavigationContainer>
+          <NavigationContainer ref={navigationRef}>
             <StackNavigator />
           </NavigationContainer>
         </View>
+        <ToastProvider
+          config={{
+            success: (props) => <CustomToast {...props} type="success" />,
+            error: (props) => <CustomToast {...props} type="error" />,
+            info: (props) => <CustomToast {...props} type="info" />,
+            warn: (props) => <CustomToast {...props} type="warn" />,
+          }}
+          position="top"
+          theme="dark"
+        />
+        <LoginPromptManager />
       </ModalProvider>
     </Provider>
   );

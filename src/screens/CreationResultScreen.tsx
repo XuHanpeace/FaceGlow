@@ -25,6 +25,8 @@ import { shareService } from '../services/shareService';
 import { ShareModal } from '../components/ShareModal';
 import GradientButton from '../components/GradientButton';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import { showSuccessToast } from '../utils/toast';
+import BackButton from '../components/BackButton';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -226,13 +228,7 @@ const CreationResultScreen: React.FC = () => {
       const result = await userWorkService.createWork(workData);
 
       if (result.success) {
-        Alert.alert(
-          '🎉 保存成功',
-          `太棒了！已保存 ${resultData.length} 个换脸作品到云端，可以在个人中心查看哦～`,
-          [
-            { text: '好的', onPress: () => console.log('作品保存成功') }
-          ]
-        );
+        showSuccessToast(`太棒了！已保存 ${resultData.length} 个换脸作品到云端，可以在个人中心查看哦～`);
       } else {
         Alert.alert('😢 保存失败', result.error?.message || '哎呀，保存作品失败了，再试一次吧～');
       }
@@ -267,7 +263,7 @@ const CreationResultScreen: React.FC = () => {
       onPress: async () => {
         const result = await shareService.saveImageToAlbum(shareImageUrl);
         if (result.success) {
-          Alert.alert('✅ 成功', '图片已保存到相册');
+          showSuccessToast('图片已保存到相册');
         } else {
           Alert.alert('提示', result.error || '保存失败');
         }
@@ -281,7 +277,9 @@ const CreationResultScreen: React.FC = () => {
       label: '微信好友',
       onPress: async () => {
         const result = await shareService.shareToWeChatSession(shareImageUrl);
-        if (!result.success) {
+        if (result.success) {
+          showSuccessToast('分享成功');
+        } else {
           Alert.alert('提示', result.error || '分享失败');
         }
       },
@@ -294,7 +292,9 @@ const CreationResultScreen: React.FC = () => {
       label: '朋友圈',
       onPress: async () => {
         const result = await shareService.shareToWeChatTimeline(shareImageUrl);
-        if (!result.success) {
+        if (result.success) {
+          showSuccessToast('分享成功');
+        } else {
           Alert.alert('提示', result.error || '分享失败');
         }
       },
@@ -315,9 +315,7 @@ const CreationResultScreen: React.FC = () => {
       <StatusBar barStyle="light-content" backgroundColor="#000" translucent />
       
       {/* 返回按钮 - 浮动在左上角 */}
-      <TouchableOpacity style={styles.floatingBackButton} onPress={handleBackPress}>
-        <FontAwesome name="arrow-left" size={12} color="#fff" />
-      </TouchableOpacity>
+      <BackButton iconType="arrow" onPress={handleBackPress} />
 
       {/* 图片对比区域 - 顶到页面顶部 */}
       <View style={styles.imageComparisonContainer}>

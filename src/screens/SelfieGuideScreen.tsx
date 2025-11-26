@@ -23,6 +23,7 @@ import { cosService } from '../services/cos/COSService';
 import { userDataService } from '../services/database/userDataService';
 import { authService } from '../services/auth/authService';
 import GradientButton from '../components/GradientButton';
+import BackButton from '../components/BackButton';
 
 type SelfieGuideScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -279,9 +280,7 @@ const SelfieGuideScreen: React.FC = () => {
       <StatusBar barStyle="light-content" translucent={true} backgroundColor="transparent" />
       
       {/* 关闭按钮 */}
-      <TouchableOpacity style={styles.closeButton} onPress={handleClosePress}>
-        <Text style={styles.closeIcon}>✕</Text>
-      </TouchableOpacity>
+      <BackButton iconType="close" onPress={handleClosePress} />
 
       {/* 主要内容 */}
       <View style={styles.content}>

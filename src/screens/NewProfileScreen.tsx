@@ -10,6 +10,10 @@ import {
   Alert,
   TextInput,
   Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import FastImage from 'react-native-fast-image';
 import { useNavigation } from '@react-navigation/native';
@@ -29,6 +33,8 @@ import UserWorkCard from '../components/UserWorkCard';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { updateProfile } from '../store/slices/userSlice';
 import GradientButton from '../components/GradientButton';
+import BackButton from '../components/BackButton';
+import { showSuccessToast } from '../utils/toast';
 
 type NewProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -155,7 +161,7 @@ const NewProfileScreen: React.FC = () => {
         // 更新 Redux
         dispatch(updateProfile({ name: trimmedName }));
         setShowEditNameModal(false);
-        Alert.alert('成功', '昵称更新成功');
+        showSuccessToast('昵称更新成功');
       } else {
         Alert.alert('更新失败', result.error?.message || '更新昵称失败，请稍后重试');
       }
@@ -290,9 +296,7 @@ const NewProfileScreen: React.FC = () => {
       
       {/* 头部导航 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <Text style={styles.backIcon}>✕</Text>
-        </TouchableOpacity>
+        <BackButton iconType="close" onPress={handleBackPress} absolute={false} />
         <Text style={styles.headerTitle}>简介</Text>
         <View style={styles.placeholder} />
         {/* <View style={styles.headerActions}>
@@ -533,47 +537,58 @@ const NewProfileScreen: React.FC = () => {
       <Modal
         visible={showEditNameModal}
         transparent={true}
-        animationType="fade"
+        animationType="none"
         onRequestClose={() => !isUpdatingName && setShowEditNameModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>编辑昵称</Text>
-            <TextInput
-              style={styles.nameInput}
-              value={editNameValue}
-              onChangeText={setEditNameValue}
-              placeholder="请输入昵称"
-              placeholderTextColor="rgba(255, 255, 255, 0.4)"
-              maxLength={20}
-              autoFocus={true}
-              editable={!isUpdatingName}
-            />
-            <Text style={styles.nameInputHint}>
-              {editNameValue.length}/20
-            </Text>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonCancel]}
-                onPress={() => setShowEditNameModal(false)}
-                disabled={isUpdatingName}
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.modalOverlayInner}>
+              <View 
+                style={styles.modalContent}
+                onStartShouldSetResponder={() => true}
               >
-                <Text style={styles.modalButtonCancelText}>取消</Text>
-              </TouchableOpacity>
-              <GradientButton
-                title={isUpdatingName ? '保存中...' : '保存'}
-                onPress={handleSaveName}
-                disabled={isUpdatingName}
-                loading={isUpdatingName}
-                variant="primary"
-                size="medium"
-                style={styles.gradientButton}
-                fontSize={16}
-                borderRadius={8}
-              />
+                <Text style={styles.modalTitle}>编辑昵称</Text>
+                <TextInput
+                  style={styles.nameInput}
+                  value={editNameValue}
+                  onChangeText={setEditNameValue}
+                  placeholder="请输入昵称"
+                  placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                  maxLength={20}
+                  autoFocus={true}
+                  editable={!isUpdatingName}
+                />
+                <Text style={styles.nameInputHint}>
+                  {editNameValue.length}/20
+                </Text>
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.modalButtonCancel]}
+                    onPress={() => setShowEditNameModal(false)}
+                    disabled={isUpdatingName}
+                  >
+                    <Text style={styles.modalButtonCancelText}>取消</Text>
+                  </TouchableOpacity>
+                  <GradientButton
+                    title={isUpdatingName ? '保存中...' : '保存'}
+                    onPress={handleSaveName}
+                    disabled={isUpdatingName}
+                    loading={isUpdatingName}
+                    variant="primary"
+                    size="medium"
+                    style={styles.gradientButton}
+                    fontSize={16}
+                    borderRadius={8}
+                  />
+                </View>
+              </View>
             </View>
-          </View>
-        </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -995,15 +1010,17 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
   modalOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    zIndex: 1000,
+  },
+  modalOverlayInner: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    paddingTop: 220,
   },
   modalContent: {
     backgroundColor: '#1f1f1f',

@@ -21,6 +21,8 @@ import { ShareModal } from '../components/ShareModal';
 import { Alert } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import GradientButton from '../components/GradientButton';
+import { showSuccessToast } from '../utils/toast';
+import BackButton from '../components/BackButton';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -62,7 +64,7 @@ const UserWorkPreviewScreen: React.FC = () => {
       onPress: async () => {
         const result = await shareService.saveImageToAlbum(shareImageUrl);
         if (result.success) {
-          Alert.alert('✅ 成功', '图片已保存到相册');
+          showSuccessToast('图片已保存到相册');
         } else {
           Alert.alert('提示', result.error || '保存失败');
         }
@@ -124,9 +126,7 @@ const UserWorkPreviewScreen: React.FC = () => {
       
       {/* 头部导航 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <FontAwesome name="arrow-left" size={12} color="#fff" />
-        </TouchableOpacity>
+        <BackButton iconType="arrow" onPress={handleBackPress} absolute={false} />
         <Text style={styles.headerTitle} numberOfLines={1}>
           {work.activity_title}
         </Text>

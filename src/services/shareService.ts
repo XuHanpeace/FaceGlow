@@ -1,6 +1,7 @@
 import { Platform, PermissionsAndroid, Alert, NativeModules } from 'react-native';
 import * as WeChat from 'react-native-wechat-lib';
 import RNFS from 'react-native-fs';
+import { showSuccessToast } from '../utils/toast';
 
 // 安全导入CameraRoll，避免NativeEventEmitter错误
 let CameraRoll: any;
@@ -294,7 +295,7 @@ class ShareService {
             onPress: async () => {
               const result = await this.saveImageToAlbum(imageUrl);
               if (result.success) {
-                Alert.alert('✅ 成功', '图片已保存到相册');
+                showSuccessToast('图片已保存到相册');
               } else {
                 Alert.alert('❌ 失败', result.error || '保存失败');
               }
@@ -304,7 +305,9 @@ class ShareService {
             text: '分享给微信好友',
             onPress: async () => {
               const result = await this.shareToWeChatSession(imageUrl);
-              if (!result.success) {
+              if (result.success) {
+                showSuccessToast('分享成功');
+              } else {
                 Alert.alert('❌ 失败', result.error || '分享失败');
               }
             },
@@ -313,7 +316,9 @@ class ShareService {
             text: '分享到朋友圈',
             onPress: async () => {
               const result = await this.shareToWeChatTimeline(imageUrl);
-              if (!result.success) {
+              if (result.success) {
+                showSuccessToast('分享成功');
+              } else {
                 Alert.alert('❌ 失败', result.error || '分享失败');
               }
             },

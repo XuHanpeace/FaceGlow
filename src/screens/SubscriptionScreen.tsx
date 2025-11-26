@@ -23,6 +23,8 @@ import { useRevenueCat } from '../hooks/useRevenueCat';
 import { ENTITLEMENTS } from '../config/revenueCatConfig';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import GradientButton from '../components/GradientButton';
+import { showSuccessToast, showInfoToast } from '../utils/toast';
+import BackButton from '../components/BackButton';
 
 
 type SubscriptionScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -152,7 +154,7 @@ const SubscriptionScreen: React.FC = () => {
   const handleBackPress = () => {
     if (isLoading) {
       // 正在加载时阻止返回
-      Alert.alert('提示', '订阅处理中，请稍候...');
+      showInfoToast('订阅处理中，请稍候...');
       return;
     }
     navigation.goBack();
@@ -250,20 +252,12 @@ const SubscriptionScreen: React.FC = () => {
         }
       }
 
-      Alert.alert(
-        '订阅成功',
-        `恭喜您成功订阅${selectedPlan.title}！`,
-        [
-          {
-            text: '确定',
-            onPress: () => {
-              // 重新加载订阅状态
-              loadAvailablePlans();
-              navigation.popToTop();
-            },
-          },
-        ]
-      );
+      showSuccessToast(`恭喜您成功订阅${selectedPlan.title}！`);
+      // 重新加载订阅状态
+      setTimeout(() => {
+        loadAvailablePlans();
+        navigation.popToTop();
+      }, 500);
     } catch (error) {
       if (isPurchaseCancelled(error)) {
         // 用户取消，不弹错误
@@ -285,7 +279,7 @@ const SubscriptionScreen: React.FC = () => {
       const isProActive = typeof customerInfo.entitlements.active[ENTITLEMENTS.PRO] !== 'undefined';
 
       if (isProActive) {
-        Alert.alert('恢复成功', '已恢复您的购买记录');
+        showSuccessToast('已恢复您的购买记录');
       } else {
         Alert.alert('恢复失败', '没有找到可恢复的购买记录');
       }
@@ -324,9 +318,7 @@ const SubscriptionScreen: React.FC = () => {
       
       {/* 头部 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <FontAwesome name="chevron-left" size={14} color="#fff" />
-        </TouchableOpacity>
+        <BackButton iconType="arrow" onPress={handleBackPress} absolute={false} />
         <View style={styles.placeholder} />
       </View>
 

@@ -16,6 +16,7 @@ import { authService } from '../services/auth/authService';
 import { userDataService } from '../services/database/userDataService';
 import { userWorkService } from '../services/database/userWorkService';
 import { UserWorkModel } from '../types/model/user_works';
+import BackButton from '../components/BackButton';
 
 type ServiceTestScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -321,9 +322,7 @@ const ServiceTestScreen: React.FC = () => {
       
       {/* 头部 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <Text style={styles.backIcon}>‹</Text>
-        </TouchableOpacity>
+        <BackButton iconType="arrow" onPress={handleBackPress} absolute={false} />
         <Text style={styles.title}>Service单元测试</Text>
         <View style={styles.placeholder} />
       </View>

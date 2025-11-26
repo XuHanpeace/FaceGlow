@@ -21,6 +21,8 @@ import { useAuthState } from '../hooks/useAuthState';
 import { coinPackages, coinConfig, CoinPackage } from '../config/subscriptionConfig';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import GradientButton from '../components/GradientButton';
+import { showSuccessToast } from '../utils/toast';
+import BackButton from '../components/BackButton';
 
 const { ApplePayModule } = NativeModules;
 
@@ -136,16 +138,10 @@ const CoinPurchaseScreen: React.FC = () => {
           }
         }
 
-        Alert.alert(
-          '购买成功',
-          `恭喜您成功购买${selectedPackage.coins}美美币！`,
-          [
-            {
-              text: '确定',
-              onPress: () => navigation.popToTop(),
-            },
-          ]
-        );
+        showSuccessToast(`恭喜您成功购买${selectedPackage.coins}美美币！`);
+        setTimeout(() => {
+          navigation.popToTop();
+        }, 500);
       } else {
         // 根据错误类型显示不同提示
         const errorMessage = getCoinPurchaseErrorMessage(result.errorCode, result.error);
@@ -166,7 +162,7 @@ const CoinPurchaseScreen: React.FC = () => {
       const result = await ApplePayModule.restorePurchases();
       
       if (result.success) {
-        Alert.alert('恢复成功', '已恢复您的购买记录');
+        showSuccessToast('已恢复您的购买记录');
       } else {
         Alert.alert('恢复失败', result.error || '没有找到可恢复的购买记录');
       }
@@ -190,11 +186,7 @@ const CoinPurchaseScreen: React.FC = () => {
       
       {/* 头部 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-                                  <FontAwesome name="chevron-left" size={14} color="#fff" />
-
-
-        </TouchableOpacity>
+        <BackButton iconType="arrow" onPress={handleBackPress} absolute={false} />
         <Text style={styles.headerTitle}>{coinConfig.title}</Text>
         <View style={styles.placeholder} />
       </View>

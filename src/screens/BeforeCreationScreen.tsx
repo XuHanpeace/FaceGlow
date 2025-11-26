@@ -23,6 +23,7 @@ import { useAuthState } from '../hooks/useAuthState';
 import { authService } from '../services/auth/authService';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import GradientButton from '../components/GradientButton';
+import BackButton from '../components/BackButton';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -177,11 +178,7 @@ const BeforeCreationScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* 返回按钮 */}
-      <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-                                <FontAwesome name="chevron-left" size={14} color="#fff" />
-
-
-      </TouchableOpacity>
+      <BackButton iconType="arrow" onPress={handleBackPress} />
 
       {/* 右侧操作按钮 */}
       <View style={styles.rightActions}>

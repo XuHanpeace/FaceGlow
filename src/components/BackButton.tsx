@@ -1,0 +1,104 @@
+import React from 'react';
+import { TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
+
+interface BackButtonProps {
+  /**
+   * 图标类型：'arrow' 表示左箭头，'close' 表示 X 号
+   * @default 'arrow'
+   */
+  iconType?: 'arrow' | 'close';
+  /**
+   * 点击回调
+   */
+  onPress: () => void;
+  /**
+   * 自定义样式
+   */
+  style?: ViewStyle;
+  /**
+   * 是否禁用
+   * @default false
+   */
+  disabled?: boolean;
+  /**
+   * 是否使用绝对定位
+   * @default true
+   * 如果为 false，则使用相对定位，适合在 flex 布局中使用
+   */
+  absolute?: boolean;
+}
+
+/**
+ * 统一的返回/关闭按钮组件
+ * 固定大小 40x40，图标居中，使用 FontAwesome
+ */
+const BackButton: React.FC<BackButtonProps> = ({
+  iconType = 'arrow',
+  onPress,
+  style,
+  disabled = false,
+  absolute = true,
+}) => {
+  const insets = useSafeAreaInsets();
+  
+  const iconName = iconType === 'close' ? 'times' : 'chevron-left';
+  
+  const containerStyle = absolute
+    ? [
+        styles.container,
+        styles.absoluteContainer,
+        {
+          top: insets.top + 8,
+        },
+        style,
+      ]
+    : [
+        styles.container,
+        styles.relativeContainer,
+        style,
+      ];
+  
+  return (
+    <TouchableOpacity
+      style={containerStyle}
+      onPress={onPress}
+      disabled={disabled}
+      activeOpacity={0.7}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+    >
+      <FontAwesome
+        name={iconName}
+        size={18}
+        color="#FFFFFF"
+        style={styles.icon}
+      />
+    </TouchableOpacity>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  absoluteContainer: {
+    position: 'absolute',
+    left: 20,
+    zIndex: 10,
+  },
+  relativeContainer: {
+    // 相对定位，参与 flex 布局
+  },
+  icon: {
+    // FontAwesome 图标会自动居中，不需要额外样式
+  },
+});
+
+export default BackButton;
+

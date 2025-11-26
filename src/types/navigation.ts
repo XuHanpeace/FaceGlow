@@ -23,7 +23,9 @@ export type RootStackParamList = {
   SelfieGuide: undefined;
   Notifications: undefined;
   Login: undefined;
-  NewAuth: undefined;
+  NewAuth: {
+    initialMode?: 'phone-verify' | 'register';
+  } | undefined;
   VerificationCode: {
     phoneNumber: string;
     verificationId: string;

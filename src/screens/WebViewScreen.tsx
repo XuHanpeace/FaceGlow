@@ -11,6 +11,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { WebView } from 'react-native-webview';
+import BackButton from '../components/BackButton';
 
 type WebViewScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type WebViewScreenRouteProp = {
@@ -37,9 +38,7 @@ const WebViewScreen: React.FC = () => {
       
       {/* 头部导航 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <Text style={styles.backIcon}>✕</Text>
-        </TouchableOpacity>
+        <BackButton iconType="close" onPress={handleBackPress} absolute={false} />
         <Text style={styles.headerTitle} numberOfLines={1}>
           {title}
         </Text>

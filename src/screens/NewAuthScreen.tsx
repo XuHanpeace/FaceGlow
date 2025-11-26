@@ -15,25 +15,33 @@ import {
   Keyboard,
   Linking,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { useAuthState } from '../hooks/useAuthState';
 import { authService, verificationService } from '../services/auth';
 import GradientButton from '../components/GradientButton';
+import BackButton from '../components/BackButton';
 
 type NewAuthScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type NewAuthScreenRouteProp = NativeStackScreenProps<RootStackParamList, 'NewAuth'>['route'];
 
 type AuthMode = 'phone-verify' | 'password' | 'register';
 
 const NewAuthScreen: React.FC = () => {
   const navigation = useNavigation<NewAuthScreenNavigationProp>();
+  const route = useRoute<NewAuthScreenRouteProp>();
   const { setAuthData } = useAuthState();
   
-  // 判断初始模式：根据是否曾经登录过决定默认模式
+  // 判断初始模式：优先使用路由参数，否则根据是否曾经登录过决定默认模式
   // 曾经登录过 -> 默认手机号登录 (phone-verify)
   // 未登录过 -> 默认注册 (register)
   const getInitialAuthMode = (): AuthMode => {
+    // 如果路由参数指定了初始模式，使用参数
+    if (route.params?.initialMode) {
+      return route.params.initialMode;
+    }
+    // 否则根据是否曾经登录过决定
     const hasLoggedInBefore = authService.hasLoggedInBefore();
     return hasLoggedInBefore ? 'phone-verify' : 'register';
   };
@@ -210,9 +218,7 @@ const NewAuthScreen: React.FC = () => {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.innerContainer}>
           {/* 关闭按钮 */}
-          <TouchableOpacity style={styles.closeButton} onPress={handleClosePress}>
-            <Text style={styles.closeIcon}>✕</Text>
-          </TouchableOpacity>
+          <BackButton iconType="close" onPress={handleClosePress} />
 
           {/* 主要内容 */}
           <View style={styles.content}>
@@ -343,10 +349,6 @@ const NewAuthScreen: React.FC = () => {
           )}
         </View>
 
-        {/* 安全提示 */}
-        <Text style={styles.securityText}>
-          您的个人信息将受到严格保护
-        </Text>
       </View>
         </View>
       </TouchableWithoutFeedback>

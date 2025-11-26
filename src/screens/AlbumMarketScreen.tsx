@@ -18,6 +18,7 @@ import { fetchActivities } from '../store/slices/activitySlice';
 import { Album } from '../types/model/activity';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import GradientButton from '../components/GradientButton';
+import BackButton from '../components/BackButton';
 
 const { width: screenWidth } = Dimensions.get('window');
 const numColumns = 2;
@@ -128,11 +129,7 @@ const AlbumMarketScreen: React.FC = () => {
         
         {/* 头部 */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-                                    <FontAwesome name="chevron-left" size={14} color="#fff" />
-
-
-          </TouchableOpacity>
+          <BackButton iconType="arrow" onPress={handleBackPress} absolute={false} />
           <Text style={styles.headerTitle}>{activityName}</Text>
           <View style={styles.placeholder} />
         </View>
@@ -154,11 +151,7 @@ const AlbumMarketScreen: React.FC = () => {
         
         {/* 头部 */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-                                    <FontAwesome name="chevron-left" size={14} color="#fff" />
-
-
-          </TouchableOpacity>
+          <BackButton iconType="arrow" onPress={handleBackPress} absolute={false} />
           <Text style={styles.headerTitle}>{activityName}</Text>
           <View style={styles.placeholder} />
         </View>
@@ -188,9 +181,7 @@ const AlbumMarketScreen: React.FC = () => {
       
       {/* 头部 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <Text style={styles.backIcon}>‹</Text>
-        </TouchableOpacity>
+        <BackButton iconType="arrow" onPress={handleBackPress} absolute={false} />
         <Text style={styles.headerTitle}>{activityName}</Text>
         <View style={styles.placeholder} />
       </View>

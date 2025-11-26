@@ -15,6 +15,7 @@ import { RootStackParamList } from '../types/navigation';
 import SubscriptionTester, { SubscriptionTestResult } from '../utils/subscriptionTest';
 import SubscriptionTesterSimulator from '../utils/subscriptionTestSimulator';
 import { Platform } from 'react-native';
+import BackButton from '../components/BackButton';
 
 type SubscriptionTestScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -100,9 +101,7 @@ const SubscriptionTestScreen: React.FC = () => {
       
       {/* 头部 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <Text style={styles.backIcon}>‹</Text>
-        </TouchableOpacity>
+        <BackButton iconType="arrow" onPress={handleBackPress} absolute={false} />
         <Text style={styles.title}>订阅功能测试</Text>
         <View style={styles.placeholder} />
       </View>

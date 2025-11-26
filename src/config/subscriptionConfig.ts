@@ -87,7 +87,7 @@ export const subscriptionConfig = {
  * 金币页面配置
  */
 export const coinConfig = {
-  title: '购买美美币',
+  title: '美美币',
   description: '消耗美美币，参与更加专业的AI写真创作，解锁更多创意模板',
   buttonText: '立即购买',
 };

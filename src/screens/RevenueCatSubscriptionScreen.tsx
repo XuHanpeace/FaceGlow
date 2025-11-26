@@ -18,6 +18,9 @@ import { useAuthState } from '../hooks/useAuthState';
 import { PurchasesPackage, PurchasesStoreProduct } from 'react-native-purchases';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import GradientButton from '../components/GradientButton';
+import { showSuccessToast, showInfoToast } from '../utils/toast';
+import { revenueCatService } from '../services/revenueCat/revenueCatService';
+import BackButton from '../components/BackButton';
 
 type RevenueCatSubscriptionScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -99,7 +102,7 @@ const RevenueCatSubscriptionScreen: React.FC = () => {
 
   const handleBackPress = () => {
     if (isPurchasing) {
-      Alert.alert('提示', '订阅处理中，请稍候...');
+      showInfoToast('订阅处理中，请稍候...');
       return;
     }
     navigation.goBack();
@@ -117,19 +120,11 @@ const RevenueCatSubscriptionScreen: React.FC = () => {
       // 购买订阅包
       await purchasePackage(selectedPackage);
 
-      Alert.alert(
-        '订阅成功',
-        '恭喜您成功订阅 FaceGlow Pro！',
-        [
-          {
-            text: '确定',
-            onPress: () => {
-              refreshStatus();
-              navigation.popToTop();
-            },
-          },
-        ]
-      );
+      showSuccessToast('恭喜您成功订阅 FaceGlow Pro！');
+      setTimeout(() => {
+        refreshStatus();
+        navigation.popToTop();
+      }, 500);
     } catch (err: unknown) {
       if (isPurchaseCancelled(err)) {
         // 用户取消购买，不显示错误
@@ -151,9 +146,11 @@ const RevenueCatSubscriptionScreen: React.FC = () => {
       await restorePurchases();
 
       if (hasActiveSubscription) {
-        Alert.alert('恢复成功', '已恢复您的购买记录');
-        refreshStatus();
-        navigation.popToTop();
+        showSuccessToast('已恢复您的购买记录');
+        setTimeout(() => {
+          refreshStatus();
+          navigation.popToTop();
+        }, 500);
       } else {
         Alert.alert('未找到购买记录', '没有找到可恢复的购买记录');
       }
@@ -193,9 +190,7 @@ const RevenueCatSubscriptionScreen: React.FC = () => {
         <StatusBar barStyle="light-content" backgroundColor="#000" />
         
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-            <FontAwesome name="chevron-left" size={14} color="#fff" />
-          </TouchableOpacity>
+          <BackButton iconType="arrow" onPress={handleBackPress} absolute={false} />
           <View style={styles.placeholder} />
         </View>
 
@@ -243,9 +238,7 @@ const RevenueCatSubscriptionScreen: React.FC = () => {
         <StatusBar barStyle="light-content" backgroundColor="#000" />
         
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-            <FontAwesome name="chevron-left" size={14} color="#fff" />
-          </TouchableOpacity>
+          <BackButton iconType="arrow" onPress={handleBackPress} absolute={false} />
           <View style={styles.placeholder} />
         </View>
 

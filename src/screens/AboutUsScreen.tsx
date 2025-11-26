@@ -11,6 +11,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
+import BackButton from '../components/BackButton';
 type AboutUsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const AboutUsScreen: React.FC = () => {
@@ -55,9 +56,7 @@ const AboutUsScreen: React.FC = () => {
       
       {/* 头部导航 */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <Text style={styles.backIcon}>✕</Text>
-        </TouchableOpacity>
+        <BackButton iconType="close" onPress={handleBackPress} absolute={false} />
         <Text style={styles.headerTitle}>关于我们</Text>
         <View style={styles.placeholder} />
       </View>
