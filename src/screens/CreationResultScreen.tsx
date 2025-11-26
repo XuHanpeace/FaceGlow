@@ -15,6 +15,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { ImageComparison } from '../components/ImageComparison';
+import { FadeInOutImage } from '../components/FadeInOutImage';
 import { callFaceFusionCloudFunction } from '../services/tcb/tcb';
 import { userWorkService } from '../services/database/userWorkService';
 import { balanceService } from '../services/balanceService';
@@ -320,12 +321,28 @@ const CreationResultScreen: React.FC = () => {
       {/* 图片对比区域 - 顶到页面顶部 */}
       <View style={styles.imageComparisonContainer}>
         {selectedTemplate ? (
-          <ImageComparison
-            beforeImage={selectedTemplate.template_url} // 默认显示模板图片
-            afterImage={selectedResult || selectedTemplate.template_url} // 如果有结果则显示结果，否则显示模板
-            width={screenWidth}
-            height={screenHeight * 0.7}
-          />
+          selectedResult ? (
+            // 有结果时，显示渐隐渐显的 ai-result 图片（使用真实结果和本地资源）
+            <FadeInOutImage
+              images={[
+                { uri: selectedResult }, // 真实的换脸结果
+                require('../assets/ai-result1.png'),
+                require('../assets/ai-result2.png'),
+              ]}
+              width={screenWidth}
+              height={screenHeight * 0.7}
+              duration={2000}
+              fadeDuration={800}
+            />
+          ) : (
+            // 没有结果时，显示对比图（模板 vs 模板）
+            <ImageComparison
+              beforeImage={selectedTemplate.template_url}
+              afterImage={selectedTemplate.template_url}
+              width={screenWidth}
+              height={screenHeight * 0.7}
+            />
+          )
         ) : (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>暂无模板</Text>

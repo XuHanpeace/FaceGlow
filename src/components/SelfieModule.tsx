@@ -8,12 +8,7 @@ import {
 } from 'react-native';
 import FastImage from 'react-native-fast-image';
 import { useUserSelfies } from '../hooks/useUser';
-import { useNavigation } from '@react-navigation/native';
-import { RootStackParamList } from '../types/navigation';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
-
-type SelfieModuleNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface SelfieModuleProps {
   onAddSelfiePress: () => void;
@@ -21,7 +16,7 @@ interface SelfieModuleProps {
 }
 
 const SelfieModule: React.FC<SelfieModuleProps> = ({ onAddSelfiePress, onSelfieSelect }) => {
-  const { selfies, defaultSelfieUrl } = useUserSelfies();
+  const { selfies, defaultSelfieUrl, hasSelfies } = useUserSelfies();
 
   // 最多6个头像（useUserSelfies已经倒序了）
   const displaySelfies = selfies.slice(0, 6);
@@ -34,8 +29,14 @@ const SelfieModule: React.FC<SelfieModuleProps> = ({ onAddSelfiePress, onSelfieS
   };
 
   return (
-    <TouchableOpacity style={styles.selfieModule} onPress={handleSelfiePress} activeOpacity={0.8}>
-      <Text style={styles.selfieTitle}>我的自拍</Text>
+    <TouchableOpacity 
+      style={styles.selfieModule} 
+      onPress={handleSelfiePress} 
+      activeOpacity={0.8}
+    >
+      <View style={styles.titleContainer}>
+        <Text style={styles.selfieTitle}>我的自拍</Text>
+      </View>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -66,6 +67,7 @@ const SelfieModule: React.FC<SelfieModuleProps> = ({ onAddSelfiePress, onSelfieS
             />
           </View>
         ))}
+
       </ScrollView>
     </TouchableOpacity>
   );
@@ -82,11 +84,16 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     padding: 16,
   },
+  titleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   selfieTitle: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 16,
   },
   selfieScrollView: {
     // 不需要额外的padding，因为外层已经有padding

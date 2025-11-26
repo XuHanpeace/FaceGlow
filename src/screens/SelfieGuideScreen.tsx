@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,9 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  Animated,
 } from 'react-native';
+import FastImage from 'react-native-fast-image';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
@@ -24,6 +26,9 @@ import { userDataService } from '../services/database/userDataService';
 import { authService } from '../services/auth/authService';
 import GradientButton from '../components/GradientButton';
 import BackButton from '../components/BackButton';
+import { FadeInOutImage } from '../components/FadeInOutImage';
+import LinearGradient from 'react-native-linear-gradient';
+import { themeColors } from '../config/theme';
 
 type SelfieGuideScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -39,6 +44,17 @@ const SelfieGuideScreen: React.FC = () => {
 
   const screenWidth = Dimensions.get('window').width;
   const screenHeight = Dimensions.get('window').height;
+
+  // 使用本地资源图片展示过程
+  const selfieImage = require('../assets/selfie.png');
+  const tempImages = [
+    require('../assets/temp1.png'),
+    require('../assets/temp2.png'),
+  ];
+  const aiResultImages = [
+    require('../assets/ai-result1.png'),
+    require('../assets/ai-result2.png'),
+  ];
 
   const handleClosePress = () => {
     navigation.goBack();
@@ -288,19 +304,7 @@ const SelfieGuideScreen: React.FC = () => {
         <Text style={styles.title}>创作AI头像</Text>
         <Text style={styles.subtitle}>别担心,这是一次性操作</Text>
 
-        {/* 照片预览区域 */}
-        {selectedImage && (
-          <View style={styles.previewContainer}>
-            <Image
-              source={{ uri: selectedImage.uri }}
-              style={styles.previewImage}
-              resizeMode="cover"
-            />
-            <TouchableOpacity style={styles.changePhotoButton} onPress={handleChangePhoto}>
-              <Text style={styles.changePhotoText}>更换自拍</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+       
 
         {/* 上传成功的照片展示 */}
         {uploadedImageUrl && (
@@ -315,58 +319,81 @@ const SelfieGuideScreen: React.FC = () => {
           </View>
         )}
 
-        {/* 流程说明 */}
-        <View style={styles.processContainer}>
-          <View style={styles.processStep}>
-            <View style={styles.photoContainer}>
-              <View style={styles.photoPlaceholder} />
-              <View style={styles.photoPlaceholder} />
-              <View style={styles.photoPlaceholder} />
-            </View>
-            <Text style={styles.processText}>您的自拍</Text>
+        {/* 过程展示区域 - selfie + temp = ai-result */}
+        <View style={styles.processShowcaseContainer}>
+          <View style={styles.processItem}>
+            <FastImage
+              source={selfieImage}
+              style={styles.processImage}
+              resizeMode={FastImage.resizeMode.cover}
+            />
+            <Text style={styles.processLabel}>你的自拍</Text>
           </View>
-
-          <View style={styles.arrowContainer}>
-            <Text style={styles.arrow}>→</Text>
-            <Text style={styles.arrow}>→</Text>
+          
+          <View style={styles.processOperator}>
+              <Text style={styles.plusIcon}>+</Text>
           </View>
-
-          <View style={styles.processStep}>
-            <View style={styles.photoContainer}>
-              <View style={styles.photoPlaceholder} />
-            </View>
-            <Text style={styles.processText}>AI头像</Text>
+          
+          <View style={styles.processItem}>
+            <FadeInOutImage
+              images={tempImages}
+              width={85}
+              height={85}
+              duration={4000}
+              fadeDuration={600}
+            />
+            <Text style={styles.processLabel}>风格</Text>
+          </View>
+          
+          <View style={styles.processOperator}>
+              <Text style={styles.equalsIcon}>=</Text>
+          </View>
+          
+          <View style={styles.processItem}>
+            <FadeInOutImage
+              images={[aiResultImages[1], aiResultImages[0]]}
+              width={85}
+              height={85}
+              duration={4000}
+              fadeDuration={600}
+            />
+            <Text style={styles.processLabel}>你的写真</Text>
           </View>
         </View>
 
         {/* 结果说明 */}
         <Text style={styles.resultText}>AI写真就在这一瞬间</Text>
 
-        {/* 预览图片区域 */}
-        <View style={styles.previewContainer}>
-          <View style={styles.previewImage}>
-            {/* 这里可以放置预览图片 */}
+        {/* 展示用户选择的自拍 */}
+         {/* 照片预览区域 */}
+         {selectedImage && (
+          <View style={styles.previewContainer}>
+            <Image
+              source={{ uri: selectedImage.uri }}
+              style={styles.previewImage}
+              resizeMode="cover"
+            />
+            <TouchableOpacity style={styles.changePhotoButton} onPress={handleChangePhoto}>
+              <Text style={styles.changePhotoText}>更换自拍</Text>
+            </TouchableOpacity>
           </View>
-        </View>
+        )}
       </View>
 
       {/* 底部按钮 */}
       <View style={styles.bottomContainer}>
         {selectedImage ? (
-          <TouchableOpacity
-            style={[styles.uploadButton, isUploading && styles.uploadButtonDisabled]}
+          <GradientButton
+            title={isUploading ? `上传中 ${uploadProgress}%` : '上传自拍'}
             onPress={handleImageUpload}
+            variant="primary"
+            size="large"
+            height={50}
+            fontSize={16}
+            borderRadius={25}
             disabled={isUploading}
-          >
-            {isUploading ? (
-              <View style={styles.uploadingContainer}>
-                <ActivityIndicator size="small" color="#fff" />
-                <Text style={styles.uploadingText}>上传中 {uploadProgress}%</Text>
-              </View>
-            ) : (
-              <Text style={styles.uploadButtonText}>上传自拍</Text>
-            )}
-          </TouchableOpacity>
+            style={styles.uploadButton}
+          />
         ) : (
           <GradientButton
             title="选择自拍"
@@ -448,7 +475,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingTop: 120,
-    paddingHorizontal: 20,
+    // paddingHorizontal: 20,
   },
   title: {
     fontSize: 28,
@@ -523,39 +550,73 @@ const styles = StyleSheet.create({
     opacity: 0.8,
     textAlign: 'center',
   },
-  processContainer: {
+  processShowcaseContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 30,
-  },
-  processStep: {
-    alignItems: 'center',
-  },
-  photoContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 10,
-  },
-  photoPlaceholder: {
-    width: 40,
-    height: 40,
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  processText: {
+  processItem: {
+    alignItems: 'center',
+    marginHorizontal: 8,
+  },
+  processImage: {
+    width: 85,
+    height: 85,
+    borderRadius: 40,
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+  },
+  processLabel: {
     color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 12,
+    marginTop: 8,
+    opacity: 0.8,
   },
-  arrowContainer: {
+  processOperator: {
+    marginHorizontal: 8,
+  },
+  operatorGradient: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  arrow: {
+  plusIcon: {
     color: '#fff',
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
-    marginVertical: 2,
+  },
+  equalsIcon: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  selectedSelfieContainer: {
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  selectedSelfieGradientBorder: {
+    width: 206,
+    height: 206,
+    borderRadius: 103,
+    padding: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectedSelfieImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    overflow: 'hidden',
   },
   resultText: {
     fontSize: 20,
@@ -572,28 +633,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   uploadButton: {
-    backgroundColor: '#4CAF50',
-    borderRadius: 25,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  uploadButtonDisabled: {
-    backgroundColor: '#666',
-  },
-  uploadButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  uploadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  uploadingText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    width: '100%',
   },
   modalOverlay: {
     flex: 1,

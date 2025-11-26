@@ -35,6 +35,8 @@ import { updateProfile } from '../store/slices/userSlice';
 import GradientButton from '../components/GradientButton';
 import BackButton from '../components/BackButton';
 import { showSuccessToast } from '../utils/toast';
+import AvatarSelectorModal from '../components/AvatarSelectorModal';
+import { authService } from '../services/auth/authService';
 
 type NewProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -60,9 +62,13 @@ const NewProfileScreen: React.FC = () => {
   const [showEditNameModal, setShowEditNameModal] = useState(false);
   const [editNameValue, setEditNameValue] = useState('');
   const [isUpdatingName, setIsUpdatingName] = useState(false);
+  const [showAvatarSelector, setShowAvatarSelector] = useState(false);
+  const [isUpdatingAvatar, setIsUpdatingAvatar] = useState(false);
+  const [isEditingSelfies, setIsEditingSelfies] = useState(false);
+  const [isDeletingSelfie, setIsDeletingSelfie] = useState(false);
   
   // 使用用户hooks获取数据
-  const { userInfo, isLoggedIn, userProfile } = useUser();
+  const { userInfo, isLoggedIn, userProfile, refreshUserData } = useUser();
   const isAutoRenew = userInfo.subscriptionAutoRenew;
   
   // 获取当前会员状态
@@ -114,6 +120,49 @@ const NewProfileScreen: React.FC = () => {
   const handleContactsPress = () => {
     // 处理查看联系人创作
     console.log('Contacts pressed');
+  };
+
+  // 处理头像选择
+  const handleAvatarSelect = async (selfieUrl: string | null) => {
+    if (!user?.uid) {
+      Alert.alert('错误', '无法获取用户信息');
+      return;
+    }
+
+    setIsUpdatingAvatar(true);
+    try {
+      // 更新用户数据：
+      // 1. picture 字段用于显示头像（UserAvatar 组件使用）
+      // 2. selfie_url 字段用于标记当前使用的自拍
+      // 如果选择默认头像，将两个字段都置为空字符串
+      const updateData: any = {
+        uid: user.uid,
+        picture: selfieUrl || '',
+        selfie_url: selfieUrl || '',
+      };
+
+      const result = await userDataService.updateUserData(updateData);
+      
+      if (result.success) {
+        // 更新 Redux 中的用户数据
+        dispatch(updateProfile({
+          picture: selfieUrl || '',
+          selfie_url: selfieUrl || '',
+        }));
+        
+        // 刷新用户数据（确保从服务器获取最新数据）
+        await refreshUserData();
+        
+        showSuccessToast(selfieUrl ? '头像更新成功' : '已切换为默认头像');
+      } else {
+        Alert.alert('更新失败', result.error?.message || '头像更新失败，请重试');
+      }
+    } catch (error: any) {
+      console.error('更新头像失败:', error);
+      Alert.alert('更新失败', error.message || '头像更新失败，请重试');
+    } finally {
+      setIsUpdatingAvatar(false);
+    }
   };
 
   const handleEditProfilePress = () => {
@@ -192,13 +241,80 @@ const NewProfileScreen: React.FC = () => {
 
   const handleTabPress = (tab: TabType) => {
     setActiveTab(tab);
-    if (tab === 'works') {
+    // 切换到"我的作品"时，如果已有缓存数据，不重新加载
+    if (tab === 'works' && userWorks.length === 0) {
       fetchUserWorks();
     }
   };
   
   const handleManageMembership = () => {
     navigation.navigate('Subscription');
+  };
+
+  const handleDeleteSelfie = async (selfieUrl: string) => {
+    if (!user?.uid || !userProfile) {
+      Alert.alert('错误', '无法获取用户信息');
+      return;
+    }
+
+    Alert.alert(
+      '确认删除',
+      '确定要删除这张自拍吗？',
+      [
+        {
+          text: '取消',
+          style: 'cancel',
+        },
+        {
+          text: '确认',
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeletingSelfie(true);
+            try {
+              // 从 selfie_list 中移除选中的自拍
+              const currentSelfieList = userProfile.selfie_list || [];
+              const updatedSelfieList = currentSelfieList.filter(url => url !== selfieUrl);
+
+              // 如果删除的是当前头像，需要清空 selfie_url
+              const updateData: any = {
+                uid: user.uid,
+                selfie_list: updatedSelfieList,
+              };
+
+              // 如果删除的是当前使用的头像，清空 selfie_url 和 picture
+              if (userProfile.selfie_url === selfieUrl) {
+                updateData.selfie_url = '';
+                updateData.picture = '';
+              }
+
+              const result = await userDataService.updateUserData(updateData);
+              
+              if (result.success) {
+                // 更新 Redux 中的用户数据
+                dispatch(updateProfile(updateData));
+                
+                // 刷新用户数据
+                await refreshUserData();
+                
+                showSuccessToast('删除成功');
+                
+                // 如果删除后没有自拍了，退出编辑模式
+                if (updatedSelfieList.length === 0) {
+                  setIsEditingSelfies(false);
+                }
+              } else {
+                Alert.alert('删除失败', result.error?.message || '删除自拍失败，请重试');
+              }
+            } catch (error: any) {
+              console.error('删除自拍失败:', error);
+              Alert.alert('删除失败', error.message || '删除自拍时发生错误');
+            } finally {
+              setIsDeletingSelfie(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleDeleteAccount = async () => {
@@ -315,7 +431,11 @@ const NewProfileScreen: React.FC = () => {
         {/* 用户信息 */}
         <View style={styles.userInfo}>
           <View style={styles.avatarContainer}>
-            <UserAvatar size={48} />
+            <UserAvatar 
+              size={48} 
+              onLongPress={() => setShowAvatarSelector(true)}
+              clickable={hasSelfies || !!userInfo.avatar}
+            />
           </View>
           <View style={styles.userDetails}>
             <Text style={styles.username}>{userInfo.name || userInfo.username || '未设置用户名'}</Text>
@@ -427,7 +547,7 @@ const NewProfileScreen: React.FC = () => {
           )}
           {activeTab === 'works' && (
             <View style={styles.worksContainer}>
-              {worksLoading ? (
+              {worksLoading && userWorks.length === 0 ? (
                 <View style={styles.loadingContainer}>
                   <FontAwesome name="paint-brush" size={24} color="#999" />
                   <Text style={styles.loadingText}>正在加载作品...</Text>
@@ -456,18 +576,47 @@ const NewProfileScreen: React.FC = () => {
             <View style={styles.selfiesContainer}>
               <View style={styles.selfiesGrid}>
                 {hasSelfies ? (
-                  selfies.map((selfie) => (
-                    <TouchableOpacity key={selfie.id} style={styles.selfieItem}>
-                      <FastImage 
-                        source={selfie.source} 
-                        style={[
-                          styles.selfieImage,
-                          selfie.url === defaultSelfieUrl && styles.defaultSelfieImage
-                        ]}
-                        resizeMode={FastImage.resizeMode.cover}
-                      />
+                  <>
+                    {selfies.map((selfie) => (
+                      <View key={selfie.id} style={styles.selfieItem}>
+                        <FastImage 
+                          source={selfie.source} 
+                          style={[
+                            styles.selfieImage,
+                            selfie.url === defaultSelfieUrl && styles.defaultSelfieImage
+                          ]}
+                          resizeMode={FastImage.resizeMode.cover}
+                        />
+                        {/* 编辑模式下显示删除按钮 */}
+                        {isEditingSelfies && (
+                          <TouchableOpacity
+                            style={styles.deleteSelfieButton}
+                            onPress={() => handleDeleteSelfie(selfie.url)}
+                            disabled={isDeletingSelfie}
+                          >
+                            <FontAwesome name="minus-circle" size={20} color="#FF6B6B" />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    ))}
+                    {/* 编辑入口 - 作为网格中的最后一项 */}
+                    <TouchableOpacity 
+                      style={styles.editSelfieItem}
+                      onPress={() => {
+                        if (isEditingSelfies) {
+                          setIsEditingSelfies(false);
+                        } else {
+                          setIsEditingSelfies(true);
+                        }
+                      }}
+                    >
+                      <View style={styles.editSelfiePlaceholder}>
+                        <Text style={styles.editSelfieText}>
+                          {isEditingSelfies ? '完成' : '编辑'}
+                        </Text>
+                      </View>
                     </TouchableOpacity>
-                  ))
+                  </>
                 ) : (
                   <View style={styles.emptySelfiesState}>
                     <Text style={styles.emptySelfiesText}>暂无自拍照</Text>
@@ -481,17 +630,17 @@ const NewProfileScreen: React.FC = () => {
           )}
         </View>
 
-      </ScrollView>
+        {/* 关于我们入口 - 跟随内容流 */}
+        <View style={styles.aboutUsContainer}>
+          <TouchableOpacity 
+            style={styles.aboutUsButton}
+            onPress={() => navigation.navigate('AboutUs')}
+          >
+            <Text style={styles.aboutUsText}>关于我们</Text>
+          </TouchableOpacity>
+        </View>
 
-      {/* 关于我们入口 - 固定在底部 */}
-      <View style={styles.aboutUsContainer}>
-        <TouchableOpacity 
-          style={styles.aboutUsButton}
-          onPress={() => navigation.navigate('AboutUs')}
-        >
-          <Text style={styles.aboutUsText}>关于我们</Text>
-        </TouchableOpacity>
-      </View>
+      </ScrollView>
 
       {/* 删除账户确认弹窗 */}
       <Modal
@@ -500,8 +649,8 @@ const NewProfileScreen: React.FC = () => {
         animationType="fade"
         onRequestClose={() => !isDeleting && setShowDeleteConfirm(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <View style={styles.deleteModalOverlay}>
+          <View style={styles.deleteModalContent}>
             <Text style={styles.modalTitle}>确定要删除账户吗？</Text>
             <Text style={styles.modalMessage}>
               删除账户后，您的所有数据将被永久删除，包括：
@@ -590,6 +739,13 @@ const NewProfileScreen: React.FC = () => {
           </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* 头像选择弹窗 */}
+      <AvatarSelectorModal
+        visible={showAvatarSelector}
+        onClose={() => setShowAvatarSelector(false)}
+        onSelect={handleAvatarSelect}
+      />
     </View>
   );
 };
@@ -890,6 +1046,40 @@ const styles = StyleSheet.create({
     width: '30%',
     position: 'relative',
   },
+  deleteSelfieButton: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FF6B6B',
+  },
+  editSelfieItem: {
+    alignItems: 'center',
+    width: '30%',
+  },
+  editSelfiePlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderStyle: 'dashed',
+  },
+  editSelfieText: {
+    color: 'rgba(255, 255, 255, 0.1)',
+    fontSize: 14,
+    textDecorationLine: 'underline',
+    textDecorationColor: 'rgba(255, 255, 255, 0.1)',
+  },
   selfieImage: {
     width: 80,
     height: 80,
@@ -1009,6 +1199,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textDecorationLine: 'underline',
   },
+  deleteModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteModalContent: {
+    backgroundColor: '#1f1f1f',
+    borderRadius: 16,
+    padding: 24,
+    width: '85%',
+    maxWidth: 400,
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
@@ -1097,9 +1300,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 30,
     alignItems: 'center',
-    backgroundColor: '#131313',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.05)',
   },
   aboutUsButton: {
     paddingVertical: 8,
@@ -1107,6 +1307,8 @@ const styles = StyleSheet.create({
   aboutUsText: {
     color: 'rgba(255, 255, 255, 0.4)',
     fontSize: 12,
+    textDecorationLine: 'underline',
+    textDecorationColor: 'rgba(255, 255, 255, 0.4)',
   },
 });
 

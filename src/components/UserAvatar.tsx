@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Image, StyleSheet, ViewStyle, ImageStyle, Text } from 'react-native';
+import { View, Image, StyleSheet, ViewStyle, ImageStyle, Text, TouchableOpacity } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { useUser, useUserAvatar } from '../hooks/useUser';
 import { colors } from '../config/theme';
@@ -13,6 +13,10 @@ interface UserAvatarProps {
   imageStyle?: ImageStyle;
   /** 是否显示会员标签 */
   showMembership?: boolean;
+  /** 长按回调 */
+  onLongPress?: () => void;
+  /** 是否可点击（用于控制默认头像无自拍时不响应） */
+  clickable?: boolean;
 }
 
 /**
@@ -24,9 +28,14 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
   style,
   imageStyle,
   showMembership = true,
+  onLongPress,
+  clickable = true,
 }) => {
-  const { userProfile } = useUser();
+  const { userProfile, hasSelfies } = useUser();
   const { avatarSource, hasAvatar } = useUserAvatar();
+  
+  // 如果使用默认头像且无自拍，则不响应点击
+  const isClickable = clickable && (hasAvatar || hasSelfies);
 
   // 计算会员等级
   const getMembershipInfo = () => {
@@ -55,48 +64,62 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
   // 根据头像尺寸自动计算标签字体大小
   const labelFontSize = 9;
 
-  return (
-    <View style={[styles.container, { width: size, height: size }, style]}>
-      <View style={[styles.avatarWrapper, { width: size, height: size, borderRadius: size / 2 }]}>
-        {hasAvatar ? (
-          <Image 
-            source={avatarSource} 
+  const AvatarContent = (
+    <View style={[styles.avatarWrapper, { width: size, height: size, borderRadius: size / 2 }]}>
+      {hasAvatar && avatarSource ? (
+        <Image 
+          source={typeof avatarSource === 'string' ? { uri: avatarSource } : avatarSource} 
+          style={[
+            styles.avatarImage, 
+            { width: size, height: size, borderRadius: size / 2 },
+            imageStyle
+          ]} 
+        />
+      ) : (
+        <View style={[styles.defaultAvatar, { width: size, height: size, borderRadius: size / 2 }]}>
+          <FontAwesome name="user-circle" size={size * 0.625} color="#ccc" />
+        </View>
+      )}
+      {/* 会员标签 - 右下角 */}
+      {membershipInfo && (
+        <View 
+          style={[
+            styles.membershipBadge,
+            {
+              bottom: -labelFontSize * 0.5,
+              right: -labelFontSize * 0.3,
+              paddingHorizontal: 2,
+              paddingVertical: labelFontSize * 0.3,
+              borderRadius: labelFontSize * 0.8,
+            }
+          ]}
+        >
+          <Text 
             style={[
-              styles.avatarImage, 
-              { width: size, height: size, borderRadius: size / 2 },
-              imageStyle
-            ]} 
-          />
-        ) : (
-          <View style={[styles.defaultAvatar, { width: size, height: size, borderRadius: size / 2 }]}>
-            <FontAwesome name="user-circle" size={size * 0.625} color="#ccc" />
-          </View>
-        )}
-        {/* 会员标签 - 右下角 */}
-        {membershipInfo && (
-          <View 
-            style={[
-              styles.membershipBadge,
-              {
-                bottom: -labelFontSize * 0.5,
-                right: -labelFontSize * 0.3,
-                paddingHorizontal: 2,
-                paddingVertical: labelFontSize * 0.3,
-                borderRadius: labelFontSize * 0.8,
-              }
+              styles.membershipText,
+              { fontSize: labelFontSize }
             ]}
           >
-            <Text 
-              style={[
-                styles.membershipText,
-                { fontSize: labelFontSize }
-              ]}
-            >
-              {membershipInfo.label}
-            </Text>
-          </View>
-        )}
-      </View>
+            {membershipInfo.label}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+
+  return (
+    <View style={[styles.container, { width: size, height: size }, style]}>
+      {isClickable && onLongPress ? (
+        <TouchableOpacity
+          onLongPress={onLongPress}
+          activeOpacity={0.8}
+          delayLongPress={500}
+        >
+          {AvatarContent}
+        </TouchableOpacity>
+      ) : (
+        AvatarContent
+      )}
     </View>
   );
 };
