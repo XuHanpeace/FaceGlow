@@ -180,18 +180,6 @@ const BeforeCreationScreen: React.FC = () => {
       {/* 返回按钮 */}
       <BackButton iconType="arrow" onPress={handleBackPress} />
 
-      {/* 右侧操作按钮 */}
-      <View style={styles.rightActions}>
-        <TouchableOpacity style={styles.actionButton} onPress={handleSavePress}>
-          <FontAwesome name="download" size={24} color="#fff" />
-          <Text style={styles.actionLabel}>保存</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} onPress={handleSharePress}>
-          <FontAwesome name="share-alt" size={24} color="#fff" />
-          <Text style={styles.actionLabel}>分享</Text>
-        </TouchableOpacity>
-      </View>
-
       {/* 主图片区域 */}
       <View style={styles.imageContainer}>
         <ScrollView
@@ -337,7 +325,7 @@ const styles = StyleSheet.create({
   },
   previewContainer: {
     position: 'absolute',
-    bottom: 160,
+    bottom: 200,
     left: 20,
     zIndex: 5,
   },

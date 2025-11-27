@@ -268,9 +268,9 @@ const NewAuthScreen: React.FC = () => {
                       </View>
                       <Text style={styles.agreementText}>
                         我已阅读并同意
-                        <Text style={styles.linkText} onPress={handleOpenUserAgreement}>《用户协议》</Text>
+                        <Text style={styles.linkText} onPress={handleOpenUserAgreement}>《美颜换换用户协议》</Text>
                         和
-                        <Text style={styles.linkText} onPress={handleOpenPrivacyPolicy}>《隐私政策》</Text>
+                        <Text style={styles.linkText} onPress={handleOpenPrivacyPolicy}>《美颜换换隐私政策》</Text>
                       </Text>
                     </TouchableOpacity>
                   </View>

@@ -122,7 +122,6 @@ const styles = StyleSheet.create({
   },
   selfieContainer: {
     position: 'relative',
-    marginRight: 12,
   },
   selfieImage: {
     width: 48,

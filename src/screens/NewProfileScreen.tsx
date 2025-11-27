@@ -28,6 +28,7 @@ import UserAvatar from '../components/UserAvatar';
 import { userWorkService } from '../services/database/userWorkService';
 import { UserWorkModel } from '../types/model/user_works';
 import { useAuthState } from '../hooks/useAuthState';
+import { useAppSelector } from '../store/hooks';
 import { userDataService } from '../services/database/userDataService';
 import UserWorkCard from '../components/UserWorkCard';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
@@ -35,8 +36,9 @@ import { updateProfile } from '../store/slices/userSlice';
 import GradientButton from '../components/GradientButton';
 import BackButton from '../components/BackButton';
 import { showSuccessToast } from '../utils/toast';
-import AvatarSelectorModal from '../components/AvatarSelectorModal';
 import { authService } from '../services/auth/authService';
+import { EditNameModal, EditNameModalRef } from '../components/EditNameModal';
+import AvatarSelectorModal, { AvatarSelectorModalRef } from '../components/AvatarSelectorModal';
 
 type NewProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -59,13 +61,12 @@ const NewProfileScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('works');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [showEditNameModal, setShowEditNameModal] = useState(false);
-  const [editNameValue, setEditNameValue] = useState('');
-  const [isUpdatingName, setIsUpdatingName] = useState(false);
-  const [showAvatarSelector, setShowAvatarSelector] = useState(false);
   const [isUpdatingAvatar, setIsUpdatingAvatar] = useState(false);
   const [isEditingSelfies, setIsEditingSelfies] = useState(false);
   const [isDeletingSelfie, setIsDeletingSelfie] = useState(false);
+  
+  const editNameModalRef = React.useRef<EditNameModalRef>(null);
+  const avatarSelectorModalRef = React.useRef<AvatarSelectorModalRef>(null);
   
   // 使用用户hooks获取数据
   const { userInfo, isLoggedIn, userProfile, refreshUserData } = useUser();
@@ -166,60 +167,10 @@ const NewProfileScreen: React.FC = () => {
   };
 
   const handleEditProfilePress = () => {
-    // 打开编辑昵称弹窗
     const currentName = userInfo.name || userInfo.username || '';
-    setEditNameValue(currentName);
-    setShowEditNameModal(true);
+    editNameModalRef.current?.show(currentName);
   };
 
-  const handleSaveName = async () => {
-    // 验证昵称
-    const trimmedName = editNameValue.trim();
-    
-    // 检查是否为空
-    if (!trimmedName) {
-      Alert.alert('提示', '昵称不能为空');
-      return;
-    }
-    
-    // 检查是否只包含空格
-    if (trimmedName.length === 0) {
-      Alert.alert('提示', '昵称不能只包含空格');
-      return;
-    }
-    
-    // 检查长度（假设最大长度为20）
-    if (trimmedName.length > 20) {
-      Alert.alert('提示', '昵称长度不能超过20个字符');
-      return;
-    }
-    
-    if (!user?.uid) {
-      Alert.alert('错误', '无法获取用户信息');
-      return;
-    }
-    
-    setIsUpdatingName(true);
-    try {
-      const result = await userDataService.updateUserData({
-        uid: user.uid,
-        name: trimmedName,
-      });
-      
-      if (result.success) {
-        // 更新 Redux
-        dispatch(updateProfile({ name: trimmedName }));
-        setShowEditNameModal(false);
-        showSuccessToast('昵称更新成功');
-      } else {
-        Alert.alert('更新失败', result.error?.message || '更新昵称失败，请稍后重试');
-      }
-    } catch (error: any) {
-      Alert.alert('更新失败', error.message || '更新昵称时发生错误');
-    } finally {
-      setIsUpdatingName(false);
-    }
-  };
 
   const handleAddSelfiePress = () => {
     if (!isLoggedIn) {
@@ -433,7 +384,9 @@ const NewProfileScreen: React.FC = () => {
           <View style={styles.avatarContainer}>
             <UserAvatar 
               size={48} 
-              onLongPress={() => setShowAvatarSelector(true)}
+              onLongPress={() => {
+                avatarSelectorModalRef.current?.show();
+              }}
               clickable={hasSelfies || !!userInfo.avatar}
             />
           </View>
@@ -682,70 +635,10 @@ const NewProfileScreen: React.FC = () => {
         </View>
       </Modal>
 
-      {/* 编辑昵称弹窗 */}
-      <Modal
-        visible={showEditNameModal}
-        transparent={true}
-        animationType="none"
-        onRequestClose={() => !isUpdatingName && setShowEditNameModal(false)}
-      >
-        <KeyboardAvoidingView
-          style={styles.modalOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-        >
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <View style={styles.modalOverlayInner}>
-              <View 
-                style={styles.modalContent}
-                onStartShouldSetResponder={() => true}
-              >
-                <Text style={styles.modalTitle}>编辑昵称</Text>
-                <TextInput
-                  style={styles.nameInput}
-                  value={editNameValue}
-                  onChangeText={setEditNameValue}
-                  placeholder="请输入昵称"
-                  placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                  maxLength={20}
-                  autoFocus={true}
-                  editable={!isUpdatingName}
-                />
-                <Text style={styles.nameInputHint}>
-                  {editNameValue.length}/20
-                </Text>
-                <View style={styles.modalButtons}>
-                  <TouchableOpacity
-                    style={[styles.modalButton, styles.modalButtonCancel]}
-                    onPress={() => setShowEditNameModal(false)}
-                    disabled={isUpdatingName}
-                  >
-                    <Text style={styles.modalButtonCancelText}>取消</Text>
-                  </TouchableOpacity>
-                  <GradientButton
-                    title={isUpdatingName ? '保存中...' : '保存'}
-                    onPress={handleSaveName}
-                    disabled={isUpdatingName}
-                    loading={isUpdatingName}
-                    variant="primary"
-                    size="medium"
-                    style={styles.gradientButton}
-                    fontSize={16}
-                    borderRadius={8}
-                  />
-                </View>
-              </View>
-            </View>
-          </TouchableWithoutFeedback>
-        </KeyboardAvoidingView>
-      </Modal>
+      {/* 页面级 Modal */}
+      <EditNameModal ref={editNameModalRef} />
+      <AvatarSelectorModal ref={avatarSelectorModalRef} onSelect={handleAvatarSelect} />
 
-      {/* 头像选择弹窗 */}
-      <AvatarSelectorModal
-        visible={showAvatarSelector}
-        onClose={() => setShowAvatarSelector(false)}
-        onSelect={handleAvatarSelect}
-      />
     </View>
   );
 };
@@ -780,6 +673,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: '600',
+    marginRight: 30,
   },
   headerActions: {
     flexDirection: 'row',

@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { themeColors, colors } from '../config/theme';
@@ -12,27 +12,6 @@ interface CustomToastProps {
 }
 
 const CustomToast: React.FC<CustomToastProps> = ({ type = 'info', text1, text2, hide }) => {
-  // 动画值：从顶部滑入
-  const slideAnim = useRef(new Animated.Value(-100)).current; // 初始位置在屏幕外（上方）
-  const opacityAnim = useRef(new Animated.Value(0)).current; // 初始透明度为0
-
-  // 组件挂载时触发滑入动画
-  useEffect(() => {
-    Animated.parallel([
-      Animated.spring(slideAnim, {
-        toValue: 0, // 滑到最终位置
-        useNativeDriver: true,
-        tension: 50,
-        friction: 8,
-      }),
-      Animated.timing(opacityAnim, {
-        toValue: 1, // 淡入
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [slideAnim, opacityAnim]);
-
   // 根据类型选择颜色和图标
   const getToastConfig = () => {
     switch (type) {
@@ -76,79 +55,53 @@ const CustomToast: React.FC<CustomToastProps> = ({ type = 'info', text1, text2, 
   const displayTitle = hasTitle ? text1 : undefined;
   const displayMessage = text2 || text1 || '';
 
-  // 处理关闭：先播放滑出动画，然后调用hide
-  const handleClose = () => {
-    Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: -100, // 滑回顶部
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacityAnim, {
-        toValue: 0, // 淡出
-        duration: 250,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      hide(); // 动画完成后调用hide
-    });
-  };
-
   return (
-    <Animated.View
-      style={[
-        styles.animatedContainer,
-        {
-          transform: [{ translateY: slideAnim }],
-          opacity: opacityAnim,
-        },
-      ]}
-    >
+    <View style={styles.containerWrapper}>
       <TouchableOpacity
         activeOpacity={0.9}
-        onPress={handleClose}
+        onPress={hide}
         style={styles.container}
       >
-      <LinearGradient
-        colors={config.gradient}
-        start={themeColors.primary.start}
-        end={themeColors.primary.end}
-        style={styles.gradient}
-      >
-        <View style={styles.content}>
-          <FontAwesome
-            name={config.icon}
-            size={24}
-            color={config.iconColor}
-            style={styles.icon}
-          />
-          <View style={styles.textContainer}>
-            {displayTitle && <Text style={styles.title}>{displayTitle}</Text>}
-            <Text style={styles.message}>{displayMessage}</Text>
-          </View>
-          <TouchableOpacity
-            onPress={handleClose}
-            style={styles.closeButton}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
+        <LinearGradient
+          colors={config.gradient}
+          start={themeColors.primary.start}
+          end={themeColors.primary.end}
+          style={styles.gradient}
+        >
+          <View style={styles.content}>
             <FontAwesome
-              name="times"
-              size={18}
-              color={colors.white}
+              name={config.icon}
+              size={24}
+              color={config.iconColor}
+              style={styles.icon}
             />
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
+            <View style={styles.textContainer}>
+              {displayTitle && <Text style={styles.title}>{displayTitle}</Text>}
+              <Text style={styles.message}>{displayMessage}</Text>
+            </View>
+            <TouchableOpacity
+              onPress={hide}
+              style={styles.closeButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <FontAwesome
+                name="times"
+                size={18}
+                color={colors.white}
+              />
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
       </TouchableOpacity>
-    </Animated.View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  animatedContainer: {
+  containerWrapper: {
     width: '100%',
     alignItems: 'center',
-    marginTop: 25, // 增加顶部间距，避免被灵动岛挡住
+    marginTop: 10, // 调整顶部间距，留给库的动画空间
   },
   container: {
     width: '90%',
@@ -200,4 +153,3 @@ const styles = StyleSheet.create({
 });
 
 export default CustomToast;
-

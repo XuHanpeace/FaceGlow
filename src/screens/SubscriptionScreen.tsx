@@ -789,7 +789,6 @@ const styles = StyleSheet.create({
   agreementContainer: {
     paddingHorizontal: 20,
     paddingVertical: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
   },
   checkboxContainer: {
     flexDirection: 'row',

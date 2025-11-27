@@ -1,11 +1,10 @@
-import React from 'react';
+import React, { useState, forwardRef, useImperativeHandle } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Alert,
 } from 'react-native';
 import FastImage from 'react-native-fast-image';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
@@ -13,9 +12,12 @@ import { Modal } from './modal';
 import { colors } from '../config/theme';
 import { useUserSelfies } from '../hooks/useUser';
 
+export interface AvatarSelectorModalRef {
+  show: () => void;
+  hide: () => void;
+}
+
 interface AvatarSelectorModalProps {
-  visible: boolean;
-  onClose: () => void;
   onSelect: (selfieUrl: string | null) => void;
 }
 
@@ -23,12 +25,22 @@ interface AvatarSelectorModalProps {
  * 头像选择半屏弹窗
  * 可以从自拍中选择一张作为头像，或选择默认头像
  */
-const AvatarSelectorModal: React.FC<AvatarSelectorModalProps> = ({
-  visible,
-  onClose,
-  onSelect,
-}) => {
+const AvatarSelectorModal = forwardRef<AvatarSelectorModalRef, AvatarSelectorModalProps>(({ onSelect }, ref) => {
   const { selfies, hasSelfies } = useUserSelfies();
+  const [visible, setVisible] = useState(false);
+
+  useImperativeHandle(ref, () => ({
+    show: () => {
+      setVisible(true);
+    },
+    hide: () => {
+      setVisible(false);
+    }
+  }));
+
+  const onClose = () => {
+    setVisible(false);
+  };
 
   const handleSelectSelfie = (selfieUrl: string) => {
     onSelect(selfieUrl);
@@ -93,11 +105,10 @@ const AvatarSelectorModal: React.FC<AvatarSelectorModalProps> = ({
       </View>
     </Modal>
   );
-};
+});
 
 const styles = StyleSheet.create({
   content: {
-    padding: 24,
     paddingTop: 40,
     minHeight: 400,
     maxHeight: 600,
@@ -165,4 +176,3 @@ const styles = StyleSheet.create({
 });
 
 export default AvatarSelectorModal;
-

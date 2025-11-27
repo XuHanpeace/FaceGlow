@@ -5,7 +5,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { useUser, useUserBalance } from '../hooks/useUser';
 import UserAvatar from './UserAvatar';
-import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import GradientButton from './GradientButton';
 
 type HomeHeaderNavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -68,10 +67,13 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
           style={styles.balanceInfo}
           onPress={() => navigation.navigate('CoinPurchase')}
         >
-          <Text style={styles.balanceLabel}>美美币</Text>
           <View style={styles.balanceValue}>
+            <Image 
+              source={require('../assets/mm-coins.png')} 
+              style={styles.balanceIcon}
+              resizeMode="contain"
+            />
             <Text style={styles.balanceNumber}>{balanceFormatted}</Text>
-            <FontAwesome name="bitcoin" size={16} color="#FFD700" style={styles.balanceIcon} />
           </View>
         </TouchableOpacity>
       </View>
@@ -141,7 +143,8 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   balanceIcon: {
-    marginLeft: 4,
+    width: 36,
+    height: 36
   },
   rightContainer: {
     flexDirection: 'row',

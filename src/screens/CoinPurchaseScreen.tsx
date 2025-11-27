@@ -11,6 +11,7 @@ import {
   ScrollView,
   Linking,
   BackHandler,
+  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -194,6 +195,11 @@ const CoinPurchaseScreen: React.FC = () => {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* 介绍区域 */}
         <View style={styles.introSection}>
+          <Image 
+            source={require('../assets/mm-coins.png')} 
+            style={styles.coinIcon}
+            resizeMode="contain"
+          />
           <Text style={styles.introTitle}>{coinConfig.title}</Text>
           <Text style={styles.introSubtitle}>{coinConfig.description}</Text>
         </View>
@@ -225,6 +231,11 @@ const CoinPurchaseScreen: React.FC = () => {
               <View style={styles.packageHeader}>
                 <Text style={styles.packageTitle}>{coinPackage.title}</Text>
                 <View style={styles.coinsContainer}>
+                  <Image 
+                    source={require('../assets/mm-coins.png')} 
+                    style={styles.coinIconSmall}
+                    resizeMode="contain"
+                  />
                   <Text style={styles.coinsAmount}>{coinPackage.coins}</Text>
                   <Text style={styles.coinsLabel}>美美币</Text>
                 </View>
@@ -316,6 +327,11 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     alignItems: 'center',
   },
+  coinIcon: {
+    width: 120,
+    height: 120,
+    marginBottom: 20,
+  },
   introTitle: {
     color: '#fff',
     fontSize: 28,
@@ -386,7 +402,11 @@ const styles = StyleSheet.create({
   },
   coinsContainer: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
+  },
+  coinIconSmall: {
+    width: 36,
+    height: 36
   },
   coinsAmount: {
     color: '#FFD700',
@@ -438,8 +458,7 @@ const styles = StyleSheet.create({
   },
   agreementContainer: {
     paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    paddingVertical: 15
   },
   checkboxContainer: {
     flexDirection: 'row',

@@ -96,7 +96,10 @@ function App(): JSX.Element {
             <StackNavigator />
           </NavigationContainer>
         </View>
-        <ToastProvider
+       
+        <LoginPromptManager />
+      </ModalProvider>
+       <ToastProvider
           config={{
             success: (props) => <CustomToast {...props} type="success" />,
             error: (props) => <CustomToast {...props} type="error" />,
@@ -106,8 +109,6 @@ function App(): JSX.Element {
           position="top"
           theme="dark"
         />
-        <LoginPromptManager />
-      </ModalProvider>
     </Provider>
   );
 }

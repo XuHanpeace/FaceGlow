@@ -38,8 +38,8 @@ const Modal: React.FC<ModalProps> = ({
         tension: 65,
         friction: 11,
       }).start();
-    } else {
-      // 关闭时滑到底部
+    } else if (localVisible) {
+      // 关闭时滑到底部（只有在 localVisible 为 true 时才执行关闭动画）
       Animated.timing(slideAnim, {
         toValue: SCREEN_HEIGHT,
         duration: 250,
@@ -48,11 +48,10 @@ const Modal: React.FC<ModalProps> = ({
         // 只有在动画完成时才真正关闭modal
         if (finished) {
           setLocalVisible(false);
-          onClose();
         }
       });
     }
-  }, [visible, slideAnim, onClose]);
+  }, [visible, slideAnim, localVisible]);
 
   const handleMaskPress = () => {
     if (maskClosable) {
@@ -67,10 +66,9 @@ const Modal: React.FC<ModalProps> = ({
   return (
     <RNModal
       visible={true}
-      transparent
+      transparent={true}
       animationType="fade"
       onRequestClose={onClose}
-      presentationStyle="pageSheet"
     >
       <TouchableWithoutFeedback onPress={handleMaskPress}>
         <View style={styles.mask}>
@@ -79,7 +77,7 @@ const Modal: React.FC<ModalProps> = ({
               style={[
                 styles.content,
                 { 
-                  backgroundColor: isDarkMode ? '#1a1a1a' : '#fff',
+                  backgroundColor: isDarkMode ? '#1a1a1a' : '#1a1a1a',
                   transform: [{ translateY: slideAnim }]
                 }
               ]}
