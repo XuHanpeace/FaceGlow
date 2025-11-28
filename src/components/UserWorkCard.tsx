@@ -5,19 +5,66 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
+  Alert,
 } from 'react-native';
 import { UserWorkModel } from '../types/model/user_works';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import { DeleteIcon } from './DeleteIcon';
 
 interface UserWorkCardProps {
   work: UserWorkModel;
   onPress: (work: UserWorkModel) => void;
+  onDelete?: (work: UserWorkModel) => void;
   cardWidth?: number;
 }
 
-const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress, cardWidth = 180 }) => {
+const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress, onDelete, cardWidth = 180 }) => {
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
   const handlePress = () => {
+    // 如果处于删除模式，点击取消删除模式
+    if (isDeleting) {
+      setIsDeleting(false);
+      return;
+    }
     onPress(work);
+  };
+
+  const handleLongPress = () => {
+    setIsDeleting(true);
+  };
+  
+  // 监听 isDeleting 状态变化，触发震动
+  React.useEffect(() => {
+    if (isDeleting) {
+      // 在这里不需要手动触发 Vibration，因为 DeleteIcon 组件内部会触发
+      // 但如果想要在进入删除模式时立即震动，可以保留这个 useEffect
+      // 为了避免重复震动（DeleteIcon 渲染时也会震动），这里可以留空
+      // 或者，如果想要更好的体验，可以在这里震动一次，表示模式切换成功
+      // Vibration.vibrate(50); 
+    }
+  }, [isDeleting]);
+
+  const handleDelete = () => {
+    Alert.alert(
+      '删除作品',
+      '确定要删除这个作品吗？此操作无法撤销。',
+      [
+        {
+          text: '取消',
+          style: 'cancel',
+          onPress: () => setIsDeleting(false)
+        },
+        {
+          text: '删除',
+          style: 'destructive',
+          onPress: () => {
+            setIsDeleting(false);
+            onDelete && onDelete(work);
+          }
+        }
+      ]
+    );
   };
 
   // 获取作品封面图片（优先使用换脸结果，回退到活动图片）
@@ -62,6 +109,8 @@ const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress, cardWidth = 
     <TouchableOpacity 
       style={[styles.workItem, { width: cardWidth, height: cardHeight }]} 
       onPress={handlePress} 
+      onLongPress={handleLongPress}
+      delayLongPress={500}
       activeOpacity={0.8}
     >
       <Image 
@@ -69,6 +118,14 @@ const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress, cardWidth = 
         style={[styles.workImage, { height: imageHeight }]}
         resizeMode="cover"
       />
+      
+      {/* 删除按钮覆盖层 */}
+      {isDeleting && (
+        <View style={styles.deleteOverlay}>
+          <DeleteIcon onPress={handleDelete} />
+        </View>
+      )}
+
       <View style={styles.workInfo}>
         <Text style={styles.workTitle} numberOfLines={1}>
           {work.activity_title}
@@ -92,6 +149,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 12,
     overflow: 'hidden',
+    position: 'relative',
   },
   workImage: {
     width: '100%',
@@ -118,6 +176,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     opacity: 0.6,
+  },
+  deleteOverlay: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    zIndex: 10,
   },
 });
 

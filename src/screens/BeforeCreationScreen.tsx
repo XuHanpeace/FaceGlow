@@ -1,31 +1,32 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   Image,
-  Dimensions,
-  ScrollView,
+  TouchableOpacity,
   StatusBar,
-  Animated,
+  ScrollView,
   Alert,
-  ActivityIndicator,
+  Dimensions,
+  Animated,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import FastImage from 'react-native-fast-image';
+import ReactNativeHapticFeedback from "react-native-haptic-feedback";
+
 import { RootStackParamList } from '../types/navigation';
 import { useTypedSelector, useAppDispatch } from '../store/hooks';
-import { callFaceFusionCloudFunction } from '../services/tcb/tcb';
-import { Template } from '../types/model/activity';
-import SelfieSelector from '../components/SelfieSelector';
 import { useAuthState } from '../hooks/useAuthState';
 import { authService } from '../services/auth/authService';
-import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import { Album, Template } from '../types/model/activity';
 import GradientButton from '../components/GradientButton';
 import BackButton from '../components/BackButton';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import SelfieSelector from '../components/SelfieSelector';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const { width: screenWidth } = Dimensions.get('window');
 
 type BeforeCreationScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type BeforeCreationScreenRouteProp = RouteProp<RootStackParamList, 'BeforeCreation'>;
@@ -85,25 +86,14 @@ const BeforeCreationScreen: React.FC = () => {
     setCurrentImageIndex(index);
   };
 
-  const handleSavePress = () => {
-    // 处理保存功能 - 提示用户先完成换脸
-    Alert.alert(
-      '💡 提示',
-      '请先完成AI换脸后再保存作品',
-      [{ text: '好的', style: 'default' }]
-    );
-  };
-
-  const handleSharePress = () => {
-    // 处理分享功能 - 提示用户先完成换脸
-    Alert.alert(
-      '💡 提示', 
-      '请先完成AI换脸后再分享作品',
-      [{ text: '好的', style: 'default' }]
-    );
-  };
-
   const handleUseStylePress = async () => {
+    // 触发触觉反馈
+    const options = {
+      enableVibrateFallback: true,
+      ignoreAndroidSystemSettings: false,
+    };
+    ReactNativeHapticFeedback.trigger("impactLight", options);
+
     try {
       // 检查是否是真实用户
       const authResult = await authService.requireRealUser();
@@ -177,6 +167,8 @@ const BeforeCreationScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      
       {/* 返回按钮 */}
       <BackButton iconType="arrow" onPress={handleBackPress} />
 
@@ -201,7 +193,7 @@ const BeforeCreationScreen: React.FC = () => {
           ))}
         </ScrollView>
 
-        {/* 图片指示器 */}
+        {/* 图片指示器 - 移动到左下角内容上方 */}
         {template.images.length > 1 && (
           <View style={styles.indicatorContainer}>
             {template.images.map((_: string, index: number) => (
@@ -217,32 +209,40 @@ const BeforeCreationScreen: React.FC = () => {
         )}
       </View>
 
-      {/* 自拍选择器 */}
-      <View style={styles.previewContainer}>
-        <SelfieSelector
-          selectedSelfieUrl={selectedSelfieUrl || undefined}
-          onSelfieSelect={handleSelfieSelect}
-          size={100}
-        />
-      </View>
-
-      {/* 底部信息区域 */}
+      {/* 底部内容区域 */}
       <View style={styles.bottomContainer}>
-        <View style={styles.descriptionContainer}>
-          <Text style={styles.description}>{album.album_description || '需要AI头像'}</Text>
+        {/* 内容容器 */}
+        <View style={styles.contentContainer}>
+          {/* 头像选择 - 左下方 */}
+          <View style={styles.avatarContainer}>
+            <SelfieSelector
+              onSelfieSelect={handleSelfieSelect}
+              selectedSelfieUrl={selectedSelfieUrl ?? undefined}
+              size={72}
+            />
+          </View>
+
+          {/* 文本信息 */}
+          <View style={styles.textContainer}>
+            <Text style={styles.title}>{template.title}</Text>
+            <Text style={styles.description} numberOfLines={2}>
+              {template.description}
+            </Text>
+          </View>
+
+          {/* 按钮 */}
+          <GradientButton
+            title="创作同款"
+            onPress={handleUseStylePress}
+            variant="primary"
+            size="large"
+            style={styles.useButton}
+            fontSize={16}
+            borderRadius={28}
+            loading={isFusionProcessing}
+            disabled={isFusionProcessing}
+          />
         </View>
-        
-        <GradientButton
-          title="使用风格"
-          onPress={handleUseStylePress}
-          disabled={isProcessing}
-          loading={isProcessing}
-          variant="primary"
-          size="medium"
-          fontSize={16}
-          borderRadius={22}
-          style={styles.useStyleButton}
-        />
       </View>
     </View>
   );
@@ -251,54 +251,15 @@ const BeforeCreationScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#131313',
-    marginTop: 0,
-  },
-  backButton: {
-    position: 'absolute',
-    top: 60,
-    left: 20,
-    zIndex: 10,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backIcon: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  rightActions: {
-    position: 'absolute',
-    top: 60,
-    right: 20,
-    zIndex: 10,
-  },
-  actionButton: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  actionIcon: {
-    fontSize: 20,
-    marginBottom: 4,
-  },
-  actionLabel: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '500',
+    backgroundColor: '#000',
   },
   imageContainer: {
-    flex: 1,
-    position: 'relative',
-    marginTop: 0,
+    flex: 1, // 全屏显示
+    width: '100%',
   },
   imageWrapper: {
     width: screenWidth,
-    height: screenHeight + 100,
-    marginTop: -100,
+    height: '100%',
   },
   mainImage: {
     width: '100%',
@@ -306,72 +267,71 @@ const styles = StyleSheet.create({
   },
   indicatorContainer: {
     position: 'absolute',
-    bottom: 20,
+    top: 60, // 顶部指示器
     left: 0,
     right: 0,
     flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'center',
+    gap: 6,
+    zIndex: 5,
   },
   indicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    marginHorizontal: 4,
   },
   activeIndicator: {
     backgroundColor: '#fff',
-  },
-  previewContainer: {
-    position: 'absolute',
-    bottom: 200,
-    left: 20,
-    zIndex: 5,
-  },
-  previewImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 100,
-    borderWidth: 3,
-    borderColor: '#fff',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   bottomContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
+    paddingBottom: 40, // 底部安全距离
     paddingHorizontal: 20,
-    paddingBottom: 40,
-    paddingTop: 20,
   },
-  descriptionContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  personIcon: {
-    fontSize: 16,
-    marginRight: 8,
-  },
-  description: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  useStyleButton: {
-    marginTop: 8,
+  contentContainer: {
     width: '100%',
   },
-  processingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+  avatarContainer: {
+    marginBottom: 16,
+    alignSelf: 'flex-start',
   },
-  processingText: {
+  textContainer: {
+    marginBottom: 20,
+  },
+  title: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  description: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 14,
+    lineHeight: 20,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  useButton: {
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+    elevation: 8,
   },
 });
 

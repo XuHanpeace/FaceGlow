@@ -22,23 +22,19 @@ export class ActivityService {
       
       console.log('✅ 登录态确认成功，开始获取活动数据');
       
-      // 构建查询参数
-      const queryParams: Record<string, string | number | boolean> = {};
-      
-      // 添加分页参数
-      if (params?.page_size) {
-        queryParams.pageSize = params.page_size;
-      }
-      if (params?.page) {
-        queryParams.pageNumber = params.page;
-      }
-      
-      // 获取总数
-      queryParams.getCount = true;
-
-      const response = await databaseService.get<DatabaseResponse<Activity[]>>(
+      const response = await databaseService.post<DatabaseResponse<Activity[]>>(
         `/model/prod/${this.modelName}/list`,
-        queryParams
+        {
+          filter: {
+            where: {
+              activity_status: {
+                $eq: '1'
+              }
+            }
+          },
+          pageSize: params?.page_size || 10,
+          pageNumber: params?.page || 1
+        }
       )
 
       if (response.success && response.data && response.data.records) {

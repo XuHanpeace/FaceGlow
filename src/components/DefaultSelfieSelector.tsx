@@ -149,11 +149,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 8,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   selectedSelfieItem: {
-    backgroundColor: 'rgba(94, 231, 223, 0.1)',
+    backgroundColor: 'rgba(255, 107, 157, 0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(94, 231, 223, 0.3)',
+    borderColor: 'rgba(255, 107, 157, 0.3)',
   },
   selfieItemImage: {
     width: 60,
@@ -162,8 +164,8 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
   defaultSelfieImage: {
-    borderWidth: 3,
-    borderColor: '#5EE7DF',
+    borderWidth: 2,
+    borderColor: '#FF6B9D',
   },
   checkmark: {
     position: 'absolute',
@@ -171,7 +173,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#5EE7DF',
+    backgroundColor: '#FF6B9D',
     justifyContent: 'center',
     alignItems: 'center',
   },

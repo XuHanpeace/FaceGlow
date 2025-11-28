@@ -142,6 +142,7 @@ const UserWorkPreviewScreen: React.FC = () => {
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
+        scrollEnabled={!showComparison} // 在对比模式下禁用 FlatList 滚动
         onScroll={handleScroll}
         scrollEventThrottle={16}
         keyExtractor={(item, index) => `result-${index}`}

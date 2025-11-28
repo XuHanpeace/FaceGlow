@@ -51,7 +51,7 @@ const SelfieModule: React.FC<SelfieModuleProps> = ({ onAddSelfiePress, onSelfieS
             onAddSelfiePress();
           }}
         >
-          <FontAwesome name="plus" size={20} color="rgba(255,255,255,0.6)" />
+          <FontAwesome name="plus" size={20} color="rgba(255,255,255,0.4)" />
         </TouchableOpacity>
         
         {/* 自拍照列表 */}
@@ -108,17 +108,9 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(94, 231, 223, 0.2)',
+    backgroundColor: 'rgba(255, 107, 157, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(94, 231, 223, 0.4)',
-    borderStyle: 'dashed',
-  },
-  addIcon: {
-    color: '#5EE7DF',
-    fontSize: 24,
-    fontWeight: 'bold',
   },
   selfieContainer: {
     position: 'relative',
@@ -129,8 +121,8 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   defaultSelfieImage: {
-    borderWidth: 3,
-    borderColor: '#5EE7DF',
+    borderWidth: 2,
+    borderColor: '#FF6B9D',
   },
 });
 

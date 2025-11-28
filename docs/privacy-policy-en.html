@@ -11,16 +11,25 @@
             color: #333;
             max-width: 900px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 15px;
             background: linear-gradient(135deg, #FF6B9D, #A855F7);
             min-height: 100vh;
         }
         .container {
             background: white;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
             position: relative;
+        }
+        @media (min-width: 768px) {
+            body {
+                padding: 20px;
+            }
+            .container {
+                padding: 40px;
+                border-radius: 20px;
+            }
         }
         .language-switcher {
             position: absolute;
@@ -45,7 +54,7 @@
             text-align: center;
             margin-bottom: 10px;
             margin-top: 20px;
-            font-size: 28px;
+            font-size: 24px;
         }
         .last-updated {
             text-align: center;
@@ -57,7 +66,7 @@
             color: #A855F7;
             margin-top: 40px;
             margin-bottom: 20px;
-            font-size: 22px;
+            font-size: 20px;
             border-bottom: 2px solid #A855F7;
             padding-bottom: 10px;
         }
@@ -73,14 +82,14 @@
         }
         ul {
             margin: 15px 0;
-            padding-left: 25px;
+            padding-left: 20px;
         }
         li {
             margin-bottom: 10px;
         }
         .highlight {
             background: #fff3cd;
-            padding: 20px;
+            padding: 15px;
             border-radius: 10px;
             border-left: 4px solid #ffc107;
             margin: 20px 0;
@@ -258,11 +267,12 @@
         <h3>5.1 Retention Duration</h3>
         <ul>
             <li>
-                <strong>Uploaded Original Photos:</strong>
+                <strong>Uploaded Original Photos (Selfies):</strong>
                 <ul>
-                    <li>Selfie photos: Retained until you actively delete them</li>
-                    <li>Temporary processing photos: <strong>Deleted immediately</strong> after processing completion (usually within 5 minutes)</li>
-                    <li><strong>Retention Reason:</strong> Selfie photos are retained for your convenience to reuse, temporary photos are deleted immediately to protect privacy</li>
+                    <li><strong>Storage Service:</strong> Uploaded to Tencent Cloud COS service storage</li>
+                    <li><strong>Retention Policy:</strong> You can <strong>manually permanently delete</strong> at any time. Deletion entry: "Profile" -> "My Selfies" -> "Edit" -> "Delete". After deletion, cloud data will be immediately cleared and cannot be recovered.</li>
+                    <li><strong>Temporary Processing Photos:</strong> <strong>Deleted immediately</strong> after AI processing is complete (usually within 5 minutes).</li>
+                    <li><strong>Retention Reason:</strong> Selfie photos are retained for your convenience to reuse in different templates, avoiding repeated uploads; providing manual deletion ensures your control over your data.</li>
                 </ul>
             </li>
             <li>
@@ -277,8 +287,9 @@
             <li>
                 <strong>Facial Feature Data:</strong>
                 <ul>
-                    <li>Deleted <strong>within 24 hours</strong> after processing completion</li>
-                    <li>Only used for current processing, not stored long-term</li>
+                    <li><strong>Processing Service:</strong> Uploaded to Tencent Cloud "Face Fusion" service for processing</li>
+                    <li><strong>Deletion Policy:</strong> Deleted <strong>within 24 hours</strong> after processing completion</li>
+                    <li>Only used for current AI face-swapping function processing, not stored long-term</li>
                     <li><strong>Retention Reason:</strong> Deleted within 24 hours to ensure processing completion while protecting your privacy as quickly as possible</li>
                 </ul>
             </li>
@@ -296,10 +307,10 @@
         <h3>5.2 Deletion Mechanism</h3>
         <p>You can delete your data at any time through the following methods:</p>
         <ul>
-            <li>Delete individual works or selfie photos within the app</li>
-            <li>Clear all works in the personal center</li>
-            <li>Cancel your account (which will delete all related data)</li>
-            <li>Contact customer service to request deletion (<a href="mailto:privacy@faceglow.app">privacy@faceglow.app</a>)</li>
+            <li><strong>Delete Selfies:</strong> In "Profile" -> "My Selfies" -> "Edit" -> Select Photo -> "Delete" (Permanently Delete)</li>
+            <li><strong>Delete Works:</strong> Delete individual works within the app or clear all works in the personal center</li>
+            <li><strong>Cancel Account:</strong> Select cancel account in settings (will permanently delete all related data)</li>
+            <li><strong>Contact Support:</strong> Email <a href="mailto:privacy@faceglow.app">privacy@faceglow.app</a> to request deletion</li>
         </ul>
 
         <div class="section-divider"></div>
@@ -427,4 +438,3 @@
     </div>
 </body>
 </html>
-

@@ -390,6 +390,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: 'bold',
+
   },
   packageHeader: {
     marginBottom: 16,

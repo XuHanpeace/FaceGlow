@@ -64,29 +64,23 @@ export class UserWorkService {
   // 根据作品ID获取单个作品详情
   async getWorkById(workId: string) {
     try {
-      const response = await databaseService.post<DatabaseResponse<UserWorkModel>>(
-        `/model/prod/${this.modelName}/get`,
-        {
-          filter: {
-            where: {
-              _id: {
-                $eq: workId
-              }
-            }
-          }
-        }
+      const response = await databaseService.get<DatabaseResponse<UserWorkModel>>(
+        `/model/prod/${this.modelName}/get?_id=${workId}`
       );
 
-      if (!response.success) {
-        throw new DatabaseError(
-          response.error?.message || '获取作品详情失败',
-          response.error?.code || 'GET_WORK_ERROR'
-        );
+      if (response.success && response.data) {
+        return {
+          success: true,
+          data: response.data,
+        };
       }
 
       return {
-        success: true,
-        data: response.data,
+        success: false,
+        error: {
+          code: response.error?.code || 'GET_WORK_ERROR',
+          message: response.error?.message || '获取作品详情失败',
+        },
       };
     } catch (error) {
       return {
@@ -138,6 +132,46 @@ export class UserWorkService {
         error: {
           code: error instanceof DatabaseError ? error.code : 'CREATE_WORK_ERROR',
           message: error instanceof Error ? error.message : '创建作品时发生未知错误',
+        },
+      };
+    }
+  }
+
+  // 删除作品
+  async deleteWork(workId: string) {
+    try {
+      const response = await databaseService.post<DatabaseUpdateResponse<any>>(
+        `/model/prod/${this.modelName}/delete`,
+        {
+          filter: {
+            where: {
+              _id: {
+                $eq: workId
+              }
+            }
+          }
+        }
+      );
+
+      if (response.success) {
+        return {
+          success: true,
+        };
+      }
+
+      return {
+        success: false,
+        error: {
+          code: response.error?.code || 'DELETE_WORK_ERROR',
+          message: response.error?.message || '删除作品失败',
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: {
+          code: error instanceof DatabaseError ? error.code : 'DELETE_WORK_ERROR',
+          message: error instanceof Error ? error.message : '删除作品时发生未知错误',
         },
       };
     }

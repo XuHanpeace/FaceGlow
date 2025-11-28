@@ -140,9 +140,9 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
 
   return (
     <>
-      <TouchableWithoutFeedback onPress={() => setIsFullscreen(true)}>
+      <View>
         {renderComparison(width, height)}
-      </TouchableWithoutFeedback>
+      </View>
 
       <Modal
         visible={isFullscreen}

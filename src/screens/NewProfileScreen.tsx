@@ -39,6 +39,7 @@ import { showSuccessToast } from '../utils/toast';
 import { authService } from '../services/auth/authService';
 import { EditNameModal, EditNameModalRef } from '../components/EditNameModal';
 import AvatarSelectorModal, { AvatarSelectorModalRef } from '../components/AvatarSelectorModal';
+import { DeleteIcon } from '../components/DeleteIcon';
 
 type NewProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -319,6 +320,23 @@ const NewProfileScreen: React.FC = () => {
     navigation.navigate('UserWorkPreview', { work });
   };
 
+  const handleWorkDelete = async (work: UserWorkModel) => {
+    if (!work._id) return;
+    
+    try {
+      const result = await userWorkService.deleteWork(work._id);
+      if (result.success) {
+        showSuccessToast('删除成功');
+        // 从列表中移除
+        setUserWorks(prev => prev.filter(item => item._id !== work._id));
+      } else {
+        Alert.alert('删除失败', result.error?.message || '请稍后重试');
+      }
+    } catch (error: any) {
+      Alert.alert('删除失败', error.message || '发生未知错误');
+    }
+  };
+
   // 获取用户作品
   const fetchUserWorks = async () => {
     if (!user?.uid) {
@@ -508,12 +526,13 @@ const NewProfileScreen: React.FC = () => {
               ) : userWorks.length > 0 ? (
                 <View style={styles.worksGrid}>
                   {userWorks.map((work) => (
-                    <UserWorkCard
-                      key={work._id}
-                      work={work}
-                      onPress={handleWorkPress}
-                      cardWidth={CARD_WIDTH}
-                    />
+                <UserWorkCard
+                  key={work._id}
+                  work={work}
+                  onPress={handleWorkPress}
+                  onDelete={handleWorkDelete}
+                  cardWidth={CARD_WIDTH}
+                />
                   ))}
                 </View>
               ) : (
@@ -542,13 +561,12 @@ const NewProfileScreen: React.FC = () => {
                         />
                         {/* 编辑模式下显示删除按钮 */}
                         {isEditingSelfies && (
-                          <TouchableOpacity
-                            style={styles.deleteSelfieButton}
-                            onPress={() => handleDeleteSelfie(selfie.url)}
-                            disabled={isDeletingSelfie}
-                          >
-                            <FontAwesome name="minus-circle" size={20} color="#FF6B6B" />
-                          </TouchableOpacity>
+                          <View style={styles.deleteSelfieButton}>
+                            <DeleteIcon 
+                              onPress={() => handleDeleteSelfie(selfie.url)} 
+                              size={24}
+                            />
+                          </View>
                         )}
                       </View>
                     ))}
@@ -942,16 +960,9 @@ const styles = StyleSheet.create({
   },
   deleteSelfieButton: {
     position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#FF6B6B',
+    top: -8,
+    right: -8,
+    zIndex: 10,
   },
   editSelfieItem: {
     alignItems: 'center',
@@ -966,7 +977,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderStyle: 'dashed',
   },
   editSelfieText: {
     color: 'rgba(255, 255, 255, 0.1)',

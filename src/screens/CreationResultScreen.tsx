@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,10 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  Animated,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -28,6 +32,15 @@ import GradientButton from '../components/GradientButton';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { showSuccessToast } from '../utils/toast';
 import BackButton from '../components/BackButton';
+import ReactNativeHapticFeedback from "react-native-haptic-feedback";
+
+// 启用 Android 上的布局动画
+if (
+  Platform.OS === 'android' &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -45,17 +58,39 @@ const CreationResultScreen: React.FC = () => {
     albumData.template_list[0]?.template_id || ''
   );
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false); // 新增保存状态，用于防抖
   const [fusionResults, setFusionResults] = useState<{ [templateId: string]: string }>({});
   const [showComparison, setShowComparison] = useState(false);
   const [failedTemplates, setFailedTemplates] = useState<{ [templateId: string]: string }>({});
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareImageUrl, setShareImageUrl] = useState<string>('');
+  const [isPanelExpanded, setIsPanelExpanded] = useState(false); // 默认收起
+
+  const slideAnim = useRef(new Animated.Value(0)).current;
+
+  const togglePanel = () => {
+    const toValue = isPanelExpanded ? 0 : 1;
+    
+    Animated.timing(slideAnim, {
+      toValue,
+      duration: 200,
+      useNativeDriver: false, // height 动画不支持 native driver
+    }).start();
+    
+    setIsPanelExpanded(!isPanelExpanded);
+  };
 
   const selectedTemplate = albumData.template_list.find(
     template => template.template_id === selectedTemplateId
   );
 
   const selectedResult = selectedTemplate ? fusionResults[selectedTemplateId] : '';
+
+  // 面板列表高度插值
+  const listHeight = slideAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 160], // 展开时的高度
+  });
 
   // 处理单个模板的换脸（真实请求）
   const processTemplate = async (templateId: string) => {
@@ -101,6 +136,13 @@ const CreationResultScreen: React.FC = () => {
         console.log(`✅ 模板 ${templateId} 换脸成功`);
         console.log(`🖼️ 换脸结果: ${result.data.FusedImage}`);
         
+        // 触发成功震动
+        const options = {
+          enableVibrateFallback: true,
+          ignoreAndroidSystemSettings: false,
+        };
+        ReactNativeHapticFeedback.trigger("impactLight", options);
+
         // 扣除用户美美币
         if (user?.uid && templatePrice > 0) {
           const deductResult = await balanceService.deductBalance({
@@ -167,9 +209,21 @@ const CreationResultScreen: React.FC = () => {
   };
 
   const handleSavePress = async () => {
+    // 震动反馈
+    const options = {
+      enableVibrateFallback: true,
+      ignoreAndroidSystemSettings: false,
+    };
+    ReactNativeHapticFeedback.trigger("impactLight", options);
+
+    // 防抖检查
+    if (isSaving) return;
+    setIsSaving(true);
+
     const userId = authService.getCurrentUserId();
     if (!userId) {
       Alert.alert('😔 保存失败', '小主，请先登录后再保存作品哦～');
+      setIsSaving(false);
       return;
     }
 
@@ -177,6 +231,7 @@ const CreationResultScreen: React.FC = () => {
     const hasAnyResults = Object.keys(fusionResults).length > 0;
     if (!hasAnyResults) {
       Alert.alert('😅 保存失败', '小主，请先完成换脸后再保存作品吧～');
+      setIsSaving(false);
       return;
     }
 
@@ -199,6 +254,7 @@ const CreationResultScreen: React.FC = () => {
       // 如果没有换脸结果，提示用户
       if (resultData.length === 0) {
         Alert.alert('😅 保存失败', '小主，还没有完成任何换脸，请先完成换脸后再保存吧～');
+        setIsSaving(false);
         return;
       }
 
@@ -230,12 +286,18 @@ const CreationResultScreen: React.FC = () => {
 
       if (result.success) {
         showSuccessToast(`太棒了！已保存 ${resultData.length} 个换脸作品到云端，可以在个人中心查看哦～`);
+        // 保存成功后返回上一页
+        setTimeout(() => {
+          navigation.goBack();
+        }, 800);
       } else {
         Alert.alert('😢 保存失败', result.error?.message || '哎呀，保存作品失败了，再试一次吧～');
+        setIsSaving(false);
       }
     } catch (error: any) {
       console.error('❌ 保存作品异常:', error);
       Alert.alert('😱 保存失败', error.message || '哎呀，保存作品时出错了，再试一次吧～');
+      setIsSaving(false);
     }
   };
 
@@ -318,29 +380,22 @@ const CreationResultScreen: React.FC = () => {
       {/* 返回按钮 - 浮动在左上角 */}
       <BackButton iconType="arrow" onPress={handleBackPress} />
 
-      {/* 图片对比区域 - 顶到页面顶部 */}
+      {/* 图片对比区域 - 全屏 */}
       <View style={styles.imageComparisonContainer}>
         {selectedTemplate ? (
           selectedResult ? (
-            // 有结果时，显示渐隐渐显的 ai-result 图片（使用真实结果和本地资源）
-            <FadeInOutImage
-              images={[
-                { uri: selectedResult }, // 真实的换脸结果
-                require('../assets/ai-result1.png'),
-                require('../assets/ai-result2.png'),
-              ]}
+            <ImageComparison
+              beforeImage={selectedTemplate.template_url}
+              afterImage={selectedResult}
               width={screenWidth}
-              height={screenHeight * 0.7}
-              duration={2000}
-              fadeDuration={800}
+              height={screenHeight}
             />
           ) : (
-            // 没有结果时，显示对比图（模板 vs 模板）
             <ImageComparison
               beforeImage={selectedTemplate.template_url}
               afterImage={selectedTemplate.template_url}
               width={screenWidth}
-              height={screenHeight * 0.7}
+              height={screenHeight}
             />
           )
         ) : (
@@ -361,11 +416,28 @@ const CreationResultScreen: React.FC = () => {
         </View>
       )}
 
-      {/* 底部信息区域 */}
+      {/* 底部信息区域 - 绝对定位覆盖在图片上 */}
       <View style={styles.bottomContainer}>
-        {/* 模板选择列表 */}
-        <View style={styles.templateListContainer}>
-          <Text style={styles.templateListTitle}>选择作品</Text>
+        {/* 标题和展开/收起按钮区域 */}
+        <TouchableOpacity 
+          style={styles.panelHeader} 
+          onPress={togglePanel}
+          activeOpacity={0.8}
+        >
+          <View style={styles.headerContent}>
+            <Text style={styles.templateListTitle}>选择作品</Text>
+            <View style={styles.expandIconContainer}>
+              <FontAwesome 
+                name={isPanelExpanded ? "angle-down" : "angle-up"} 
+                size={20} 
+                color="#fff" 
+              />
+            </View>
+          </View>
+        </TouchableOpacity>
+
+        {/* 模板选择列表 - 可折叠 */}
+        <Animated.View style={[styles.templateListWrapper, { height: listHeight }]}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -374,13 +446,14 @@ const CreationResultScreen: React.FC = () => {
             {albumData.template_list.map((template) => {
               const isFailed = failedTemplates[template.template_id];
               const isCurrentProcessing = isProcessing && selectedTemplateId === template.template_id;
+              const isSelected = selectedTemplateId === template.template_id;
               
               return (
                 <TouchableOpacity
                   key={template.template_id}
                   style={[
                     styles.templateItem,
-                    selectedTemplateId === template.template_id && styles.selectedTemplateItem,
+                    { opacity: isSelected ? 1 : 0.5 }, // 未选中时透明度降低
                     isFailed && styles.failedTemplateItem
                   ]}
                   onPress={() => handleTemplateSelect(template.template_id)}
@@ -397,26 +470,20 @@ const CreationResultScreen: React.FC = () => {
                   {/* 失败状态提示 */}
                   {isFailed && (
                     <View style={styles.failedOverlay}>
-                      <Text style={styles.failedText}>😔 小脸有点害羞，再试一次吧</Text>
+                      <Text style={styles.failedText}>重试</Text>
                       <TouchableOpacity
                         style={styles.retryButton}
                         onPress={() => {
-                          // 1. 先清除失败状态
                           setFailedTemplates(prev => {
                             const newFailed = { ...prev };
                             delete newFailed[template.template_id];
                             return newFailed;
                           });
-                          
-                          // 2. 设置选中状态
                           setSelectedTemplateId(template.template_id);
-                          
-                          // 3. 最后处理模板
                           processTemplate(template.template_id);
                         }}
                       >
-                        <FontAwesome name="magic" size={16} color="#fff" />
-                        <Text style={styles.retryText}>再来一次</Text>
+                        <FontAwesome name="refresh" size={12} color="#fff" />
                       </TouchableOpacity>
                     </View>
                   )}
@@ -425,16 +492,15 @@ const CreationResultScreen: React.FC = () => {
                   {isCurrentProcessing && (
                     <View style={styles.processingOverlay}>
                       <ActivityIndicator size="small" color="#fff" />
-                      <Text style={styles.processingText}>AI正在认真创作中...</Text>
                     </View>
                   )}
                 </TouchableOpacity>
               );
             })}
           </ScrollView>
-        </View>
+        </Animated.View>
 
-        {/* 操作按钮 */}
+        {/* 操作按钮 - 始终可见 */}
         <View style={styles.actionButtonsContainer}>
           <GradientButton
             title="保存作品"
@@ -444,17 +510,9 @@ const CreationResultScreen: React.FC = () => {
             style={styles.saveButton}
             fontSize={16}
             borderRadius={22}
+            loading={isSaving} // 显示加载状态
+            disabled={isSaving} // 禁用按钮
           />
-          
-          {/* <GradientButton
-            title="分享"
-            onPress={handleSharePress}
-            variant="secondary"
-            size="large"
-            style={styles.shareButton}
-            fontSize={16}
-            borderRadius={22}
-          /> */}
         </View>
       </View>
 
@@ -474,25 +532,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#131313',
   },
-  floatingBackButton: {
-    position: 'absolute',
-    top: 60,
-    left: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  backIcon: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
   imageComparisonContainer: {
-    flex: 1,
+    flex: 1, // 占满全屏
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -536,35 +577,61 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   bottomContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: '#131313',
     paddingHorizontal: 20,
-    paddingBottom: 40,
+    paddingBottom: 40, // 底部安全距离
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    zIndex: 100,
+    // 阴影效果
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: -4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+    elevation: 8,
   },
-  templateListContainer: {
-    marginBottom: 20,
-    marginTop: 20,
+  panelHeader: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    position: 'relative',
   },
   templateListTitle: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 12,
+  },
+  expandIconContainer: {
+    marginLeft: 8,
+  },
+  templateListWrapper: {
+    overflow: 'hidden',
   },
   templateList: {
     paddingRight: 20,
+    paddingBottom: 10,
   },
   templateItem: {
-    marginRight: 16,
+    marginRight: 12,
     borderRadius: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     overflow: 'hidden',
-    padding: 2, // 预留border空间
+    // padding: 2, // border space removed
   },
   selectedTemplateItem: {
-    backgroundColor: 'rgba(94, 231, 223, 0.2)',
-    borderWidth: 2,
-    borderColor: '#5EE7DF',
-    padding: 0, // 选中时移除padding，用border填充
+    // 移除之前的边框样式
   },
   templateImage: {
     width: 90,
@@ -584,23 +651,21 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
   failedText: {
     color: '#FF6B6B',
-    fontSize: 11,
-    fontWeight: '500',
-    textAlign: 'center',
-    marginBottom: 8,
+    fontSize: 10,
+    fontWeight: '600',
+    marginBottom: 4,
   },
   retryButton: {
-    backgroundColor: '#FF6B6B',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    backgroundColor: 'rgba(255, 107, 107, 0.8)',
+    padding: 6,
+    borderRadius: 12,
   },
   retryText: {
     color: '#fff',
@@ -613,7 +678,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
@@ -625,16 +690,11 @@ const styles = StyleSheet.create({
   },
   actionButtonsContainer: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 10,
+    marginTop: 4,
   },
   saveButton: {
-    flex: 1,
-  },
-  shareButton: {
     flex: 1,
   },
 });
 
 export default CreationResultScreen;
-

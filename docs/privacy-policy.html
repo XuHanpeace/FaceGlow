@@ -11,16 +11,25 @@
             color: #333;
             max-width: 900px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 15px;
             background: linear-gradient(135deg, #FF6B9D, #A855F7);
             min-height: 100vh;
         }
         .container {
             background: white;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
             position: relative;
+        }
+        @media (min-width: 768px) {
+            body {
+                padding: 20px;
+            }
+            .container {
+                padding: 40px;
+                border-radius: 20px;
+            }
         }
         .language-switcher {
             position: absolute;
@@ -45,7 +54,7 @@
             text-align: center;
             margin-bottom: 10px;
             margin-top: 20px;
-            font-size: 28px;
+            font-size: 24px;
         }
         .last-updated {
             text-align: center;
@@ -57,7 +66,7 @@
             color: #A855F7;
             margin-top: 40px;
             margin-bottom: 20px;
-            font-size: 22px;
+            font-size: 20px;
             border-bottom: 2px solid #A855F7;
             padding-bottom: 10px;
         }
@@ -73,14 +82,14 @@
         }
         ul {
             margin: 15px 0;
-            padding-left: 25px;
+            padding-left: 20px;
         }
         li {
             margin-bottom: 10px;
         }
         .highlight {
             background: #fff3cd;
-            padding: 20px;
+            padding: 15px;
             border-radius: 10px;
             border-left: 4px solid #ffc107;
             margin: 20px 0;
@@ -257,11 +266,12 @@
         <h3>5.1 保留时长</h3>
         <ul>
             <li>
-                <strong>上传的原始照片：</strong>
+                <strong>上传的原始照片（自拍原图）：</strong>
                 <ul>
-                    <li>自拍照片：在您主动删除前一直保留</li>
-                    <li>处理临时照片：完成处理后<strong>立即删除</strong>（通常不超过5分钟）</li>
-                    <li><strong>保留原因：</strong>自拍照片保留是为了方便您重复使用，临时照片立即删除是为了保护隐私</li>
+                    <li><strong>存储服务：</strong>上传至腾讯云 COS 服务存储</li>
+                    <li><strong>保留策略：</strong>用户可以<strong>手动永久删除</strong>。删除入口：个人简介 -> 我的自拍 -> 编辑 -> 删除。删除后，云端数据将被立即清除且不可恢复。</li>
+                    <li><strong>处理临时照片：</strong>完成 AI 处理后<strong>立即删除</strong>（通常不超过5分钟）</li>
+                    <li><strong>保留原因：</strong>保留自拍照片是为了方便您在不同模版中重复使用，避免重复上传；提供手动删除功能以保障您的数据控制权。</li>
                 </ul>
             </li>
             <li>
@@ -276,8 +286,9 @@
             <li>
                 <strong>面部特征数据：</strong>
                 <ul>
-                    <li>处理完成后<strong>24小时内删除</strong></li>
-                    <li>仅用于当次处理，不长期保存</li>
+                    <li><strong>处理服务：</strong>上传至腾讯云"人脸融合"服务进行处理</li>
+                    <li><strong>删除策略：</strong>处理完成后<strong>24小时内删除</strong></li>
+                    <li>仅用于当次 AI 换脸功能处理，不长期保存</li>
                     <li><strong>保留原因：</strong>24小时内删除是为了确保处理完成，同时尽快保护您的隐私</li>
                 </ul>
             </li>
@@ -295,10 +306,10 @@
         <h3>5.2 删除机制</h3>
         <p>您可以随时通过以下方式删除您的数据：</p>
         <ul>
-            <li>在应用内删除单个作品或自拍照片</li>
-            <li>在个人中心清空所有作品</li>
-            <li>注销账号（将删除所有相关数据）</li>
-            <li>联系客服请求删除（<a href="mailto:privacy@faceglow.app">privacy@faceglow.app</a>）</li>
+            <li><strong>删除自拍：</strong>在"个人简介" -> "我的自拍" -> "编辑" -> 选择照片 -> "删除"（永久删除）</li>
+            <li><strong>删除作品：</strong>在应用内删除单个作品或在个人中心清空所有作品</li>
+            <li><strong>注销账号：</strong>在设置中选择注销账号（将永久删除所有相关数据）</li>
+            <li><strong>联系客服：</strong>发送邮件至 <a href="mailto:privacy@faceglow.app">privacy@faceglow.app</a> 请求删除</li>
         </ul>
 
         <div class="section-divider"></div>
@@ -426,4 +437,3 @@
     </div>
 </body>
 </html>
-
