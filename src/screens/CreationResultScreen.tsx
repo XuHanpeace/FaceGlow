@@ -30,7 +30,7 @@ import { shareService } from '../services/shareService';
 import { ShareModal } from '../components/ShareModal';
 import GradientButton from '../components/GradientButton';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
-import { showSuccessToast } from '../utils/toast';
+import { showSuccessToast, showErrorToast } from '../utils/toast';
 import BackButton from '../components/BackButton';
 import ReactNativeHapticFeedback from "react-native-haptic-feedback";
 
@@ -91,6 +91,33 @@ const CreationResultScreen: React.FC = () => {
     inputRange: [0, 1],
     outputRange: [0, 160], // 展开时的高度
   });
+
+  // 辅助函数：获取用户友好的错误信息
+  const getUserFriendlyErrorMessage = (error: any) => {
+    const message = typeof error === 'string' ? error : (error?.message || '');
+    
+    // 处理常见的技术性错误
+    if (message.includes('503') || message.includes('Service Unavailable')) {
+      return '服务器繁忙，请稍后重试';
+    }
+    if (message.includes('500') || message.includes('Internal Server Error')) {
+      return '服务器开小差了，请稍后重试';
+    }
+    if (message.includes('401') || message.includes('403')) {
+      return '登录已过期，请重新登录';
+    }
+    if (message.includes('Network Error') || message.includes('timeout')) {
+      return '网络连接不稳定，请检查网络';
+    }
+    
+    // 如果是已知的业务错误信息（通常是中文），则直接返回
+    if (/[\u4e00-\u9fa5]/.test(message) && message.length < 50) {
+      return message;
+    }
+    
+    // 默认错误信息
+    return '操作失败，请稍后重试';
+  };
 
   // 处理单个模板的换脸（真实请求）
   const processTemplate = async (templateId: string) => {
@@ -180,16 +207,40 @@ const CreationResultScreen: React.FC = () => {
         });
       } else {
         console.log(`❌ 模板 ${templateId} 换脸失败:`, result.message);
+        
+        // 融合失败时展开面板并显示Toast
+        setIsPanelExpanded(true);
+        Animated.timing(slideAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: false,
+        }).start();
+        
+        const friendlyMsg = getUserFriendlyErrorMessage(result.message);
+        showErrorToast(friendlyMsg); // 使用错误样式的Toast
+
         setFailedTemplates(prev => ({
           ...prev,
-          [templateId]: result.message || '换脸处理失败，请重试'
+          [templateId]: friendlyMsg
         }));
       }
     } catch (error: any) {
       console.error('❌ 换脸处理异常:', error);
+      
+      // 融合异常时展开面板并显示Toast
+      setIsPanelExpanded(true);
+      Animated.timing(slideAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: false,
+      }).start();
+      
+      const friendlyMsg = getUserFriendlyErrorMessage(error);
+      showErrorToast(friendlyMsg); // 使用错误样式的Toast
+
       setFailedTemplates(prev => ({
         ...prev,
-        [templateId]: error.message || '网络请求失败，请重试'
+        [templateId]: friendlyMsg
       }));
     } finally {
       setIsProcessing(false);
@@ -276,8 +327,8 @@ const CreationResultScreen: React.FC = () => {
           total_templates: albumData.template_list.length,
           fusion_time: Date.now(),
         }),
-        created_at: Date.now(),
-        updated_at: Date.now(),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
       };
 
       console.log('🔄 开始保存用户作品:', workData);
@@ -291,12 +342,12 @@ const CreationResultScreen: React.FC = () => {
           navigation.goBack();
         }, 800);
       } else {
-        Alert.alert('😢 保存失败', result.error?.message || '哎呀，保存作品失败了，再试一次吧～');
+        Alert.alert('😢 保存失败', getUserFriendlyErrorMessage(result.error) || '哎呀，保存作品失败了，再试一次吧～');
         setIsSaving(false);
       }
     } catch (error: any) {
       console.error('❌ 保存作品异常:', error);
-      Alert.alert('😱 保存失败', error.message || '哎呀，保存作品时出错了，再试一次吧～');
+      Alert.alert('😱 保存失败', getUserFriendlyErrorMessage(error) || '哎呀，保存作品时出错了，再试一次吧～');
       setIsSaving(false);
     }
   };

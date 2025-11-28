@@ -16,6 +16,7 @@ import { RootStackParamList } from '../types/navigation';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { authService } from '../services/auth/authService';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import GradientButton from './GradientButton';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -191,16 +192,17 @@ const SelfieSelector: React.FC<SelfieSelectorProps> = ({
 
 
             {/* 确认按钮 */}
-            <TouchableOpacity
-              style={[
-                styles.confirmButton,
-                !tempSelectedSelfie && styles.confirmButtonDisabled
-              ]}
-              onPress={handleConfirm}
-              disabled={!tempSelectedSelfie}
-            >
-              <Text style={styles.confirmButtonText}>确认选择</Text>
-            </TouchableOpacity>
+            <View style={{ paddingHorizontal: 20, marginTop: 20 }}>
+              <GradientButton
+                title="确认选择"
+                onPress={handleConfirm}
+                disabled={!tempSelectedSelfie}
+                variant="primary"
+                size="large"
+                style={{ width: '100%' }}
+                borderRadius={28}
+              />
+            </View>
         </View>
       </Modal>
     </>
@@ -330,22 +332,6 @@ const styles = StyleSheet.create({
   defaultText: {
     color: '#fff',
     fontSize: 10,
-    fontWeight: 'bold',
-  },
-  confirmButton: {
-    backgroundColor: '#FF6B9D',
-    marginHorizontal: 20,
-    marginTop: 20,
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  confirmButtonDisabled: {
-    backgroundColor: '#666',
-  },
-  confirmButtonText: {
-    color: '#fff',
-    fontSize: 16,
     fontWeight: 'bold',
   },
 });

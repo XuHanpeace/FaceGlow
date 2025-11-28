@@ -29,6 +29,11 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 type BeforeCreationScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type BeforeCreationScreenRouteProp = RouteProp<RootStackParamList, 'BeforeCreation'>;
 
+// 扩展 Album 类型，包含 activityId
+interface AlbumWithActivityId extends Album {
+  activityId: string;
+}
+
 // 单个模版页面组件
 const TemplateSlide = React.memo(({ 
   template, 
@@ -153,17 +158,33 @@ const BeforeCreationScreen: React.FC = () => {
   const activities = useTypedSelector((state) => state.activity.activities);
   const isProcessing = useTypedSelector((state) => state.selfies.uploading);
 
-  // 扁平化所有 Albums
-  const allAlbums = useMemo(() => {
-    if (!activities || activities.length === 0) return [albumData];
-    const albums = activities.flatMap(activity => activity.album_id_list || []);
+  // 扁平化所有 Albums，并注入 activityId
+  const allAlbums = useMemo<AlbumWithActivityId[]>(() => {
+    if (!activities || activities.length === 0) {
+      return [{ ...albumData, activityId: activityId }];
+    }
+    
+    const albums: AlbumWithActivityId[] = [];
+    activities.forEach(activity => {
+      // 兼容 activity_id 和 activiy_id (以防拼写错误被修正或混用)
+      const actId = (activity as any).activity_id || activity.activiy_id;
+      if (activity.album_id_list) {
+        activity.album_id_list.forEach(album => {
+          albums.push({
+            ...album,
+            activityId: actId
+          });
+        });
+      }
+    });
+
     // 确保当前 albumData 在列表中，如果不在（比如来自非 redux 数据源），则添加
     const exists = albums.some(a => a.album_id === albumData.album_id);
     if (!exists) {
-      return [albumData, ...albums];
+      return [{ ...albumData, activityId: activityId }, ...albums];
     }
     return albums;
-  }, [activities, albumData]);
+  }, [activities, albumData, activityId]);
 
   // 初始 Index
   const initialIndex = useMemo(() => {
@@ -236,14 +257,16 @@ const BeforeCreationScreen: React.FC = () => {
         return;
       }
 
+      // 获取当前选中的 Album 和对应的 Activity ID
+      const currentAlbum = allAlbums[activeAlbumIndex];
+      // 直接从 currentAlbum 中获取 activityId，如果没有则回退到 route params
+      const currentActivityId = currentAlbum.activityId || activityId;
+
       // 跳转到CreationResult页面
-      // 注意：这里的 activityId 还是使用最初传入的 activityId，可能不够准确如果跨 Activity 滑动
-      // 但目前后端可能并不强校验 activityId 与 album 的对应关系，或者我们可以尝试反查
-      // 为了简单，暂时透传。或者如果 allAlbums 结构里能带上 activityId 更好。
       navigation.navigate('CreationResult', {
-        albumData: allAlbums[activeAlbumIndex], // 使用当前激活的 Album Data
+        albumData: currentAlbum, // 使用当前激活的 Album Data
         selfieUrl: selectedSelfieUrl,
-        activityId: activityId, 
+        activityId: currentActivityId, 
       });
 
     } catch (error: any) {
