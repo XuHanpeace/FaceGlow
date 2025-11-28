@@ -5,13 +5,14 @@ import {
   TouchableOpacity,
   StyleSheet,
   StatusBar,
-  Dimensions,
   Alert,
   ActivityIndicator,
   ScrollView,
-  Linking,
   BackHandler,
   Image,
+  Platform,
+  Dimensions,
+  SafeAreaView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -23,7 +24,8 @@ import { coinPackages, coinConfig, CoinPackage } from '../config/subscriptionCon
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import GradientButton from '../components/GradientButton';
 import { showSuccessToast } from '../utils/toast';
-import BackButton from '../components/BackButton';
+import Video from 'react-native-video';
+import LinearGradient from 'react-native-linear-gradient';
 
 const { ApplePayModule } = NativeModules;
 
@@ -53,6 +55,9 @@ const getCoinPurchaseErrorMessage = (errorCode: string, errorMessage: string): s
   }
 };
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+// 16:9 视频高度
+const VIDEO_HEIGHT = SCREEN_WIDTH * (9 / 16);
 
 const CoinPurchaseScreen: React.FC = () => {
   const navigation = useNavigation<CoinPurchaseScreenNavigationProp>();
@@ -75,7 +80,6 @@ const CoinPurchaseScreen: React.FC = () => {
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
       if (isLoading) {
-        // 正在加载时阻止返回
         return true;
       }
       return false;
@@ -181,105 +185,146 @@ const CoinPurchaseScreen: React.FC = () => {
     });
   };
 
+  // 获取按钮显示的文案
+  const getButtonText = () => {
+    if (!selectedPackage) return '立即购买';
+    return `充值 ${selectedPackage.coins} 美美币 ${selectedPackage.price}`;
+  };
+
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       
-      {/* 头部 */}
-      <View style={styles.header}>
-        <BackButton iconType="arrow" onPress={handleBackPress} absolute={false} />
-        <Text style={styles.headerTitle}>{coinConfig.title}</Text>
-        <View style={styles.placeholder} />
-      </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* 介绍区域 */}
-        <View style={styles.introSection}>
-          <Image 
-            source={require('../assets/mm-coins.png')} 
-            style={styles.coinIcon}
-            resizeMode="contain"
-          />
-          <Text style={styles.introTitle}>{coinConfig.title}</Text>
-          <Text style={styles.introSubtitle}>{coinConfig.description}</Text>
-        </View>
-
-        {/* 美美币包列表 */}
-        <View style={styles.packagesContainer}>
-          {coinPackages.map((coinPackage) => (
-            <TouchableOpacity
-              key={coinPackage.id}
-              style={[
-                styles.packageCard,
-                selectedPackage?.id === coinPackage.id && styles.packageCardSelected,
-                coinPackage.isBestValue && styles.packageCardBestValue,
-              ]}
-              onPress={() => handlePackageSelect(coinPackage)}
-            >
-              {coinPackage.bonusPercent && (
-                <View style={styles.bonusBadge}>
-                  <Text style={styles.bonusText}>额外{coinPackage.bonusPercent}</Text>
-                </View>
-              )}
-              
-              {coinPackage.isPopular && (
-                <View style={styles.popularBadge}>
-                  <Text style={styles.popularText}>热门</Text>
-                </View>
-              )}
-              
-              <View style={styles.packageHeader}>
-                <Text style={styles.packageTitle}>{coinPackage.title}</Text>
-                <View style={styles.coinsContainer}>
-                  <Image 
-                    source={require('../assets/mm-coins.png')} 
-                    style={styles.coinIconSmall}
-                    resizeMode="contain"
-                  />
-                  <Text style={styles.coinsAmount}>{coinPackage.coins}</Text>
-                  <Text style={styles.coinsLabel}>美美币</Text>
-                </View>
-              </View>
-              
-              <View style={styles.packageFooter}>
-                <Text style={styles.packageDescription}>{coinPackage.description}</Text>
-                <Text style={styles.packagePrice}>{coinPackage.price}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </ScrollView>
-
-      {/* 协议勾选 */}
-      <View style={styles.agreementContainer}>
-        <TouchableOpacity 
-          style={styles.checkboxContainer}
-          onPress={() => setAgreeToTerms(!agreeToTerms)}
-        >
-          <View style={[styles.checkbox, agreeToTerms && styles.checkboxChecked]}>
-            {agreeToTerms && <Text style={styles.checkmark}>✓</Text>}
-          </View>
-          <Text style={styles.agreementText}>
-            我已阅读并同意
-            <Text style={styles.linkText} onPress={handleOpenAgreement}>《美美币购买用户协议》</Text>
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* 底部按钮 */}
-      <View style={styles.bottomContainer}>
-        <GradientButton
-          title={selectedPackage ? `购买 ${selectedPackage.coins} 美美币` : '请选择美美币包'}
-          onPress={handlePurchase}
-          disabled={!selectedPackage || !agreeToTerms || isLoading}
-          loading={isLoading}
-          variant="primary"
-          size="medium"
-          fontSize={16}
-          borderRadius={22}
-          style={styles.purchaseButton}
+      {/* 顶部背景视频区域 */}
+      <View style={styles.videoContainer}>
+        <Video
+          source={require('../assets/v2.mp4')}
+          style={styles.backgroundVideo}
+          muted={true}
+          repeat={true}
+          resizeMode="cover"
+          rate={1.0}
+          ignoreSilentSwitch="obey"
         />
+        {/* 视频底部渐变遮罩，实现过渡效果 */}
+        <LinearGradient
+          colors={['transparent', '#000']}
+          style={styles.videoGradient}
+          start={{x: 0, y: 0}}
+          end={{x: 0, y: 1}}
+        />
+        {/* AI 生成提示文本 */}
+        <Text style={styles.aiGeneratedText}>本视频由万相AI生成</Text>
       </View>
+
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.header}>
+          {/* 徽章 */}
+          <View style={styles.badgeContainer}>
+            <Image 
+              source={require('../assets/mm-coins.png')} 
+              style={styles.badgeIcon}
+              resizeMode="contain"
+            />
+            <Text style={styles.badgeText}>美美币充值</Text>
+          </View>
+          
+          {/* 关闭按钮 */}
+          <TouchableOpacity style={styles.closeButton} onPress={handleBackPress}>
+             <FontAwesome name="times" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.contentContainer}>
+          {/* 标题区域 */}
+          <View style={styles.textSection}>
+            <Text style={styles.mainTitle}>获取更多灵感</Text>
+            <Text style={styles.subTitle}>
+              充值美美币，解锁更多高级创意写真模版，让每一次创作都惊艳朋友圈！
+            </Text>
+          </View>
+
+          {/* 美美币包列表 */}
+          <View style={styles.packagesContainer}>
+            {coinPackages.map((coinPackage) => {
+              const isSelected = selectedPackage?.id === coinPackage.id;
+              
+              return (
+                <TouchableOpacity
+                  key={coinPackage.id}
+                  style={[
+                    styles.packageCard,
+                    isSelected && styles.packageCardSelected,
+                  ]}
+                  onPress={() => handlePackageSelect(coinPackage)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.packageContent}>
+                    <View style={styles.packageLeft}>
+                      <View style={styles.radioButton}>
+                        {isSelected && <View style={styles.radioButtonInner} />}
+                      </View>
+                      <View style={{marginLeft: 12}}>
+                        <View style={{flexDirection: 'row', alignItems: 'center', left: -4}}>
+                          <Image 
+                            source={require('../assets/mm-coins.png')} 
+                            style={styles.coinIconSmall}
+                            resizeMode="contain"
+                          />
+                          <Text style={styles.packageTitle}>{coinPackage.coins} 美美币</Text>
+                        </View>
+                        <Text style={styles.packageDescription}>解锁高级模版</Text>
+                      </View>
+                    </View>
+                    
+                    <View style={styles.packageRight}>
+                      {coinPackage.isPopular && (
+                        <View style={styles.popularBadge}>
+                          <Text style={styles.popularText}>热门</Text>
+                        </View>
+                      )}
+                      <Text style={styles.packagePrice}>{coinPackage.price}</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* 协议勾选 */}
+          <View style={styles.agreementContainer}>
+            <TouchableOpacity 
+              style={styles.checkboxContainer}
+              onPress={() => setAgreeToTerms(!agreeToTerms)}
+            >
+              <View style={[styles.checkbox, agreeToTerms && styles.checkboxChecked]}>
+                {agreeToTerms && <Text style={styles.checkmark}>✓</Text>}
+              </View>
+              <Text style={styles.agreementText}>
+                我已阅读并同意
+                <Text style={styles.linkText} onPress={handleOpenAgreement}>《美美币购买用户协议》</Text>
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* 底部按钮 */}
+          <View style={styles.bottomContainer}>
+            <GradientButton
+              title={getButtonText()}
+              onPress={handlePurchase}
+              disabled={!selectedPackage || !agreeToTerms || isLoading}
+              loading={isLoading}
+              variant="primary"
+              style={styles.purchaseButton}
+              textStyle={{ fontWeight: 'bold', fontSize: 18 }}
+            />
+            
+            <TouchableOpacity onPress={handleRestorePurchases} style={styles.restoreButton}>
+              <Text style={styles.restoreText}>恢复购买</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaView>
     </View>
   );
 };
@@ -287,213 +332,241 @@ const CoinPurchaseScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#131313',
+    backgroundColor: '#000',
+  },
+  safeArea: {
+    flex: 1,
+  },
+  videoContainer: {
+    width: '100%',
+    height: VIDEO_HEIGHT + 100, // 稍微增加高度以便渐变过渡更自然
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    zIndex: 0,
+  },
+  backgroundVideo: {
+    width: '100%',
+    height: '100%',
+  },
+  videoGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 150, // 渐变层高度
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
+    paddingTop: Platform.OS === 'android' ? 40 : 10,
+    position: 'relative',
+    height: 50,
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  badgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 12,
+    paddingVertical: 3,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+  },
+  badgeIcon: {
+    width: 20,
+    height: 20,
+    marginRight: 2,
+  },
+  badgeText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 12,
+    letterSpacing: 1,
+  },
+  closeButton: {
+    position: 'absolute',
+    right: 20,
+    top: Platform.OS === 'android' ? 40 : 10,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  backIcon: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  headerTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  placeholder: {
-    width: 40,
-  },
-  content: {
+  contentContainer: {
     flex: 1,
+    justifyContent: 'flex-end',
     paddingHorizontal: 20,
+    paddingBottom: 20,
   },
-  introSection: {
-    marginTop: 20,
-    marginBottom: 30,
-    alignItems: 'center',
+  textSection: {
+    marginBottom: 40,
+    alignItems: 'center', // 居中对齐，因为上面没有全屏背景
   },
-  coinIcon: {
-    width: 120,
-    height: 120,
-    marginBottom: 20,
-  },
-  introTitle: {
+  mainTitle: {
     color: '#fff',
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: 32,
+    fontWeight: '900',
+    marginBottom: 12,
+    letterSpacing: 1,
     textAlign: 'center',
-    marginBottom: 8,
   },
-  introSubtitle: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 16,
+  subTitle: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: '500',
     textAlign: 'center',
   },
   packagesContainer: {
     gap: 16,
-    marginBottom: 30,
+    marginBottom: 24,
   },
   packageCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 16,
-    padding: 20,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    position: 'relative',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.1)',
+    paddingVertical: 18,
+    paddingHorizontal: 16,
   },
   packageCardSelected: {
-    borderColor: '#FF6B35',
-    backgroundColor: 'rgba(255, 107, 53, 0.1)',
+    borderColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.12)',
   },
-  packageCardBestValue: {
-    borderColor: '#FF6B35',
-  },
-  bonusBadge: {
-    position: 'absolute',
-    top: -10,
-    left: 20,
-    backgroundColor: '#FF6B35',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  bonusText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  popularBadge: {
-    position: 'absolute',
-    top: -10,
-    right: 20,
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  popularText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-
-  },
-  packageHeader: {
-    marginBottom: 16,
-  },
-  packageTitle: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  coinsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  coinIconSmall: {
-    width: 36,
-    height: 36
-  },
-  coinsAmount: {
-    color: '#FFD700',
-    fontSize: 32,
-    fontWeight: 'bold',
-  },
-  coinsLabel: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 16,
-    marginLeft: 8,
-  },
-  packageFooter: {
+  packageContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  packageDescription: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 14,
-  },
-  packagePrice: {
-    color: '#FF6B35',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  linksSection: {
-    marginBottom: 30,
-  },
-  legalLinks: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 20,
-  },
-  legalLink: {
-    paddingVertical: 8,
-  },
-  legalLinkText: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 14,
-    textDecorationLine: 'underline',
-  },
-  bottomContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-  },
-  purchaseButton: {
-    marginBottom: 12,
-    width: '100%',
-  },
-  agreementContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 15
-  },
-  checkboxContainer: {
+  packageLeft: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  checkbox: {
+  radioButton: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  radioButtonInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#fff',
+  },
+  coinIconSmall: {
     width: 20,
     height: 20,
+    // marginRight: 8,
+  },
+  packageTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  packageDescription: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 13,
+    marginTop: 4,
+  },
+  packageRight: {
+    alignItems: 'flex-end',
+  },
+  popularBadge: {
+    backgroundColor: '#FF4500',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: 4,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
-    marginRight: 10,
+    marginBottom: 4,
+  },
+  popularText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  packagePrice: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  agreementContainer: {
+    paddingHorizontal: 0,
+    marginBottom: 10,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  checkbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.7)',
+    marginRight: 4,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'transparent',
   },
   checkboxChecked: {
-    backgroundColor: '#FF6B35',
-    borderColor: '#FF6B35',
+    backgroundColor: '#FF4500',
+    borderColor: '#FF4500',
   },
   checkmark: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: 'bold',
   },
   agreementText: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 12,
     flex: 1,
-    lineHeight: 20,
+    lineHeight: 18,
   },
   linkText: {
-    color: '#FF6B35',
+    color: '#FF4500',
     textDecorationLine: 'underline',
+  },
+  bottomContainer: {
+    marginTop: 10,
+  },
+  purchaseButton: {
+    width: '100%',
+    height: 56,
+    marginBottom: 16,
+    shadowColor: "#FF512F",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+    elevation: 8,
+  },
+  restoreButton: {
+    alignItems: 'center',
+    padding: 10,
+  },
+  restoreText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 13,
+    textDecorationLine: 'underline',
+  },
+  aiGeneratedText: {
+    position: 'absolute',
+    bottom: 20, // 位于视频区域底部
+    alignSelf: 'center',
+    color: 'rgba(255, 255, 255, 0.3)',
+    fontSize: 10,
+    letterSpacing: 1,
   },
 });
 

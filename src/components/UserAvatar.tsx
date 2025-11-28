@@ -1,8 +1,7 @@
 import React from 'react';
-import { View, Image, StyleSheet, ViewStyle, ImageStyle, Text, TouchableOpacity } from 'react-native';
+import { View, Image, StyleSheet, ViewStyle, ImageStyle, TouchableOpacity } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { useUser, useUserAvatar } from '../hooks/useUser';
-import { colors } from '../config/theme';
 
 interface UserAvatarProps {
   /** 头像尺寸 */
@@ -11,7 +10,7 @@ interface UserAvatarProps {
   style?: ViewStyle;
   /** 头像图片样式 */
   imageStyle?: ImageStyle;
-  /** 是否显示会员标签 */
+  /** 是否显示会员标签 (已废弃，仅用于兼容旧接口，现在只控制金边) */
   showMembership?: boolean;
   /** 长按回调 */
   onLongPress?: () => void;
@@ -21,7 +20,7 @@ interface UserAvatarProps {
 
 /**
  * 用户头像组件
- * 自动显示头像、默认图标和会员标签
+ * 自动显示头像、默认图标和会员金边
  */
 const UserAvatar: React.FC<UserAvatarProps> = ({
   size = 48,
@@ -37,7 +36,7 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
   // 如果使用默认头像且无自拍，则不响应点击
   const isClickable = clickable && (hasAvatar || hasSelfies);
 
-  // 计算会员等级
+  // 获取会员信息
   const getMembershipInfo = () => {
     if (!userProfile || !showMembership) return null;
 
@@ -48,60 +47,59 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
     if (isPremium && premiumExpiresAt) {
       const now = Date.now();
       if (now < premiumExpiresAt) {
-        // 会员有效
-        if (subscriptionType === 'yearly') {
-          return { label: '年会员', type: 'yearly' };
-        } else if (subscriptionType === 'monthly') {
-          return { label: '月会员', type: 'monthly' };
-        }
+        return { type: subscriptionType };
       }
     }
     return null;
   };
 
   const membershipInfo = getMembershipInfo();
+  const isPremium = !!membershipInfo;
   
-  // 根据头像尺寸自动计算标签字体大小
-  const labelFontSize = 9;
+  // 根据会员类型决定边框颜色
+  const getBorderColor = () => {
+    if (!membershipInfo) return 'transparent';
+    // yearly = 金色 (#FFD700), monthly = 银色 (#FFFFFF)
+    return membershipInfo.type === 'yearly' ? '#FFD700' : '#FFFFFF';
+  };
+
+  const borderColor = getBorderColor();
+  const borderWidth = isPremium ? 1 : 0;
 
   const AvatarContent = (
-    <View style={[styles.avatarWrapper, { width: size, height: size, borderRadius: size / 2 }]}>
+    <View style={[
+      styles.avatarWrapper, 
+      { 
+        width: size, 
+        height: size, 
+        borderRadius: size / 2,
+        borderWidth: borderWidth,
+        borderColor: borderColor
+      },
+    ]}>
       {hasAvatar && avatarSource ? (
         <Image 
           source={typeof avatarSource === 'string' ? { uri: avatarSource } : avatarSource} 
           style={[
             styles.avatarImage, 
-            { width: size, height: size, borderRadius: size / 2 },
+            { 
+              width: size - borderWidth * 2, 
+              height: size - borderWidth * 2, 
+              borderRadius: (size - borderWidth * 2) / 2 
+            },
             imageStyle
           ]} 
         />
       ) : (
-        <View style={[styles.defaultAvatar, { width: size, height: size, borderRadius: size / 2 }]}>
-          <FontAwesome name="user-circle" size={size * 0.625} color="#ccc" />
-        </View>
-      )}
-      {/* 会员标签 - 右下角 */}
-      {membershipInfo && (
-        <View 
-          style={[
-            styles.membershipBadge,
-            {
-              bottom: -labelFontSize * 0.5,
-              right: -labelFontSize * 0.3,
-              paddingHorizontal: 2,
-              paddingVertical: labelFontSize * 0.3,
-              borderRadius: labelFontSize * 0.8,
-            }
-          ]}
-        >
-          <Text 
-            style={[
-              styles.membershipText,
-              { fontSize: labelFontSize }
-            ]}
-          >
-            {membershipInfo.label}
-          </Text>
+        <View style={[
+          styles.defaultAvatar, 
+          { 
+            width: size - borderWidth * 2, 
+            height: size - borderWidth * 2, 
+            borderRadius: (size - borderWidth * 2) / 2 
+          }
+        ]}>
+          <FontAwesome name="user-circle" size={(size - borderWidth * 2) * 0.625} color="#ccc" />
         </View>
       )}
     </View>
@@ -130,7 +128,7 @@ const styles = StyleSheet.create({
   },
   avatarWrapper: {
     position: 'relative',
-    overflow: 'visible',
+    overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#333',
@@ -143,19 +141,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  membershipBadge: {
-    position: 'absolute',
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  membershipText: {
-    color: '#fff',
-    fontSize: 9,
-    includeFontPadding: false,
-    textAlignVertical: 'center',
-  },
 });
 
 export default UserAvatar;
-

@@ -40,6 +40,7 @@ import { authService } from '../services/auth/authService';
 import { EditNameModal, EditNameModalRef } from '../components/EditNameModal';
 import AvatarSelectorModal, { AvatarSelectorModalRef } from '../components/AvatarSelectorModal';
 import { DeleteIcon } from '../components/DeleteIcon';
+import LinearGradient from 'react-native-linear-gradient';
 
 type NewProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -102,10 +103,35 @@ const NewProfileScreen: React.FC = () => {
   const [worksLoading, setWorksLoading] = useState(false);
   const { user, logout } = useAuthState();
 
+  // 根据会员类型获取主题色
+  const getMembershipTheme = (type: string) => {
+    if (type === 'yearly') {
+      return {
+        primary: '#FFD700', // 金色
+        gradient: ['rgba(255, 215, 0, 0.15)', 'rgba(255, 140, 0, 0.1)'],
+        border: 'rgba(255, 215, 0, 0.3)',
+        iconBg: 'rgba(255, 215, 0, 0.15)',
+        name: '尊贵年度会员'
+      };
+    } else {
+      return {
+        primary: '#FFFFFF', // 提亮为纯白/亮银色
+        gradient: ['rgba(255, 255, 255, 0.15)', 'rgba(255, 255, 255, 0.05)'], // 更清透的白色渐变
+        border: 'rgba(255, 255, 255, 0.3)',
+        iconBg: 'rgba(255, 255, 255, 0.15)',
+        name: '尊享月度会员'
+      };
+    }
+  };
+
+  const memberTheme = membershipStatus ? getMembershipTheme(membershipStatus.type || '') : null;
+
   // 从Redux获取其他数据
   const handleBackPress = () => {
     navigation.goBack();
   };
+
+  // ... (其他函数保持不变)
 
   const handleGiftPress = () => {
     // 处理礼物功能
@@ -133,10 +159,6 @@ const NewProfileScreen: React.FC = () => {
 
     setIsUpdatingAvatar(true);
     try {
-      // 更新用户数据：
-      // 1. picture 字段用于显示头像（UserAvatar 组件使用）
-      // 2. selfie_url 字段用于标记当前使用的自拍
-      // 如果选择默认头像，将两个字段都置为空字符串
       const updateData: any = {
         uid: user.uid,
         picture: selfieUrl || '',
@@ -146,13 +168,11 @@ const NewProfileScreen: React.FC = () => {
       const result = await userDataService.updateUserData(updateData);
       
       if (result.success) {
-        // 更新 Redux 中的用户数据
         dispatch(updateProfile({
           picture: selfieUrl || '',
           selfie_url: selfieUrl || '',
         }));
         
-        // 刷新用户数据（确保从服务器获取最新数据）
         await refreshUserData();
         
         showSuccessToast(selfieUrl ? '头像更新成功' : '已切换为默认头像');
@@ -223,17 +243,14 @@ const NewProfileScreen: React.FC = () => {
           onPress: async () => {
             setIsDeletingSelfie(true);
             try {
-              // 从 selfie_list 中移除选中的自拍
               const currentSelfieList = userProfile.selfie_list || [];
               const updatedSelfieList = currentSelfieList.filter(url => url !== selfieUrl);
 
-              // 如果删除的是当前头像，需要清空 selfie_url
               const updateData: any = {
                 uid: user.uid,
                 selfie_list: updatedSelfieList,
               };
 
-              // 如果删除的是当前使用的头像，清空 selfie_url 和 picture
               if (userProfile.selfie_url === selfieUrl) {
                 updateData.selfie_url = '';
                 updateData.picture = '';
@@ -242,15 +259,10 @@ const NewProfileScreen: React.FC = () => {
               const result = await userDataService.updateUserData(updateData);
               
               if (result.success) {
-                // 更新 Redux 中的用户数据
                 dispatch(updateProfile(updateData));
-                
-                // 刷新用户数据
                 await refreshUserData();
-                
                 showSuccessToast('删除成功');
                 
-                // 如果删除后没有自拍了，退出编辑模式
                 if (updatedSelfieList.length === 0) {
                   setIsEditingSelfies(false);
                 }
@@ -277,21 +289,15 @@ const NewProfileScreen: React.FC = () => {
 
     setIsDeleting(true);
     try {
-      // 步骤1: 调用服务器端软删除（设置 accountStatus = 1）
       const result = await userDataService.deleteAccount(user.uid);
-      debugger
       if (result.success) {
-        // 步骤2: 清除所有用户相关的 Redux 状态
-        dispatch(resetUser()); // 重置用户状态为初始值（包括头像和默认自拍）
-        dispatch(clearAllSelfies()); // 清除所有自拍数据
-        // 注意：活动数据是公共数据，匿名用户也能访问，不需要清除
-        dispatch(logoutUser()); // 清除认证状态
+        dispatch(resetUser()); 
+        dispatch(clearAllSelfies()); 
+        dispatch(logoutUser()); 
         
-        // 步骤3: 清除本地存储的认证数据（MMKV）
         await logout();
         
-        // 步骤4: 清除本地 state（作品列表等）
-        setUserWorks([]); // 清空作品列表
+        setUserWorks([]); 
         setShowDeleteConfirm(false);
         
         Alert.alert(
@@ -327,7 +333,6 @@ const NewProfileScreen: React.FC = () => {
       const result = await userWorkService.deleteWork(work._id);
       if (result.success) {
         showSuccessToast('删除成功');
-        // 从列表中移除
         setUserWorks(prev => prev.filter(item => item._id !== work._id));
       } else {
         Alert.alert('删除失败', result.error?.message || '请稍后重试');
@@ -365,12 +370,10 @@ const NewProfileScreen: React.FC = () => {
     }
   };
 
-  // 组件加载时获取用户作品，或当用户状态变化时清空作品列表
   useEffect(() => {
     if (isLoggedIn && user?.uid && userProfile) {
       fetchUserWorks();
     } else {
-      // 用户已登出或用户资料为空，清空作品列表
       setUserWorks([]);
     }
   }, [isLoggedIn, user?.uid, userProfile]);
@@ -381,14 +384,9 @@ const NewProfileScreen: React.FC = () => {
       
       {/* 头部导航 */}
       <View style={styles.header}>
-        <BackButton iconType="close" onPress={handleBackPress} absolute={false} />
-        <Text style={styles.headerTitle}>简介</Text>
         <View style={styles.placeholder} />
-        {/* <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.actionButton} onPress={handleGiftPress}>
-            <FontAwesome name="gift" size={20} color="#FF6B9D" />
-          </TouchableOpacity>
-        </View> */}
+        <Text style={styles.headerTitle}>简介</Text>
+        <BackButton iconType="close" onPress={handleBackPress} absolute={false} />
       </View>
 
       <ScrollView 
@@ -401,7 +399,7 @@ const NewProfileScreen: React.FC = () => {
         <View style={styles.userInfo}>
           <View style={styles.avatarContainer}>
             <UserAvatar 
-              size={48} 
+              size={64} 
               onLongPress={() => {
                 avatarSelectorModalRef.current?.show();
               }}
@@ -409,10 +407,22 @@ const NewProfileScreen: React.FC = () => {
             />
           </View>
           <View style={styles.userDetails}>
-            <Text style={styles.username}>{userInfo.name || userInfo.username || '未设置用户名'}</Text>
-            <TouchableOpacity style={styles.editButton} onPress={handleEditProfilePress}>
-              <FontAwesome name="pencil" size={14} color="#fff" />
-            </TouchableOpacity>
+            <View style={styles.nameRow}>
+              <Text style={styles.username}>{userInfo.name || userInfo.username || '未设置用户名'}</Text>
+              <TouchableOpacity style={styles.editButton} onPress={handleEditProfilePress}>
+                <FontAwesome name="pencil" size={14} color="#fff" />
+              </TouchableOpacity>
+            </View>
+            
+            {/* 会员徽章 - 仅会员显示 */}
+            {membershipStatus && memberTheme && (
+              <View style={[styles.badgeContainer, { borderColor: memberTheme.primary }]}>
+                <FontAwesome name="star" size={10} color={memberTheme.primary} style={{marginRight: 4}} />
+                <Text style={styles.badgeText}>
+                  {membershipStatus.type === 'yearly' ? '年度会员' : '月度会员'}
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -457,55 +467,71 @@ const NewProfileScreen: React.FC = () => {
         <View style={styles.contentArea}>
           {activeTab === 'account' && (
             <View style={styles.membershipContainer}>
-              {membershipStatus ? (
-                <View style={styles.membershipCard}>
-                  <View style={styles.membershipHeader}>
-                    <FontAwesome 
-                      name={membershipStatus.type === 'yearly' ? 'star' : 'star-o'} 
-                      size={32} 
-                      color={membershipStatus.type === 'yearly' ? '#FFD700' : '#C0C0C0'} 
-                    />
-                    <Text style={styles.membershipTitle}>
-                      {membershipStatus.type === 'yearly' ? '年度会员' : '月度会员'}
-                    </Text>
-                  </View>
-                  <Text style={styles.membershipStatusText}>会员状态：有效</Text>
-                  {membershipStatus.expiresAt && (
-                    <View style={styles.membershipExpires}>
-                      <Text style={styles.membershipExpiresLabel}>到期时间：</Text>
-                      <Text style={styles.membershipExpiresDate}>
-                        {new Date(membershipStatus.expiresAt).toLocaleDateString('zh-CN', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })}
-                      </Text>
+              {membershipStatus && memberTheme ? (
+                <TouchableOpacity 
+                  style={[styles.premiumCardContainer, { borderColor: memberTheme.border }]}
+                  onPress={handleManageMembership}
+                  activeOpacity={0.9}
+                >
+                  <LinearGradient
+                    colors={memberTheme.gradient}
+                    start={{x: 0, y: 0}}
+                    end={{x: 1, y: 1}}
+                    style={styles.premiumCard}
+                  >
+                    <View style={styles.premiumCardHeader}>
+                      <View style={styles.premiumTitleRow}>
+                        <View style={[styles.premiumIconBg, { backgroundColor: memberTheme.iconBg }]}>
+                          <FontAwesome name="star" size={16} color={memberTheme.primary} />
+                        </View>
+                        <Text style={[styles.premiumTitleText, { color: memberTheme.primary }]}>
+                          {memberTheme.name}
+                        </Text>
+                      </View>
+                      <View style={[styles.premiumStatusBadge, { backgroundColor: memberTheme.primary }]}>
+                        <Text style={styles.premiumStatusText}>生效中</Text>
+                      </View>
                     </View>
-                  )}
-                  <TouchableOpacity 
-                    style={styles.manageLink}
-                    onPress={handleManageMembership}
-                  >
-                    <Text style={styles.manageLinkText}>
-                      {isAutoRenew ? '去管理' : '去续订'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+                    
+                    <View style={styles.premiumDivider} />
+                    
+                    <View style={styles.premiumInfoRow}>
+                      <View style={{flex: 1}}>
+                        <Text style={styles.premiumLabel}>到期时间</Text>
+                        <Text style={styles.premiumValue}>
+                          {membershipStatus.expiresAt ? new Date(membershipStatus.expiresAt).toLocaleDateString('zh-CN', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          }) : '永久'}
+                        </Text>
+                      </View>
+                      <View style={styles.premiumAction}>
+                        <Text style={[styles.premiumActionText, { color: memberTheme.primary }]}>{isAutoRenew ? '管理' : '续订'}</Text>
+                        <FontAwesome name="angle-right" size={16} color={memberTheme.primary} />
+                      </View>
+                    </View>
+                  </LinearGradient>
+                </TouchableOpacity>
               ) : (
-                <View style={styles.membershipCard}>
-                  <FontAwesome name="user-circle" size={48} color="rgba(255,255,255,0.3)" />
-                  <Text style={styles.membershipTitle}>普通用户</Text>
-                  <Text style={styles.membershipStatusText}>您还不是会员</Text>
-                  <TouchableOpacity 
-                    style={styles.manageLink}
-                    onPress={handleManageMembership}
-                  >
-                    <Text style={styles.manageLinkText}>去订阅</Text>
-                  </TouchableOpacity>
-                </View>
+                <TouchableOpacity 
+                  style={styles.normalCard}
+                  onPress={handleManageMembership}
+                  activeOpacity={0.9}
+                >
+                  <View style={styles.normalCardContent}>
+                    <View>
+                      <Text style={styles.normalTitle}>普通用户</Text>
+                      <Text style={styles.normalSubtitle}>升级解锁全部高级功能</Text>
+                    </View>
+                    <View style={styles.upgradeButtonSmall}>
+                      <Text style={styles.upgradeButtonText}>立即升级</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
               )}
               
-              {/* 删除账户入口（不显眼） */}
+              {/* 删除账户入口 */}
               <View style={styles.accountActions}>
                 <TouchableOpacity 
                   style={styles.deleteAccountButton}
@@ -555,7 +581,6 @@ const NewProfileScreen: React.FC = () => {
                           source={selfie.source} 
                           style={[
                             styles.selfieImage,
-                            selfie.url === defaultSelfieUrl && styles.defaultSelfieImage
                           ]}
                           resizeMode={FastImage.resizeMode.cover}
                         />
@@ -603,6 +628,7 @@ const NewProfileScreen: React.FC = () => {
 
         {/* 关于我们入口 - 跟随内容流 */}
         <View style={styles.aboutUsContainer}>
+          <View style={styles.aboutUsDivider} />
           <TouchableOpacity 
             style={styles.aboutUsButton}
             onPress={() => navigation.navigate('AboutUs')}
@@ -613,6 +639,7 @@ const NewProfileScreen: React.FC = () => {
 
       </ScrollView>
 
+      {/* ... (Modals 保持不变) ... */}
       {/* 删除账户确认弹窗 */}
       <Modal
         visible={showDeleteConfirm}
@@ -662,6 +689,7 @@ const NewProfileScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  // ... (前面的样式保持不变)
   container: {
     flex: 1,
     backgroundColor: '#131313',
@@ -691,29 +719,9 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: '600',
-    marginRight: 30,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   placeholder: {
-    width: 10,
-  },
-  actionButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 8,
-  },
-  giftIcon: {
-    fontSize: 16,
-  },
-  shareIcon: {
-    fontSize: 16,
+    width: 32, // 与 BackButton 宽度一致，确保标题居中
   },
   scrollView: {
     flex: 1,
@@ -722,55 +730,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 20,
   },
-  greenBanner: {
-    backgroundColor: '#4CAF50',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 12,
-    padding: 16,
-  },
-  bannerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  bannerImageContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 2,
-    borderColor: '#fff',
-    overflow: 'hidden',
-    marginRight: 12,
-  },
-  bannerImage: {
-    width: '100%',
-    height: '100%',
-  },
-  bannerText: {
-    flex: 1,
-  },
-  bannerTitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  bannerSubtitle: {
-    color: '#fff',
-    fontSize: 14,
-    opacity: 0.9,
-  },
-  bannerArrow: {
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  arrowIcon: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
   userInfo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -778,16 +737,20 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   avatarContainer: {
-    marginRight: 12,
+    marginRight: 16,
   },
   userDetails: {
     flex: 1,
+    justifyContent: 'center',
+  },
+  nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 4,
   },
   username: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
     marginRight: 8,
   },
@@ -797,8 +760,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  editIcon: {
-    fontSize: 16,
+  badgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    borderWidth: 1,
+    // borderColor: '#FFD700', // 移除这里，改为动态样式
+    marginTop: 4,
+  },
+  badgeText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 10,
   },
   instagramButton: {
     flexDirection: 'row',
@@ -817,9 +794,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
-  },
-  instagramGradient: {
-    fontSize: 18,
   },
   instagramText: {
     color: '#fff',
@@ -858,24 +832,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20
   },
-  addPostCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 16,
-    padding: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addPostIcon: {
-    color: '#fff',
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  addPostText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '500',
-  },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
@@ -912,40 +868,8 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: CARD_GAP,
   },
-  workItem: {
-    width: '48%',
-    marginBottom: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  workImage: {
-    width: '100%',
-    height: 120,
-  },
-  workInfo: {
-    padding: 12,
-  },
-  workTitle: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 4,
-  },
-  workDate: {
-    color: '#fff',
-    fontSize: 12,
-    opacity: 0.6,
-  },
   selfiesContainer: {
     flex: 1,
-  },
-  selfiesTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 20,
-    textAlign: 'center',
   },
   selfiesGrid: {
     flexDirection: 'row',
@@ -990,31 +914,6 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     marginBottom: 8,
   },
-  defaultSelfieImage: {
-    borderWidth: 3,
-    borderColor: '#5EE7DF',
-  },
-  selfieDate: {
-    color: '#fff',
-    fontSize: 12,
-    opacity: 0.7,
-    textAlign: 'center',
-  },
-  testCenterButton: {
-    marginTop: 20,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-  },
-  testCenterButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
-  },
   emptySelfiesState: {
     flex: 1,
     justifyContent: 'center',
@@ -1036,70 +935,130 @@ const styles = StyleSheet.create({
   },
   membershipContainer: {
     flex: 1,
-    paddingVertical: 20,
+    paddingVertical: 10,
   },
-  membershipCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  premiumCardContainer: {
     borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
+    overflow: 'hidden',
+    borderWidth: 1, // 确保保留边框宽度，颜色动态设置
   },
-  membershipHeader: {
+  premiumCard: {
+    // width: '100%',
+  },
+  premiumCardHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+    padding: 15,
+    paddingBottom: 0,
   },
-  membershipTitle: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginLeft: 12,
-  },
-  membershipStatusText: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 16,
-    marginBottom: 12,
-  },
-  membershipExpires: {
+  premiumTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
-    width: '100%',
+  },
+  premiumIconBg: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
   },
-  membershipExpiresLabel: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 14,
-    marginRight: 8,
+  premiumTitleText: {
+    fontSize: 18,
+    fontWeight: 'bold',
   },
-  membershipExpiresDate: {
-    color: '#FF6B9D',
+  premiumStatusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  premiumStatusText: {
+    color: '#000',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  premiumDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    marginBottom: 16,
+  },
+  premiumInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 15,
+    paddingTop: 0,
+  },
+  premiumLabel: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  premiumValue: {
+    color: '#fff',
     fontSize: 14,
+    fontWeight: '500',
+  },
+  premiumAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  premiumActionText: {
+    fontSize: 12,
+    marginRight: 4,
     fontWeight: '600',
   },
-  manageLink: {
-    marginTop: 16,
+  normalCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 16,
+    padding: 20,
   },
-  manageLinkText: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 14,
-    textDecorationLine: 'underline',
+  normalCardContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  normalTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  normalSubtitle: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 12,
+  },
+  upgradeButtonSmall: {
+    backgroundColor: '#333',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  upgradeButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   accountActions: {
-    marginTop: 40,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    marginTop: 30,
+    paddingTop: 0,
+    borderTopWidth: 0,
+    alignItems: 'center',
   },
   deleteAccountButton: {
-    paddingVertical: 8,
+    paddingVertical: 10,
     alignItems: 'center',
   },
   deleteAccountText: {
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: 'rgba(255, 255, 255, 0.3)',
     fontSize: 12,
     textDecorationLine: 'underline',
   },
@@ -1110,26 +1069,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   deleteModalContent: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 16,
-    padding: 24,
-    width: '85%',
-    maxWidth: 400,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-  },
-  modalOverlayInner: {
-    flex: 1,
-    width: '100%',
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    paddingTop: 220,
-  },
-  modalContent: {
     backgroundColor: '#1f1f1f',
     borderRadius: 16,
     padding: 24,
@@ -1179,31 +1118,18 @@ const styles = StyleSheet.create({
   modalButtonDisabled: {
     opacity: 0.5,
   },
-  nameInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 8,
-    padding: 12,
-    color: '#fff',
-    fontSize: 16,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  nameInputHint: {
-    color: 'rgba(255, 255, 255, 0.4)',
-    fontSize: 12,
-    textAlign: 'right',
-    marginBottom: 20,
-  },
-  gradientButton: {
-    flex: 1,
-    marginLeft: 12,
-  },
   aboutUsContainer: {
     paddingVertical: 20,
     paddingHorizontal: 20,
     paddingBottom: 30,
     alignItems: 'center',
+    marginTop: 10,
+  },
+  aboutUsDivider: {
+    width: '100%',
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    marginBottom: 20,
   },
   aboutUsButton: {
     paddingVertical: 8,

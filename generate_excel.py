@@ -14,6 +14,14 @@ style_map = {
     "纯欲风": "chunyufeng"
 }
 
+# Description Map
+description_map = {
+    "复古拍立得": "经典胶片质感，定格怀旧时光",
+    "慢快门": "流光溢彩，捕捉光影轨迹",
+    "氛围感": "电影级滤镜，拉满故事感",
+    "纯欲风": "清冷破碎感，展现独特魅力"
+}
+
 # Helper to parse folder name
 def parse_folder_name(folder_name):
     parts = folder_name.split("-")
@@ -67,14 +75,14 @@ for folder_name in os.listdir(base_dir):
             "template_id": template_id,
             "template_url": image_url,
             "template_name": style, # Using style name as template name
-            "template_description": style
+            "template_description": description_map.get(style, style)
         }
         
         # Create Album Object
         album = {
             "album_id": template_id, # Using templateId as albumId
             "album_name": style,
-            "album_description": style,
+            "album_description": description_map.get(style, style),
             "album_image": image_url,
             "level": "0", # Default to Free
             "price": 0,
@@ -102,7 +110,7 @@ for folder_name in os.listdir(base_dir):
         activity_id,
         json.dumps(albums, ensure_ascii=False), # Album List JSON
         style, # Title
-        style, # Description
+        description_map.get(style, style), # Description
         1 # activity_data
     ]
     

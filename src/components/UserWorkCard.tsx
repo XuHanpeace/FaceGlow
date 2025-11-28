@@ -22,7 +22,6 @@ const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress, onDelete, ca
   const [isDeleting, setIsDeleting] = React.useState(false);
 
   const handlePress = () => {
-    // 如果处于删除模式，点击取消删除模式
     if (isDeleting) {
       setIsDeleting(false);
       return;
@@ -34,17 +33,6 @@ const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress, onDelete, ca
     setIsDeleting(true);
   };
   
-  // 监听 isDeleting 状态变化，触发震动
-  React.useEffect(() => {
-    if (isDeleting) {
-      // 在这里不需要手动触发 Vibration，因为 DeleteIcon 组件内部会触发
-      // 但如果想要在进入删除模式时立即震动，可以保留这个 useEffect
-      // 为了避免重复震动（DeleteIcon 渲染时也会震动），这里可以留空
-      // 或者，如果想要更好的体验，可以在这里震动一次，表示模式切换成功
-      // Vibration.vibrate(50); 
-    }
-  }, [isDeleting]);
-
   const handleDelete = () => {
     Alert.alert(
       '删除作品',
@@ -67,7 +55,22 @@ const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress, onDelete, ca
     );
   };
 
-  // 获取作品封面图片（优先使用换脸结果，回退到活动图片）
+  // 解析 ext_data
+  const getExtData = () => {
+    try {
+      if (work.ext_data) {
+        return JSON.parse(work.ext_data);
+      }
+    } catch (e) {
+      console.error('Failed to parse ext_data', e);
+    }
+    return {};
+  };
+
+  const extData = getExtData();
+  const selfieUrl = extData.selfie_url;
+
+  // 获取作品封面图片
   const getCoverImage = () => {
     if (work.result_data && work.result_data.length > 0) {
       return work.result_data[0].result_image;
@@ -78,31 +81,29 @@ const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress, onDelete, ca
   // 格式化创建时间
   const formatDate = (timestamp?: number) => {
     if (!timestamp) return null;
-    return new Date(timestamp).toLocaleDateString('zh-CN', {
+    const time = timestamp < 10000000000 ? timestamp * 1000 : timestamp;
+    return new Date(time).toLocaleDateString('zh-CN', {
       year: 'numeric',
-      month: 'short',
-      day: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
     });
   };
 
-  // 获取subtitle内容（优先级：描述 > 结果数量 > 时间）
   const getSubtitle = () => {
-    // 优先使用活动描述
     if (work.activity_description && work.activity_description.trim()) {
       return work.activity_description.trim();
     }
-    // 其次显示结果数量
     if (work.result_data && work.result_data.length > 0) {
       return `${work.result_data.length} 张作品`;
     }
-    // 最后显示时间（如果有）
-    return formatDate(work.created_at);
+    return '';
   };
 
   const subtitle = getSubtitle();
+  const dateStr = formatDate(work.created_at);
 
-  // 根据宽度计算高度（保持比例）
-  const cardHeight = (cardWidth / 180) * 280;
+  // 根据宽度计算高度
+  const cardHeight = (cardWidth / 180) * 280; 
   const imageHeight = (cardWidth / 180) * 220;
 
   return (
@@ -113,13 +114,38 @@ const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress, onDelete, ca
       delayLongPress={500}
       activeOpacity={0.8}
     >
-      <Image 
-        source={{ uri: getCoverImage() }} 
-        style={[styles.workImage, { height: imageHeight }]}
-        resizeMode="cover"
-      />
+      <View style={{ position: 'relative' }}>
+        <Image 
+          source={{ uri: getCoverImage() }} 
+          style={[styles.workImage, { height: imageHeight }]}
+          resizeMode="cover"
+        />
+        
+        {/* 自定义 Overlay: 无渐变，左下角头像，右下角时间 */}
+        <View style={styles.imageOverlay}>
+          <View style={styles.overlayContent}>
+            {/* 左下角：自拍头像 (放大) */}
+            <View style={styles.selfieContainer}>
+              {selfieUrl ? (
+                <Image 
+                  source={{ uri: selfieUrl }} 
+                  style={styles.overlaySelfie} 
+                />
+              ) : null}
+            </View>
+
+            {/* 右下角：时间 (增加对比度) */}
+            {dateStr && (
+              <View style={styles.dateContainer}>
+                <Text style={styles.overlayDateText}>
+                  {dateStr}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </View>
       
-      {/* 删除按钮覆盖层 */}
       {isDeleting && (
         <View style={styles.deleteOverlay}>
           <DeleteIcon onPress={handleDelete} />
@@ -130,14 +156,13 @@ const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress, onDelete, ca
         <Text style={styles.workTitle} numberOfLines={1}>
           {work.activity_title}
         </Text>
-        {subtitle && (
-          <View style={styles.subtitleContainer}>
-            <Text style={styles.workSubtitle} numberOfLines={1}>
-              {subtitle}
-            </Text>
-            <FontAwesome name="heart" size={12} color="#FF6B9D" />
-          </View>
-        )}
+        
+        <View style={styles.bottomRow}>
+          <Text style={styles.workSubtitle} numberOfLines={1}>
+            {subtitle || work.activity_title}
+          </Text>
+          <FontAwesome name="heart" size={12} color="#FF6B9D" />
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -154,8 +179,52 @@ const styles = StyleSheet.create({
   workImage: {
     width: '100%',
   },
+  imageOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 40,
+    justifyContent: 'flex-end',
+    paddingBottom: 8,
+    paddingHorizontal: 8,
+  },
+  overlayContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+  },
+  selfieContainer: {
+    width: 32, // 放大容器
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  overlaySelfie: {
+    width: 40, // 放大头像 (24 -> 32)
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2, // 稍微加粗边框
+    borderColor: '#fff',
+  },
+  dateContainer: {
+    // 可选：添加一个极淡的背景或阴影以确保可见性
+    // backgroundColor: 'rgba(0,0,0,0.3)',
+    // paddingHorizontal: 6,
+    // paddingVertical: 2,
+    // borderRadius: 4,
+  },
+  overlayDateText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)', // 增强阴影
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+    opacity: 0.9,
+  },
   workInfo: {
-    padding: 12,
+    paddingHorizontal: 6,
     flex: 1,
     justifyContent: 'center',
   },
@@ -165,17 +234,17 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginBottom: 4,
   },
-  subtitleContainer: {
+  bottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 6,
   },
   workSubtitle: {
     flex: 1,
     color: '#fff',
     fontSize: 12,
     opacity: 0.6,
+    marginRight: 8,
   },
   deleteOverlay: {
     position: 'absolute',
