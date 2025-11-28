@@ -226,7 +226,7 @@ const BeforeCreationScreen: React.FC = () => {
           <View style={styles.textContainer}>
             <Text style={styles.title}>{template.title}</Text>
             <Text style={styles.description} numberOfLines={2}>
-              {template.description}
+              {templates[currentImageIndex]?.template_description || template.description}
             </Text>
           </View>
 

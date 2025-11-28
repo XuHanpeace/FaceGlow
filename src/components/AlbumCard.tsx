@@ -5,6 +5,7 @@ import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
 const { width: screenWidth } = Dimensions.get('window');
 const cardWidth = screenWidth * 0.35;
+const cardHeight = cardWidth * 1.7;
 
 interface AlbumCardProps {
   album: Album;
@@ -50,15 +51,20 @@ const AlbumCard: React.FC<AlbumCardProps> = ({
       </View>
       
       <View style={styles.infoContainer}>
-        <Text style={styles.title} numberOfLines={1}>
-          {album.album_name}
-        </Text>
-        <View style={styles.likesContainer}>
-          <FontAwesome name="heart" size={12} color="#FF6B9D" style={styles.likesIcon} />
-          <Text style={styles.likesText}>
-            {totalLikes >= 1000 ? `${(totalLikes / 1000).toFixed(1)}K` : totalLikes}
+        <View style={styles.titleContainer}>
+          <Text style={styles.title} numberOfLines={1}>
+            {album.album_name}
           </Text>
+          <View style={styles.likesContainer}>
+            <FontAwesome name="heart" size={12} color="#FF6B9D" style={styles.likesIcon} />
+            <Text style={styles.likesText}>
+              {totalLikes >= 1000 ? `${(totalLikes / 1000).toFixed(1)}K` : totalLikes}
+            </Text>
+          </View>
         </View>
+        <Text style={styles.description} numberOfLines={2}>
+          {album.album_description}
+        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -68,6 +74,7 @@ const styles = StyleSheet.create({
   container: {
     width: cardWidth,
     marginRight: 20,
+    height: cardHeight,
     borderRadius: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     overflow: 'hidden',
@@ -105,19 +112,25 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   infoContainer: {
-    padding: 10,
+    flex: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  titleContainer: {
+    flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
   },
   title: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 12,
+    lineHeight: 18,
     fontWeight: '600',
-    flex: 1,
-    marginRight: 8,
+    marginRight: 4,
   },
   likesContainer: {
+    height: 18,
+    lineHeight: 18,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -129,19 +142,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
-  priceContainer: {
-    position: 'absolute',
-    bottom: 10,
-    left: 10,
-    backgroundColor: 'rgba(255, 215, 0, 0.9)',
-    borderRadius: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  priceText: {
-    color: '#000',
-    fontSize: 10,
-    fontWeight: '600',
+  description: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 12,
+    lineHeight: 18,
   },
 });
 
