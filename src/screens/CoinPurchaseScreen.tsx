@@ -145,7 +145,7 @@ const CoinPurchaseScreen: React.FC = () => {
 
         showSuccessToast(`恭喜您成功购买${selectedPackage.coins}美美币！`);
         setTimeout(() => {
-          navigation.popToTop();
+          navigation.goBack();
         }, 500);
       } else {
         // 根据错误类型显示不同提示

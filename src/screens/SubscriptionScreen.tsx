@@ -175,7 +175,7 @@ const SubscriptionScreen: React.FC = () => {
       showSuccessToast(`恭喜您成功订阅${selectedPlan.title}！`);
       setTimeout(() => {
         loadAvailablePlans();
-        navigation.popToTop();
+        navigation.goBack();
       }, 500);
     } catch (error) {
       if (isPurchaseCancelled(error)) return;
