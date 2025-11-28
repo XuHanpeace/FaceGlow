@@ -29,9 +29,9 @@ export interface UserWorkModel {
   /** 扩展数据（JSON字符串） */
   ext_data: string;
   /** 创建时间戳 */
-  created_at?: number;
+  createdAt?: number;
   /** 更新时间戳 */
-  updated_at?: number;
+  updatedAt?: number;
 }
 
 /**

@@ -38,7 +38,9 @@ export type RootStackParamList = {
   ServiceTest: undefined;
   SubscriptionTest: undefined;
   UserWorkPreview: {
-    work: UserWorkModel;
+    work?: UserWorkModel;
+    initialWorkId?: string;
+    worksList?: UserWorkModel[];
   };
   AboutUs: undefined;
   WebView: {

@@ -1,92 +1,188 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Image,
-  TouchableOpacity,
   StatusBar,
-  ScrollView,
   Alert,
   Dimensions,
-  Animated,
+  FlatList,
+  ViewToken,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import FastImage from 'react-native-fast-image';
 import ReactNativeHapticFeedback from "react-native-haptic-feedback";
+import LinearGradient from 'react-native-linear-gradient';
 
 import { RootStackParamList } from '../types/navigation';
-import { useTypedSelector, useAppDispatch } from '../store/hooks';
+import { useTypedSelector } from '../store/hooks';
 import { useAuthState } from '../hooks/useAuthState';
 import { authService } from '../services/auth/authService';
 import { Album, Template } from '../types/model/activity';
 import GradientButton from '../components/GradientButton';
 import BackButton from '../components/BackButton';
-import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import SelfieSelector from '../components/SelfieSelector';
 
-const { width: screenWidth } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 type BeforeCreationScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type BeforeCreationScreenRouteProp = RouteProp<RootStackParamList, 'BeforeCreation'>;
+
+// 单个模版页面组件
+const TemplateSlide = React.memo(({ 
+  template, 
+  album, 
+  selectedSelfieUrl, 
+  isFusionProcessing, 
+  onUseStyle, 
+  onSelfieSelect 
+}: { 
+  template: Template, 
+  album: Album, 
+  selectedSelfieUrl: string | null, 
+  isFusionProcessing: boolean, 
+  onUseStyle: (template: Template) => void, 
+  onSelfieSelect: (url: string) => void 
+}) => {
+  return (
+    <View style={styles.pageContainer}>
+      <Image
+        source={{ uri: template.template_url }}
+        style={styles.mainImage}
+        resizeMode="cover"
+      />
+      
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.8)']}
+        style={styles.gradientOverlay}
+        pointerEvents="none"
+      />
+
+      <View style={styles.contentOverlay}>
+        <View style={styles.avatarContainer}>
+          <SelfieSelector
+            onSelfieSelect={onSelfieSelect}
+            selectedSelfieUrl={selectedSelfieUrl ?? undefined}
+            size={72}
+          />
+        </View>
+
+        <View style={styles.textContainer}>
+          <Text style={styles.title}>{album.album_name}</Text>
+          <Text style={styles.description} numberOfLines={2}>
+            {template.template_description || album.album_description}
+          </Text>
+        </View>
+
+        <GradientButton
+          title="创作同款"
+          onPress={() => onUseStyle(template)}
+          variant="primary"
+          size="large"
+          style={styles.useButton}
+          fontSize={16}
+          borderRadius={28}
+          loading={isFusionProcessing}
+          disabled={isFusionProcessing}
+        />
+      </View>
+    </View>
+  );
+});
+
+// 单个相册组件（包含多个模版）
+const AlbumSlide = React.memo(({ 
+  album, 
+  isActive,
+  selectedSelfieUrl, 
+  isFusionProcessing, 
+  onUseStyle, 
+  onSelfieSelect 
+}: { 
+  album: Album, 
+  isActive: boolean,
+  selectedSelfieUrl: string | null, 
+  isFusionProcessing: boolean, 
+  onUseStyle: (template: Template) => void, 
+  onSelfieSelect: (url: string) => void 
+}) => {
+  const templates = album.template_list || [];
+
+  const renderTemplateItem = useCallback(({ item }: { item: Template }) => {
+    return (
+      <TemplateSlide
+        template={item}
+        album={album}
+        selectedSelfieUrl={selectedSelfieUrl}
+        isFusionProcessing={isFusionProcessing}
+        onUseStyle={onUseStyle}
+        onSelfieSelect={onSelfieSelect}
+      />
+    );
+  }, [album, selectedSelfieUrl, isFusionProcessing, onUseStyle, onSelfieSelect]);
+
+  return (
+    <View style={styles.albumContainer}>
+      <FlatList
+        data={templates}
+        renderItem={renderTemplateItem}
+        keyExtractor={(item, index) => item.template_id || `${album.album_id}_${index}`}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        decelerationRate="fast"
+        snapToInterval={screenWidth}
+        snapToAlignment="start"
+        initialNumToRender={2}
+        windowSize={3}
+        removeClippedSubviews={true}
+      />
+    </View>
+  );
+});
 
 const BeforeCreationScreen: React.FC = () => {
   const navigation = useNavigation<BeforeCreationScreenNavigationProp>();
   const route = useRoute<BeforeCreationScreenRouteProp>();
   const { albumData, activityId } = route.params;
   
-  const dispatch = useAppDispatch();
-  
-  // 检查登录状态
   const { isLoggedIn } = useAuthState();
   
-  // 从Redux获取用户自拍照数据
-  const selfies = useTypedSelector((state) => state.selfies.selfies);
+  // Redux state
+  const activities = useTypedSelector((state) => state.activity.activities);
   const isProcessing = useTypedSelector((state) => state.selfies.uploading);
 
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  // 扁平化所有 Albums
+  const allAlbums = useMemo(() => {
+    if (!activities || activities.length === 0) return [albumData];
+    const albums = activities.flatMap(activity => activity.album_id_list || []);
+    // 确保当前 albumData 在列表中，如果不在（比如来自非 redux 数据源），则添加
+    const exists = albums.some(a => a.album_id === albumData.album_id);
+    if (!exists) {
+      return [albumData, ...albums];
+    }
+    return albums;
+  }, [activities, albumData]);
+
+  // 初始 Index
+  const initialIndex = useMemo(() => {
+    const index = allAlbums.findIndex(a => a.album_id === albumData.album_id);
+    return index >= 0 ? index : 0;
+  }, [allAlbums, albumData]);
+
   const [isFusionProcessing, setIsFusionProcessing] = useState(false);
   const [selectedSelfieUrl, setSelectedSelfieUrl] = useState<string | null>(null);
-  const scrollViewRef = useRef<ScrollView>(null);
-  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const [activeAlbumIndex, setActiveAlbumIndex] = useState(initialIndex);
 
-  // 从albumData中获取template数据
-  const album = albumData;
-  const templates = album.template_list || [];
-  
-  // 构建轮播图数据，使用template_list中的template_url
-  const template = {
-    id: album.album_id,
-    title: album.album_name,
-    images: templates.map((t: Template) => t.template_url),
-    previewImage: templates[0]?.template_url || '',
-    description: album.album_description
-  };
+  // 垂直滑动回调
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    if (viewableItems.length > 0 && viewableItems[0].index !== null) {
+      setActiveAlbumIndex(viewableItems[0].index);
+    }
+  }).current;
 
-  useEffect(() => {
-    // 自动轮播
-    const interval = setInterval(() => {
-      if (template.images.length > 1) {
-        const nextIndex = (currentImageIndex + 1) % template.images.length;
-        setCurrentImageIndex(nextIndex);
-        scrollViewRef.current?.scrollTo({
-          x: nextIndex * screenWidth,
-          animated: true,
-        });
-      }
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [currentImageIndex, template.images.length]);
-
-  const handleImageScroll = (event: any) => {
-    const contentOffset = event.nativeEvent.contentOffset.x;
-    const index = Math.round(contentOffset / screenWidth);
-    setCurrentImageIndex(index);
-  };
-
-  const handleUseStylePress = async () => {
+  const handleUseStylePress = useCallback(async (currentTemplate: Template) => {
     // 触发触觉反馈
     const options = {
       enableVibrateFallback: true,
@@ -135,18 +231,19 @@ const BeforeCreationScreen: React.FC = () => {
       // 开始人脸融合处理
       setIsFusionProcessing(true);
       
-      // 获取当前选中的template
-      const currentTemplate = templates[currentImageIndex];
       if (!currentTemplate) {
         Alert.alert('错误', '未找到选中的模板');
         return;
       }
 
       // 跳转到CreationResult页面
+      // 注意：这里的 activityId 还是使用最初传入的 activityId，可能不够准确如果跨 Activity 滑动
+      // 但目前后端可能并不强校验 activityId 与 album 的对应关系，或者我们可以尝试反查
+      // 为了简单，暂时透传。或者如果 allAlbums 结构里能带上 activityId 更好。
       navigation.navigate('CreationResult', {
-        albumData: album,
+        albumData: allAlbums[activeAlbumIndex], // 使用当前激活的 Album Data
         selfieUrl: selectedSelfieUrl,
-        activityId: activityId,
+        activityId: activityId, 
       });
 
     } catch (error: any) {
@@ -155,95 +252,70 @@ const BeforeCreationScreen: React.FC = () => {
     } finally {
       setIsFusionProcessing(false);
     }
-  };
+  }, [selectedSelfieUrl, navigation, activityId, allAlbums, activeAlbumIndex]);
 
   const handleBackPress = () => {
     navigation.goBack();
   };
 
-  const handleSelfieSelect = (selfieUrl: string) => {
+  const handleSelfieSelect = useCallback((selfieUrl: string) => {
     setSelectedSelfieUrl(selfieUrl);
-  };
+  }, []);
+
+  const renderAlbumItem = useCallback(({ item, index }: { item: Album, index: number }) => {
+    return (
+      <AlbumSlide
+        album={item}
+        isActive={index === activeAlbumIndex}
+        selectedSelfieUrl={selectedSelfieUrl}
+        isFusionProcessing={isFusionProcessing}
+        onUseStyle={handleUseStylePress}
+        onSelfieSelect={handleSelfieSelect}
+      />
+    );
+  }, [activeAlbumIndex, selectedSelfieUrl, isFusionProcessing, handleUseStylePress, handleSelfieSelect]);
+
+  // 如果没有数据，显示 Loading 或空状态
+  if (!allAlbums || allAlbums.length === 0) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <BackButton iconType="arrow" onPress={handleBackPress} />
+        <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+          <Text style={{color: '#fff'}}>加载中...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       
-      {/* 返回按钮 */}
       <BackButton iconType="arrow" onPress={handleBackPress} />
 
-      {/* 主图片区域 */}
-      <View style={styles.imageContainer}>
-        <ScrollView
-          ref={scrollViewRef}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onScroll={handleImageScroll}
-          scrollEventThrottle={16}
-        >
-          {template.images.map((imageUrl: string, index: number) => (
-            <View key={index} style={styles.imageWrapper}>
-              <Image
-                source={{ uri: imageUrl }}
-                style={styles.mainImage}
-                resizeMode="cover"
-              />
-            </View>
-          ))}
-        </ScrollView>
-
-        {/* 图片指示器 - 移动到左下角内容上方 */}
-        {template.images.length > 1 && (
-          <View style={styles.indicatorContainer}>
-            {template.images.map((_: string, index: number) => (
-              <View
-                key={index}
-                style={[
-                  styles.indicator,
-                  index === currentImageIndex && styles.activeIndicator,
-                ]}
-              />
-            ))}
-          </View>
+      <FlatList
+        data={allAlbums}
+        renderItem={renderAlbumItem}
+        keyExtractor={(item) => item.album_id}
+        pagingEnabled
+        showsVerticalScrollIndicator={false}
+        decelerationRate="fast"
+        snapToInterval={screenHeight}
+        snapToAlignment="start"
+        initialScrollIndex={initialIndex}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={{
+          itemVisiblePercentThreshold: 50
+        }}
+        getItemLayout={(data, index) => (
+          {length: screenHeight, offset: screenHeight * index, index}
         )}
-      </View>
-
-      {/* 底部内容区域 */}
-      <View style={styles.bottomContainer}>
-        {/* 内容容器 */}
-        <View style={styles.contentContainer}>
-          {/* 头像选择 - 左下方 */}
-          <View style={styles.avatarContainer}>
-            <SelfieSelector
-              onSelfieSelect={handleSelfieSelect}
-              selectedSelfieUrl={selectedSelfieUrl ?? undefined}
-              size={72}
-            />
-          </View>
-
-          {/* 文本信息 */}
-          <View style={styles.textContainer}>
-            <Text style={styles.title}>{template.title}</Text>
-            <Text style={styles.description} numberOfLines={2}>
-              {templates[currentImageIndex]?.template_description || template.description}
-            </Text>
-          </View>
-
-          {/* 按钮 */}
-          <GradientButton
-            title="创作同款"
-            onPress={handleUseStylePress}
-            variant="primary"
-            size="large"
-            style={styles.useButton}
-            fontSize={16}
-            borderRadius={28}
-            loading={isFusionProcessing}
-            disabled={isFusionProcessing}
-          />
-        </View>
-      </View>
+        initialNumToRender={1}
+        maxToRenderPerBatch={2}
+        windowSize={3}
+        removeClippedSubviews={true}
+      />
     </View>
   );
 };
@@ -253,50 +325,33 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000',
   },
-  imageContainer: {
-    flex: 1, // 全屏显示
-    width: '100%',
-  },
-  imageWrapper: {
+  albumContainer: {
     width: screenWidth,
-    height: '100%',
+    height: screenHeight,
+  },
+  pageContainer: {
+    width: screenWidth,
+    height: screenHeight,
+    position: 'relative',
   },
   mainImage: {
     width: '100%',
     height: '100%',
   },
-  indicatorContainer: {
-    position: 'absolute',
-    top: 60, // 顶部指示器
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 6,
-    zIndex: 5,
-  },
-  indicator: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  activeIndicator: {
-    backgroundColor: '#fff',
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  bottomContainer: {
+  gradientOverlay: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    paddingBottom: 40, // 底部安全距离
-    paddingHorizontal: 20,
+    height: '40%',
   },
-  contentContainer: {
-    width: '100%',
+  contentOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingBottom: 40,
+    paddingHorizontal: 20,
   },
   avatarContainer: {
     marginBottom: 16,

@@ -80,17 +80,6 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
 
       {/* 右侧按钮区域 */}
       <View style={styles.rightContainer}>
-        {showUpgradeButton && (
-          <GradientButton
-            title="升级"
-            onPress={handleUpgradePress}
-            variant="primary"
-            size="small"
-            fontSize={12}
-            borderRadius={19}
-            style={styles.upgradeButton}
-          />
-        )}
         <TouchableOpacity style={styles.profileButton} onPress={handleProfilePress}>
           <UserAvatar size={36} />
         </TouchableOpacity>

@@ -18,6 +18,8 @@ interface ImageComparisonProps {
   afterImage: string; // 处理后图片URL
   width?: number; // 组件宽度
   height?: number; // 组件高度
+  onInteractionStart?: () => void;
+  onInteractionEnd?: () => void;
 }
 
 export const ImageComparison: React.FC<ImageComparisonProps> = ({
@@ -25,6 +27,8 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
   afterImage,
   width = 300,
   height = 400,
+  onInteractionStart,
+  onInteractionEnd,
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isAfterImageLoaded, setIsAfterImageLoaded] = useState(false);
@@ -52,10 +56,19 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
       onStartShouldSetPanResponderCapture: () => true,
       onMoveShouldSetPanResponderCapture: () => true,
       onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        onInteractionStart && onInteractionStart();
+      },
       onPanResponderTerminationRequest: () => false, // 拒绝其他组件请求终止响应
       onPanResponderMove: (_, gestureState) => {
         const newPosition = Math.max(0, Math.min(containerWidth, gestureState.moveX));
         panX.setValue(newPosition);
+      },
+      onPanResponderRelease: () => {
+        onInteractionEnd && onInteractionEnd();
+      },
+      onPanResponderTerminate: () => {
+        onInteractionEnd && onInteractionEnd();
       },
     });
 

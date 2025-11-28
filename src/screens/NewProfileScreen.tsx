@@ -14,6 +14,7 @@ import {
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
+  Image,
 } from 'react-native';
 import FastImage from 'react-native-fast-image';
 import { useNavigation } from '@react-navigation/native';
@@ -323,7 +324,11 @@ const NewProfileScreen: React.FC = () => {
   };
 
   const handleWorkPress = (work: UserWorkModel) => {
-    navigation.navigate('UserWorkPreview', { work });
+    navigation.navigate('UserWorkPreview', { 
+      work,
+      initialWorkId: work._id,
+      worksList: userWorks
+    });
   };
 
   const handleWorkDelete = async (work: UserWorkModel) => {
@@ -531,6 +536,28 @@ const NewProfileScreen: React.FC = () => {
                 </TouchableOpacity>
               )}
               
+              {/* 美美币余额卡片 */}
+              <TouchableOpacity
+                style={styles.balanceCard}
+                onPress={() => navigation.navigate('CoinPurchase')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.balanceContent}>
+                  <View style={styles.balanceLeft}>
+                    <Image 
+                      source={require('../assets/mm-coins.png')} 
+                      style={styles.coinIcon}
+                      resizeMode="contain"
+                    />
+                    <Text style={styles.balanceTitle}>美美币余额</Text>
+                  </View>
+                  <View style={styles.balanceRight}>
+                    <Text style={styles.balanceAmount}>{userInfo.balance}</Text>
+                    <FontAwesome name="angle-right" size={16} color="rgba(255, 255, 255, 0.3)" />
+                  </View>
+                </View>
+              </TouchableOpacity>
+
               {/* 删除账户入口 */}
               <View style={styles.accountActions}>
                 <TouchableOpacity 
@@ -1046,6 +1073,40 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '600',
+  },
+  balanceCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 16,
+    padding: 20,
+    marginTop: 12,
+  },
+  balanceContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  balanceLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  coinIcon: {
+    width: 24,
+    height: 24,
+  },
+  balanceTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  balanceRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  balanceAmount: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginRight: 8,
   },
   accountActions: {
     marginTop: 30,

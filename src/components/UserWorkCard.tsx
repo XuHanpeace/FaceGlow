@@ -100,7 +100,7 @@ const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress, onDelete, ca
   };
 
   const subtitle = getSubtitle();
-  const dateStr = formatDate(work.created_at);
+  const dateStr = formatDate(work.createdAt);
 
   // 根据宽度计算高度
   const cardHeight = (cardWidth / 180) * 280; 
