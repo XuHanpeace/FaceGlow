@@ -6,8 +6,6 @@ import {
   StyleSheet,
   StatusBar,
   Alert,
-  ActivityIndicator,
-  ScrollView,
   BackHandler,
   Image,
   Platform,
@@ -20,7 +18,7 @@ import { RootStackParamList } from '../types/navigation';
 import { NativeModules } from 'react-native';
 import { subscriptionDataService } from '../services/subscriptionDataService';
 import { useAuthState } from '../hooks/useAuthState';
-import { coinPackages, coinConfig, CoinPackage } from '../config/subscriptionConfig';
+import { coinPackages, CoinPackage } from '../config/revenueCatConfig';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import GradientButton from '../components/GradientButton';
 import { showSuccessToast } from '../utils/toast';

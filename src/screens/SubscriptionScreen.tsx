@@ -17,7 +17,7 @@ import { RootStackParamList } from '../types/navigation';
 import { subscriptionDataService } from '../services/subscriptionDataService';
 import { useAuthState } from '../hooks/useAuthState';
 import { useUser } from '../hooks/useUser';
-import { subscriptionPlans, SubscriptionPlan } from '../config/subscriptionConfig';
+import { subscriptionPlans, SubscriptionPlan } from '../config/revenueCatConfig';
 import { useRevenueCat } from '../hooks/useRevenueCat';
 import { ENTITLEMENTS } from '../config/revenueCatConfig';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
