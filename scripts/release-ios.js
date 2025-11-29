@@ -25,6 +25,14 @@ function runCommand(command, args, options = {}) {
         output += str;
         process.stdout.write(str);
         
+        // Check for success match to exit early
+        if (options.successMatch && str.includes(options.successMatch)) {
+             console.log("✅ Success condition met. Proceeding...");
+             proc.kill(); 
+             resolve(output);
+             return;
+        }
+
         // Handle Inputs if any
         if (options.inputs) {
           options.inputs.forEach((inputConfig) => {
@@ -43,7 +51,8 @@ function runCommand(command, args, options = {}) {
     }
 
     proc.on('close', (code) => {
-      if (code === 0) {
+      // If killed manually or exited successfully
+      if (code === 0 || code === null) {
         resolve(output);
       } else {
         reject(new Error(`Command failed with code ${code}`));
@@ -80,10 +89,7 @@ async function main() {
 
     // 2. Bump Version
     console.log("\n📦 Step 1: Bumping Version...");
-    require('./bump-version.js'); // This runs the bump script synchronously if required or we can spawn it.
-    // Since bump-version.js is a script that runs on require if not wrapped, let's check.
-    // The current bump-version.js runs immediately.
-    // Re-reading package.json to get new version
+    require('./bump-version.js'); 
     delete require.cache[require.resolve(packageJsonPath)];
     const packageJson = require(packageJsonPath);
     const version = packageJson.version;
@@ -106,11 +112,13 @@ async function main() {
 
     // 5. Login to Pushy
     console.log("\n🔐 Step 4: Logging in to Pushy...");
+    // Use successMatch to ensure we don't hang if the process doesn't exit
     await runCommand('npx', ['react-native-update-cli', 'login'], {
       inputs: [
         { prompt: 'email:', value: pushyConfig.email, sent: false },
         { prompt: 'password:', value: pushyConfig.password, sent: false }
-      ]
+      ],
+      successMatch: '欢迎使用 pushy 热更新服务' // Match the welcome message
     });
 
     // 6. Build IPA (Manual Interaction Required)
@@ -130,7 +138,7 @@ async function main() {
     
     if (!ipaPath || !fs.existsSync(ipaPath)) {
         console.error("❌ IPA file not found at provided path.");
-        // Ask if user wants to skip IPA upload (maybe they just want to do JS bundle)
+        // Ask if user wants to skip IPA upload
         const skip = await askQuestion("Do you want to skip IPA upload and proceed to JS Bundle upload? (y/n): ");
         if (skip.toLowerCase() !== 'y') {
             process.exit(1);
@@ -160,4 +168,3 @@ async function main() {
 }
 
 main();
-
