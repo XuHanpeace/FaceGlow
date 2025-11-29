@@ -24,7 +24,7 @@ export type RootStackParamList = {
   VerificationCode: {
     phoneNumber: string;
     verificationId: string;
-    authMode: 'phone-verify' | 'register';
+    authMode?: 'phone-verify' | 'register'; // 可选，系统会自动判断登录或注册
   };
   Subscription: undefined;
   CoinPurchase: undefined;

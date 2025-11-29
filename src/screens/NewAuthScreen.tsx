@@ -5,15 +5,12 @@ import {
   TouchableOpacity,
   StyleSheet,
   StatusBar,
-  Dimensions,
   TextInput,
   Alert,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
-  Linking,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -52,16 +49,14 @@ const NewAuthScreen: React.FC = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [agreeToTerms, setAgreeToTerms] = useState(false);
   
   // UI状态
   const [isLoading, setIsLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   
   // 输入框引用
   const phoneInputRef = useRef<TextInput>(null);
-  
-  const screenWidth = Dimensions.get('window').width;
 
   // 倒计时效果
   useEffect(() => {
@@ -85,6 +80,11 @@ const NewAuthScreen: React.FC = () => {
 
   // 发送验证码
   const handleSendCode = async () => {
+    if (!agreedToTerms) {
+      Alert.alert('提示', '请先同意《美颜换换用户协议》和《美颜换换隐私政策》');
+      return;
+    }
+
     if (!validatePhoneNumber(phoneNumber)) {
       Alert.alert('手机号格式错误', '请输入正确的11位手机号码');
       return;
@@ -94,21 +94,15 @@ const NewAuthScreen: React.FC = () => {
       return;
     }
 
-    // 注册模式下检查是否同意用户协议
-    if (authMode === 'register' && !agreeToTerms) {
-      Alert.alert('提示', '请先同意用户协议');
-      return;
-    }
-
     setIsLoading(true);
     try {
       const result = await verificationService.sendPhoneVerification(phoneNumber);
       
-      // 导航到验证码输入页面
+      // 导航到验证码输入页面（统一使用 phone-verify 模式，系统会自动判断登录或注册）
       navigation.navigate('VerificationCode', {
         phoneNumber: phoneNumber,
         verificationId: result.verification_id,
-        authMode: authMode === 'register' ? 'register' : 'phone-verify',
+        authMode: 'phone-verify',
       });
     } catch (error: any) {
       Alert.alert('发送失败', error.message || '验证码发送失败，请重试');
@@ -120,6 +114,11 @@ const NewAuthScreen: React.FC = () => {
 
   // 密码登录
   const handlePasswordLogin = async () => {
+    if (!agreedToTerms) {
+      Alert.alert('提示', '请先同意《美颜换换用户协议》和《美颜换换隐私政策》');
+      return;
+    }
+
     if (!username.trim() || !password.trim()) {
       Alert.alert('提示', '请填写用户名和密码');
       return;
@@ -144,35 +143,20 @@ const NewAuthScreen: React.FC = () => {
   };
 
 
-  // 切换到注册模式
-  const switchToRegister = () => {
-    setAuthMode('register');
-    setPhoneNumber('');
-    setUsername('');
-    setPassword('');
-    setAgreeToTerms(false);
-  };
-
-  // 切换到登录模式
-  const switchToLogin = () => {
-    setAuthMode('phone-verify');
-    setPhoneNumber('');
-    setUsername('');
-    setPassword('');
-    setAgreeToTerms(false);
-  };
 
   // 切换到密码登录
   const switchToPasswordLogin = () => {
     setAuthMode('password');
     setUsername('');
     setPassword('');
+    setAgreedToTerms(false);
   };
 
   // 切换到验证码登录
   const switchToPhoneVerify = () => {
     setAuthMode('phone-verify');
     setPhoneNumber('');
+    setAgreedToTerms(false);
   };
 
   const formatPhoneNumber = (text: string) => {
@@ -205,7 +189,7 @@ const NewAuthScreen: React.FC = () => {
 
   const getSubtitle = () => {
     if (authMode === 'password') return '请输入账号密码登录';
-    return authMode === 'register' ? '请输入手机号开始体验' : '请输入手机号开始体验';
+    return '请输入手机号，系统将自动识别您的账号';
   };
 
   return (
@@ -251,7 +235,7 @@ const NewAuthScreen: React.FC = () => {
                 <GradientButton
                   title="获取验证码"
                   onPress={handleSendCode}
-                  disabled={!validatePhoneNumber(phoneNumber)}
+                  disabled={!validatePhoneNumber(phoneNumber) || !agreedToTerms}
                   loading={isLoading}
                   variant="primary"
                   size="medium"
@@ -260,25 +244,38 @@ const NewAuthScreen: React.FC = () => {
                   style={styles.sendCodeButton}
                 />
 
-                {/* 用户协议勾选 - 仅注册模式显示 */}
-                {authMode === 'register' && (
-                  <View style={styles.agreementContainer}>
-                    <TouchableOpacity 
-                      style={styles.checkboxContainer}
-                      onPress={() => setAgreeToTerms(!agreeToTerms)}
-                    >
-                      <View style={[styles.checkbox, agreeToTerms && styles.checkboxChecked]}>
-                        {agreeToTerms && <Text style={styles.checkmark}>✓</Text>}
-                      </View>
-                      <Text style={styles.agreementText}>
-                        我已阅读并同意
-                        <Text style={styles.linkText} onPress={handleOpenUserAgreement}>《美颜换换用户协议》</Text>
-                        和
-                        <Text style={styles.linkText} onPress={handleOpenPrivacyPolicy}>《美颜换换隐私政策》</Text>
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
+                {/* 用户协议提示 */}
+                <View style={styles.agreementContainer}>
+                  <TouchableOpacity 
+                    style={styles.checkboxContainer}
+                    onPress={() => setAgreedToTerms(!agreedToTerms)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}>
+                      {agreedToTerms && (
+                        <Text style={styles.checkmark}>✓</Text>
+                      )}
+                    </View>
+                    <Text style={styles.agreementText}>
+                      我已阅读并同意
+                      <Text 
+                        style={styles.linkText} 
+                        onPress={(e) => {
+                          e?.stopPropagation?.();
+                          handleOpenUserAgreement();
+                        }}
+                      >《美颜换换用户协议》</Text>
+                      和
+                      <Text 
+                        style={styles.linkText} 
+                        onPress={(e) => {
+                          e?.stopPropagation?.();
+                          handleOpenPrivacyPolicy();
+                        }}
+                      >《美颜换换隐私政策》</Text>
+                    </Text>
+                  </TouchableOpacity>
+                </View>
           </View>
         )}
 
@@ -309,7 +306,7 @@ const NewAuthScreen: React.FC = () => {
             <GradientButton
               title="登录"
               onPress={handlePasswordLogin}
-              disabled={!username.trim() || !password.trim()}
+              disabled={!username.trim() || !password.trim() || !agreedToTerms}
               loading={isLoading}
               variant="primary"
               size="medium"
@@ -317,38 +314,53 @@ const NewAuthScreen: React.FC = () => {
               borderRadius={22}
               style={styles.submitButton}
             />
+
+            {/* 用户协议提示 */}
+            <View style={styles.agreementContainer}>
+              <TouchableOpacity 
+                style={styles.checkboxContainer}
+                onPress={() => setAgreedToTerms(!agreedToTerms)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}>
+                  {agreedToTerms && (
+                    <Text style={styles.checkmark}>✓</Text>
+                  )}
+                </View>
+                <Text style={styles.agreementText}>
+                  我已阅读并同意
+                  <Text 
+                    style={styles.linkText} 
+                    onPress={(e) => {
+                      e?.stopPropagation?.();
+                      handleOpenUserAgreement();
+                    }}
+                  >《美颜换换用户协议》</Text>
+                  和
+                  <Text 
+                    style={styles.linkText} 
+                    onPress={(e) => {
+                      e?.stopPropagation?.();
+                      handleOpenPrivacyPolicy();
+                    }}
+                  >《美颜换换隐私政策》</Text>
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
         {/* 底部入口 */}
         <View style={styles.switchContainer}>
           {authMode === 'phone-verify' && (
-            <>
-              <TouchableOpacity onPress={switchToPasswordLogin}>
-                <Text style={styles.switchText}>账号密码登录</Text>
-              </TouchableOpacity>
-              <Text style={styles.divider}>|</Text>
-              <TouchableOpacity onPress={switchToRegister}>
-                <Text style={styles.switchText}>没有账号？去注册</Text>
-              </TouchableOpacity>
-            </>
+            <TouchableOpacity onPress={switchToPasswordLogin}>
+              <Text style={styles.switchText}>账号密码登录</Text>
+            </TouchableOpacity>
           )}
 
           {authMode === 'password' && (
-            <>
-              <TouchableOpacity onPress={switchToPhoneVerify}>
-                <Text style={styles.switchText}>验证码登录</Text>
-              </TouchableOpacity>
-              <Text style={styles.divider}>|</Text>
-              <TouchableOpacity onPress={switchToRegister}>
-                <Text style={styles.switchText}>没有账号？去注册</Text>
-              </TouchableOpacity>
-            </>
-          )}
-
-          {authMode === 'register' && (
-            <TouchableOpacity onPress={switchToLogin}>
-              <Text style={styles.switchText}>已有账号，去登录</Text>
+            <TouchableOpacity onPress={switchToPhoneVerify}>
+              <Text style={styles.switchText}>验证码登录</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -490,6 +502,12 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 14,
     lineHeight: 20,
+  },
+  agreementHintText: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
   },
   linkText: {
     color: '#FF6B9D',

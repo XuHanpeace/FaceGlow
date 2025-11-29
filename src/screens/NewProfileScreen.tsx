@@ -263,6 +263,48 @@ const NewProfileScreen: React.FC = () => {
     );
   };
 
+  // 退出登录（带二次确认）
+  const handleLogout = () => {
+    Alert.alert(
+      '退出登录',
+      '确定要退出登录吗？退出后需要重新登录才能使用完整功能。',
+      [
+        {
+          text: '取消',
+          style: 'cancel',
+        },
+        {
+          text: '确定退出',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // 清除 Redux 状态
+              dispatch(resetUser());
+              dispatch(clearAllSelfies());
+              dispatch(logoutUser());
+              
+              // 执行登出
+              await logout();
+              
+              // 清除作品列表
+              setUserWorks([]);
+              
+              showSuccessToast('已退出登录');
+              
+              // 返回首页
+              setTimeout(() => {
+                navigation.popToTop();
+              }, 500);
+            } catch (error: any) {
+              console.error('退出登录失败:', error);
+              Alert.alert('退出失败', error.message || '退出登录时发生错误');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleDeleteAccount = async () => {
     if (!user?.uid) {
       Alert.alert('错误', '无法获取用户信息');
@@ -541,9 +583,15 @@ const NewProfileScreen: React.FC = () => {
                 </View>
               </TouchableOpacity>
 
-              {/* 删除账户入口 - 仅登录用户显示 */}
+              {/* 账户操作 - 仅登录用户显示 */}
               {isLoggedIn && (
                 <View style={styles.accountActions}>
+                  <TouchableOpacity 
+                    style={styles.logoutButton}
+                    onPress={handleLogout}
+                  >
+                    <Text style={styles.logoutButtonText}>退出登录</Text>
+                  </TouchableOpacity>
                   <TouchableOpacity 
                     style={styles.deleteAccountButton}
                     onPress={() => setShowDeleteConfirm(true)}
@@ -1098,6 +1146,16 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     borderTopWidth: 0,
     alignItems: 'center',
+    gap: 16,
+  },
+  logoutButton: {
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  logoutButtonText: {
+    color: 'rgba(255, 255, 255, 0.3)',
+    fontSize: 12,
+    textDecorationLine: 'underline',
   },
   deleteAccountButton: {
     paddingVertical: 10,

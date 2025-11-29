@@ -4,20 +4,17 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Dimensions,
   Image,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { Modal } from './modal';
 import GradientButton from './GradientButton';
-import { themeColors, colors } from '../config/theme';
+import { colors } from '../config/theme';
 
 interface LoginPromptModalProps {
   visible: boolean;
   onClose: () => void;
   onLogin: () => void;
-  onRegister: () => void;
 }
 
 /**
@@ -28,7 +25,6 @@ const LoginPromptModal: React.FC<LoginPromptModalProps> = ({
   visible,
   onClose,
   onLogin,
-  onRegister,
 }) => {
   return (
     <Modal visible={visible} onClose={onClose} maskClosable={true}>
@@ -80,29 +76,20 @@ const LoginPromptModal: React.FC<LoginPromptModalProps> = ({
         {/* 按钮区域 */}
         <View style={styles.buttonContainer}>
           <GradientButton
-            title="立即登录"
+            title="去登录/注册"
             onPress={onLogin}
             variant="primary"
             size="large"
-            width={SCREEN_WIDTH}
             height={50}
             fontSize={16}
             borderRadius={12}
             style={styles.loginButton}
           />
-          <TouchableOpacity
-            style={styles.registerButton}
-            onPress={onRegister}
-          >
-            <Text style={styles.registerButtonText}>还没有账号？去注册</Text>
-          </TouchableOpacity>
         </View>
       </View>
     </Modal>
   );
 };
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   content: {
@@ -170,18 +157,10 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     width: '100%',
+    paddingHorizontal: 0,
   },
   loginButton: {
-    marginBottom: 16,
-  },
-  registerButton: {
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  registerButtonText: {
-    color: colors.primary,
-    fontSize: 15,
-    fontWeight: '500',
+    width: '100%',
   },
 });
 

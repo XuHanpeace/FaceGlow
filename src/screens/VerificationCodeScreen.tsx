@@ -31,7 +31,7 @@ const VerificationCodeScreen: React.FC = () => {
   const route = useRoute<VerificationCodeScreenRouteProp>();
   const { setAuthData } = useAuthState();
   
-  const { phoneNumber, verificationId, authMode } = route.params;
+  const { phoneNumber, verificationId } = route.params;
   
   // 表单数据
   const [verificationCode, setVerificationCode] = useState('');
@@ -71,7 +71,7 @@ const VerificationCodeScreen: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const result = await verificationService.sendPhoneVerification(phoneNumber);
+      await verificationService.sendPhoneVerification(phoneNumber);
       
       // 重新开始倒计时
       setCountdown(60);
@@ -82,7 +82,7 @@ const VerificationCodeScreen: React.FC = () => {
     }
   };
 
-  // 验证码登录/注册
+  // 验证码登录/注册（合并逻辑：先尝试登录，失败则自动注册）
   const handlePhoneVerification = async () => {
     if (!verificationCode.trim()) {
       Alert.alert('提示', '请输入验证码');
@@ -96,11 +96,53 @@ const VerificationCodeScreen: React.FC = () => {
 
     setIsLoading(true);
     try {
-      if (authMode === 'register') {
-        // 注册模式 - 使用手机号作为用户名
+      // 先尝试登录
+      const loginResult = await authService.loginWithPhone(
+        phoneNumber,
+        verificationCode,
+        verificationId
+      );
+      
+      // 检查账户是否被删除
+      if (!loginResult.success && loginResult.error?.code === 'ACCOUNT_DELETED') {
+        Alert.alert(
+          '账户已删除',
+          loginResult.error.message || '您的账户已被删除。如需恢复账户，请发送邮件至 support@faceglow.app 申请恢复。',
+          [
+            { text: '确定', onPress: () => {
+              // 尝试打开邮件客户端
+              Linking.openURL('mailto:support@faceglow.app?subject=申请恢复账户&body=您好，我想申请恢复我的账户。');
+            }}
+          ]
+        );
+        return;
+      }
+      
+      // 登录成功
+      if (loginResult.success && loginResult.data) {
+        setAuthData(loginResult.data);
+        showSuccessToast('登录成功！');
+        setTimeout(() => {
+          navigation.popToTop();
+        }, 500);
+        return;
+      }
+      
+      // 登录失败，检查是否是用户不存在
+      const errorMessage = loginResult.error?.message || '';
+      const isUserNotFound = 
+        errorMessage.includes('用户不存在') ||
+        errorMessage.includes('用户未找到') ||
+        errorMessage.includes('user not found') ||
+        errorMessage.includes('invalid_grant') ||
+        errorMessage.includes('用户不存在或密码错误');
+      
+      if (isUserNotFound) {
+        // 用户不存在，自动尝试注册
+        console.log('用户不存在，自动尝试注册...');
         const autoUsername = `user_${phoneNumber}`;
         
-        const result = await authService.registerWithPhone(
+        const registerResult = await authService.registerWithPhone(
           phoneNumber,
           autoUsername,
           verificationCode,
@@ -108,51 +150,18 @@ const VerificationCodeScreen: React.FC = () => {
           undefined  // 不设置密码
         );
         
-        if (result.success && result.data) {
-          // 账户状态已在 authService 中检查，直接保存 token 并登录
-          setAuthData(result.data);
+        if (registerResult.success && registerResult.data) {
+          setAuthData(registerResult.data);
           showSuccessToast('注册成功！');
-          // 返回首页
           setTimeout(() => {
             navigation.popToTop();
           }, 500);
         } else {
-          Alert.alert('注册失败', result.error?.message || '未知错误');
+          Alert.alert('注册失败', registerResult.error?.message || '未知错误');
         }
       } else {
-        // 验证码登录模式
-        const result = await authService.loginWithPhone(
-          phoneNumber,
-          verificationCode,
-          verificationId
-        );
-        
-        // 检查账户是否被删除（已在 authService 中检查，但需要处理错误）
-        if (!result.success && result.error?.code === 'ACCOUNT_DELETED') {
-          Alert.alert(
-            '账户已删除',
-            result.error.message || '您的账户已被删除。如需恢复账户，请发送邮件至 support@faceglow.app 申请恢复。',
-            [
-              { text: '确定', onPress: () => {
-                // 尝试打开邮件客户端
-                Linking.openURL('mailto:support@faceglow.app?subject=申请恢复账户&body=您好，我想申请恢复我的账户。');
-              }}
-            ]
-          );
-          return;
-        }
-        
-        if (result.success && result.data) {
-          // 账户状态已在 authService 中检查，直接保存 token 并登录
-          setAuthData(result.data);
-          showSuccessToast('登录成功！');
-          // 返回首页
-          setTimeout(() => {
-            navigation.popToTop();
-          }, 500);
-        } else {
-          Alert.alert('登录失败', result.error?.message || '未知错误');
-        }
+        // 其他错误（如验证码错误等）
+        Alert.alert('登录失败', errorMessage || '未知错误');
       }
     } catch (error: any) {
       Alert.alert('操作失败', error.message || '未知错误');
@@ -162,25 +171,9 @@ const VerificationCodeScreen: React.FC = () => {
   };
 
 
-  // 打开用户协议
-  const handleOpenUserAgreement = () => {
-    navigation.navigate('WebView', {
-      url: 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
-      title: '服务条款',
-    });
-  };
-
-  // 打开隐私政策
-  const handleOpenPrivacyPolicy = () => {
-    navigation.navigate('WebView', {
-      url: 'https://xuhanpeace.github.io/facegolow-support/privacy-policy.html',
-      title: '隐私政策',
-    });
-  };
-
   // 渲染标题
   const getTitle = () => {
-    return authMode === 'register' ? '验证手机号' : '验证码登录';
+    return '验证手机号';
   };
 
   return (
@@ -201,6 +194,11 @@ const VerificationCodeScreen: React.FC = () => {
             <Text style={styles.title}>{getTitle()}</Text>
             <Text style={styles.subtitle}>
               验证码已发送至 {phoneNumber.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')}
+            </Text>
+
+            {/* 提示文字 */}
+            <Text style={styles.hintText}>
+              系统将自动识别您的账号，如未注册将自动为您创建账号
             </Text>
 
             {/* 验证码输入 */}
@@ -236,7 +234,7 @@ const VerificationCodeScreen: React.FC = () => {
               </View>
 
               <GradientButton
-                title={authMode === 'register' ? '完成注册' : '登录'}
+                title="确认"
                 onPress={handlePhoneVerification}
                 disabled={!verificationCode.trim()}
                 loading={isLoading}
@@ -296,9 +294,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
     textAlign: 'left',
-    marginBottom: 40,
+    marginBottom: 12,
     opacity: 0.8,
     lineHeight: 22,
+  },
+  hintText: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.6)',
+    textAlign: 'left',
+    marginBottom: 28,
+    lineHeight: 18,
   },
   inputContainer: {
     marginBottom: 40,

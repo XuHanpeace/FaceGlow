@@ -9,12 +9,10 @@ import { navigate } from '../navigation/navigationUtils';
  */
 const LoginPromptManager: React.FC = () => {
   const [visible, setVisible] = useState(false);
-  const [showReason, setShowReason] = useState<'anonymous' | 'authLost'>('anonymous');
 
   useEffect(() => {
     // 设置显示回调
-    loginPromptService.setShowCallback((reason) => {
-      setShowReason(reason);
+    loginPromptService.setShowCallback(() => {
       setVisible(true);
     });
 
@@ -36,14 +34,8 @@ const LoginPromptManager: React.FC = () => {
 
   const handleLogin = () => {
     setVisible(false);
-    // 导航到登录页面（手机号登录模式）
+    // 导航到登录/注册页面（已合并，系统会自动识别）
     navigate('NewAuth', {});
-  };
-
-  const handleRegister = () => {
-    setVisible(false);
-    // 导航到注册页面，传递 initialMode 参数强制显示注册模式
-    navigate('NewAuth', { initialMode: 'register' });
   };
 
   return (
@@ -51,7 +43,6 @@ const LoginPromptManager: React.FC = () => {
       visible={visible}
       onClose={handleClose}
       onLogin={handleLogin}
-      onRegister={handleRegister}
     />
   );
 };
