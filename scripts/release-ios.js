@@ -152,12 +152,31 @@ async function main() {
 
     // 8. Upload JS Bundle
     console.log("\n📦 Step 7: Uploading JS Bundle to Pushy...");
-    await runCommand('npx', ['react-native-update-cli', 'bundle', '--platform', 'ios'], {
-      inputs: [
-        { prompt: '(Y/N)', value: 'Y', sent: false },
-        { prompt: 'upload', value: 'Y', sent: false }
-      ]
-    });
+    let bundleOutput = '';
+    try {
+      bundleOutput = await runCommand('npx', ['react-native-update-cli', 'bundle', '--platform', 'ios'], {
+        inputs: [
+          { prompt: '(Y/N)', value: 'Y', sent: false },
+          { prompt: 'upload', value: 'Y', sent: false },
+          { prompt: '输入版本名称', value: version, sent: false },
+          { prompt: '输入版本描述', value: `Initial bundle for version ${version}`, sent: false },
+          { prompt: '输入自定义的 meta info', value: 'none', sent: false },
+          { prompt: '是否现在将此热更应用到原生包上', value: 'Y', sent: false },
+          { prompt: '输入原生包 id', value: '', sent: false } // Will need to extract from IPA upload or manual input
+        ]
+      });
+    } catch (error) {
+      console.warn('⚠️  Bundle upload completed with warnings. Please check binding manually.');
+    }
+
+    // Try to extract bundle ID and native package ID for reference
+    const bundleIdMatch = bundleOutput.match(/已成功上传新热更包 \(id: (\d+)\)/);
+    if (bundleIdMatch) {
+      console.log(`\n✅ Bundle uploaded! Bundle ID: ${bundleIdMatch[1]}`);
+      console.log(`\n💡 If binding failed, please bind manually in Pushy dashboard:`);
+      console.log(`   - Bundle ID: ${bundleIdMatch[1]}`);
+      console.log(`   - Native Version: ${version}`);
+    }
 
     console.log("\n🎉🎉🎉 Full Release Process Completed! 🎉🎉🎉");
 

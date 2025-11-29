@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,20 +7,71 @@ import {
   ScrollView,
   StatusBar,
   Image,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import BackButton from '../components/BackButton';
+import { useUpdate } from 'react-native-update';
+
 type AboutUsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 import { appVersion, jsVersion } from '../config/version';
 
 const AboutUsScreen: React.FC = () => {
   const navigation = useNavigation<AboutUsScreenNavigationProp>();
+  const { checkUpdate, downloadUpdate, switchVersion, updateInfo, currentHash } = useUpdate();
+  const [checking, setChecking] = useState(false);
   
   const handleBackPress = () => {
     navigation.goBack();
+  };
+
+  const handleCheckUpdate = async () => {
+    if (checking) return;
+    setChecking(true);
+    try {
+      const info = await checkUpdate();
+      console.log('Update info:', info);
+      
+      if (info?.update) {
+        Alert.alert(
+          '发现新版本',
+          `版本: ${info.name}\n描述: ${info.description}`,
+          [
+            { text: '取消', style: 'cancel' },
+            { 
+              text: '立即更新', 
+              onPress: async () => {
+                try {
+                  // 注意：Pushy 的 downloadUpdate 没有返回具体的进度对象给 await
+                  // 这里简化处理，直接下载后重启
+                  Alert.alert('正在下载', '请稍候...');
+                  const hash = await downloadUpdate();
+                  if (hash) {
+                    Alert.alert('下载完成', '即将重启应用以生效', [
+                      { text: '确定', onPress: () => switchVersion() }
+                    ]);
+                  }
+                } catch (err) {
+                  Alert.alert('更新失败', String(err));
+                }
+              }
+            }
+          ]
+        );
+      } else if (info.upToDate) {
+        Alert.alert('提示', '当前已是最新版本');
+      } else {
+        Alert.alert('提示', `检查结果: ${JSON.stringify(info)}`);
+      }
+    } catch (err) {
+      Alert.alert('检查更新出错', String(err));
+    } finally {
+      setChecking(false);
+    }
   };
 
   const handleOpenPrivacyPolicy = () => {
@@ -58,7 +109,7 @@ const AboutUsScreen: React.FC = () => {
       {/* 头部导航 */}
       <View style={styles.header}>
         <BackButton iconType="close" onPress={handleBackPress} absolute={false} />
-        <Text style={styles.headerTitle}>关于我们</Text>
+        <Text style={styles.headerTitle}>关于我们123456</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -77,7 +128,33 @@ const AboutUsScreen: React.FC = () => {
         </View>
 
         {/* 版本号 */}
-        <Text style={styles.versionText}>App v{appVersion} (Bundle v{jsVersion})</Text>
+        <Text style={styles.versionText}>
+          App v{appVersion} (Bundle v{jsVersion}){'\n'}
+          Hash: {currentHash ? currentHash.substring(0, 8) : 'Default'}
+        </Text>
+
+        {/* 手动检查更新按钮 */}
+        <TouchableOpacity 
+          style={styles.checkButton} 
+          onPress={handleCheckUpdate}
+          disabled={checking}
+        >
+          {checking ? (
+            <ActivityIndicator size="small" color="#000" />
+          ) : (
+            <Text style={styles.checkButtonText}>检查更新</Text>
+          )}
+        </TouchableOpacity>
+
+        {/* Pushy 热更新测试文案 */}
+        <View style={styles.serviceSection}>
+          <Text style={styles.testLabel}>🔥 Pushy 热更新测试 - V6</Text>
+          <Text style={styles.testDesc}>
+            这是第六次热更新测试（完整流程验证）。
+            如果你看到这段文字，说明从 IPA 内置的 1.0.11 成功热更新到了新版本！
+            热更新功能完全正常！🎉🎉🎉
+          </Text>
+        </View>
 
         {/* App 服务描述 */}
         <View style={styles.serviceSection}>
@@ -172,16 +249,44 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.6)',
     fontSize: 14,
     textAlign: 'center',
-    marginBottom: 40,
+    marginBottom: 20,
+  },
+  checkButton: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    alignSelf: 'center',
+    marginBottom: 30,
+    minWidth: 120,
+    alignItems: 'center',
+  },
+  checkButtonText: {
+    color: '#000',
+    fontSize: 14,
+    fontWeight: '600',
   },
   serviceSection: {
-    marginBottom: 60,
+    marginBottom: 40,
     paddingHorizontal: 10,
   },
   serviceText: {
     color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 15,
     lineHeight: 24,
+    textAlign: 'center',
+  },
+  testLabel: {
+    color: '#FFB347',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  testDesc: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 13,
+    lineHeight: 20,
     textAlign: 'center',
   },
   footer: {
@@ -221,4 +326,3 @@ const styles = StyleSheet.create({
 });
 
 export default AboutUsScreen;
-

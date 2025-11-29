@@ -7,12 +7,12 @@
 
 import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { StyleSheet, View, StatusBar} from 'react-native';
+import { StyleSheet, View, StatusBar, Platform } from 'react-native';
 import { Provider } from 'react-redux';
 import ToastProvider from 'toastify-react-native';
 import StackNavigator from './src/navigation/StackNavigator';
 import CustomToast from './src/components/CustomToast';
-import {RootStackParamList} from './src/types/navigation';
+import { RootStackParamList } from './src/types/navigation';
 import { ModalProvider } from './src/components/modal';
 import { store } from './src/store';
 import { shareService } from './src/services/shareService';
@@ -23,6 +23,21 @@ import { loginPromptService } from './src/services/loginPromptService';
 import CLOUDBASE_CONFIG from './src/config/cloudbase';
 import LoginPromptManager from './src/components/LoginPromptManager';
 import { navigationRef } from './src/navigation/navigationUtils';
+
+// Pushy 集成
+import { Pushy, UpdateProvider } from 'react-native-update';
+import _updateConfig from './update.json';
+const { appKey } = _updateConfig[Platform.OS as keyof typeof _updateConfig] || {};
+
+// 初始化 Pushy Client
+const pushyClient = new Pushy({
+  appKey,
+  checkStrategy: "both",
+  updateStrategy: "alwaysAlert",
+  // 开发环境开启 debug 模式，可以看到检查更新的日志，但不会真正应用更新
+  // 只有在 Release 包中才会真正下载并应用更新
+  // debug: __DEV__, 
+});
 
 declare global {
   namespace ReactNavigation {
@@ -58,7 +73,7 @@ function App(): JSX.Element {
         }
 
         // 初始化微信SDK
-        const { APP_ID, UNIVERSAL_LINK } = CLOUDBASE_CONFIG.WECHAT;
+        const { APP_ID } = CLOUDBASE_CONFIG.WECHAT;
         
         // 如果配置了真实的AppId（不是占位符），则初始化
         if (APP_ID && !APP_ID.includes('your_app_id')) {
@@ -88,28 +103,30 @@ function App(): JSX.Element {
   }, []);
   
   return (
-    <Provider store={store}>
-      <ModalProvider>
-        <StatusBar barStyle="light-content" translucent={true} backgroundColor="transparent" />
-        <View style={styles.container}>
-          <NavigationContainer ref={navigationRef}>
-            <StackNavigator />
-          </NavigationContainer>
-        </View>
-       
-        <LoginPromptManager />
-      </ModalProvider>
-       <ToastProvider
-          config={{
-            success: (props) => <CustomToast {...props} type="success" />,
-            error: (props) => <CustomToast {...props} type="error" />,
-            info: (props) => <CustomToast {...props} type="info" />,
-            warn: (props) => <CustomToast {...props} type="warn" />,
-          }}
-          position="top"
-          theme="dark"
-        />
-    </Provider>
+    <UpdateProvider client={pushyClient}>
+      <Provider store={store}>
+        <ModalProvider>
+          <StatusBar barStyle="light-content" translucent={true} backgroundColor="transparent" />
+          <View style={styles.container}>
+            <NavigationContainer ref={navigationRef}>
+              <StackNavigator />
+            </NavigationContainer>
+          </View>
+         
+          <LoginPromptManager />
+        </ModalProvider>
+         <ToastProvider
+            config={{
+              success: (props) => <CustomToast {...props} type="success" />,
+              error: (props) => <CustomToast {...props} type="error" />,
+              info: (props) => <CustomToast {...props} type="info" />,
+              warn: (props) => <CustomToast {...props} type="warn" />,
+            }}
+            position="top"
+            theme="dark"
+            />
+      </Provider>
+    </UpdateProvider>
   );
 }
 
