@@ -1,21 +1,16 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import COSUploadTestScreen from '../screens/COSUploadTestScreen';
-import DatabaseTestScreen from '../screens/DatabaseTestScreen';
 import NewHomeScreen from '../screens/NewHomeScreen';
 import BeforeCreationScreen from '../screens/BeforeCreationScreen';
 import CreationResultScreen from '../screens/CreationResultScreen';
 import AlbumMarketScreen from '../screens/AlbumMarketScreen';
 import NewProfileScreen from '../screens/NewProfileScreen';
-import TestCenterScreen from '../screens/TestCenterScreen';
 import SelfieGuideScreen from '../screens/SelfieGuideScreen';
 import NewAuthScreen from '../screens/NewAuthScreen';
 import VerificationCodeScreen from '../screens/VerificationCodeScreen';
 import SubscriptionScreen from '../screens/SubscriptionScreen';
 import CoinPurchaseScreen from '../screens/CoinPurchaseScreen';
-import ServiceTestScreen from '../screens/ServiceTestScreen';
-import SubscriptionTestScreen from '../screens/SubscriptionTestScreen';
 import UserWorkPreviewScreen from '../screens/UserWorkPreviewScreen';
 import AboutUsScreen from '../screens/AboutUsScreen';
 import WebViewScreen from '../screens/WebViewScreen';
@@ -69,13 +64,6 @@ const StackNavigator = () => {
         }}
       />
       <Stack.Screen
-        name="TestCenter"
-        component={TestCenterScreen}
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
         name="SelfieGuide"
         component={SelfieGuideScreen}
         options={{
@@ -122,20 +110,6 @@ const StackNavigator = () => {
         }}
       />
       <Stack.Screen
-        name="ServiceTest"
-        component={ServiceTestScreen}
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="SubscriptionTest"
-        component={SubscriptionTestScreen}
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
         name="UserWorkPreview"
         component={UserWorkPreviewScreen}
         options={{
@@ -158,24 +132,6 @@ const StackNavigator = () => {
           headerShown: false,
           animation: 'slide_from_bottom',
           animationDuration: 250,
-        }}
-      />
-      <Stack.Screen
-        name="COSUploadTest"
-        component={COSUploadTestScreen}
-        options={{
-          headerShown: true,
-          headerBackTitle: '返回',
-          title: 'COS上传测试',
-        }}
-      />
-      <Stack.Screen
-        name="DatabaseTest"
-        component={DatabaseTestScreen}
-        options={{
-          headerShown: true,
-          headerBackTitle: '返回',
-          title: '数据库测试',
         }}
       />
     </Stack.Navigator>

@@ -1,5 +1,4 @@
-import { Platform, PermissionsAndroid, Alert, NativeModules } from 'react-native';
-import * as WeChat from 'react-native-wechat-lib';
+import { Platform, PermissionsAndroid, Alert } from 'react-native';
 import RNFS from 'react-native-fs';
 import { showSuccessToast } from '../utils/toast';
 
@@ -16,43 +15,10 @@ try {
 
 /**
  * 分享服务
- * 提供图片保存、微信分享等功能
+ * 提供图片保存等功能
  */
 class ShareService {
-  private isWeChatRegistered = false;
   private showModalCallback: ((imageUrl: string) => void) | null = null;
-
-  /**
-   * 初始化微信SDK
-   */
-  async initWeChat(appId: string): Promise<boolean> {
-    try {
-      await WeChat.registerApp(appId, 'https://faceglow.app');
-      this.isWeChatRegistered = true;
-      console.log('✅ 微信SDK初始化成功');
-      return true;
-    } catch (error) {
-      console.error('❌ 微信SDK初始化失败:', error);
-      return false;
-    }
-  }
-
-  /**
-   * 检查微信是否已安装
-   */
-  async isWeChatInstalled(): Promise<boolean> {
-    try {
-      // 直接检查，不需要先注册
-      // react-native-wechat-lib 的 isWXAppInstalled 方法可以独立调用
-      const installed = await WeChat.isWXAppInstalled();
-      console.log('✅ 微信安装状态:', installed);
-      return installed;
-    } catch (error: any) {
-      console.warn('⚠️ 检查微信安装状态失败（可能未安装微信）:', error.message);
-      // 检查失败通常意味着未安装微信，返回false
-      return false;
-    }
-  }
 
   /**
    * 请求存储权限（Android）
@@ -198,78 +164,6 @@ class ShareService {
   }
 
   /**
-   * 分享图片到微信好友
-   * @param imageUrl 图片URL
-   * @param title 标题（可选）
-   * @param description 描述（可选）
-   */
-  async shareToWeChatSession(
-    imageUrl: string,
-    title?: string,
-    description?: string
-  ): Promise<{ success: boolean; error?: string }> {
-    try {
-      // 检查微信是否安装
-      const installed = await this.isWeChatInstalled();
-      if (!installed) {
-        return {
-          success: false,
-          error: '未安装微信，无法分享',
-        };
-      }
-
-      // 直接使用网络图片URL分享
-      console.log('📤 分享图片到微信好友:', imageUrl);
-      await WeChat.shareImage({
-        imageUrl: imageUrl,
-        scene: 0, // 0: 会话, 1: 朋友圈, 2: 收藏
-      });
-
-      console.log('✅ 分享到微信成功');
-      return { success: true };
-    } catch (error: any) {
-      console.error('❌ 分享到微信失败:', error);
-      return {
-        success: false,
-        error: error.message || '分享失败',
-      };
-    }
-  }
-
-  /**
-   * 分享图片到微信朋友圈
-   * @param imageUrl 图片URL
-   */
-  async shareToWeChatTimeline(imageUrl: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      // 检查微信是否安装
-      const installed = await this.isWeChatInstalled();
-      if (!installed) {
-        return {
-          success: false,
-          error: '未安装微信，无法分享',
-        };
-      }
-
-      // 直接使用网络图片URL分享
-      console.log('📤 分享图片到朋友圈:', imageUrl);
-      await WeChat.shareImage({
-        imageUrl: imageUrl,
-        scene: 1, // 0: 会话, 1: 朋友圈, 2: 收藏
-      });
-
-      console.log('✅ 分享到朋友圈成功');
-      return { success: true };
-    } catch (error: any) {
-      console.error('❌ 分享到朋友圈失败:', error);
-      return {
-        success: false,
-        error: error.message || '分享失败',
-      };
-    }
-  }
-
-  /**
    * 设置显示分享Modal的回调
    * @param callback 显示Modal的回调函数
    */
@@ -298,28 +192,6 @@ class ShareService {
                 showSuccessToast('图片已保存到相册');
               } else {
                 Alert.alert('❌ 失败', result.error || '保存失败');
-              }
-            },
-          },
-          {
-            text: '分享给微信好友',
-            onPress: async () => {
-              const result = await this.shareToWeChatSession(imageUrl);
-              if (result.success) {
-                showSuccessToast('分享成功');
-              } else {
-                Alert.alert('❌ 失败', result.error || '分享失败');
-              }
-            },
-          },
-          {
-            text: '分享到朋友圈',
-            onPress: async () => {
-              const result = await this.shareToWeChatTimeline(imageUrl);
-              if (result.success) {
-                showSuccessToast('分享成功');
-              } else {
-                Alert.alert('❌ 失败', result.error || '分享失败');
               }
             },
           },

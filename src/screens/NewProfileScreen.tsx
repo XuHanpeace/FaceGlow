@@ -132,25 +132,6 @@ const NewProfileScreen: React.FC = () => {
     navigation.goBack();
   };
 
-  // ... (其他函数保持不变)
-
-  const handleGiftPress = () => {
-    // 处理礼物功能
-    console.log('Gift pressed');
-    navigation.navigate('TestCenter')
-  };
-               
-  const handleSharePress = () => {
-    // 处理分享功能
-    console.log('Share pressed');
-    navigation.navigate('TestCenter')
-  };
-
-  const handleContactsPress = () => {
-    // 处理查看联系人创作
-    console.log('Contacts pressed');
-  };
-
   // 处理头像选择
   const handleAvatarSelect = async (selfieUrl: string | null) => {
     if (!user?.uid) {

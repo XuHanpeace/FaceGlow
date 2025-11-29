@@ -37,7 +37,7 @@ const LoginPromptManager: React.FC = () => {
   const handleLogin = () => {
     setVisible(false);
     // 导航到登录页面（手机号登录模式）
-    navigate('NewAuth');
+    navigate('NewAuth', {});
   };
 
   const handleRegister = () => {

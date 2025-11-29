@@ -6,8 +6,21 @@ import { RootStackParamList } from '../types/navigation';
 export const navigationRef = createRef<NavigationContainerRef<RootStackParamList>>();
 
 // 导航到指定屏幕
-export function navigate(name: string, params?: object) {
-  navigationRef.current?.navigate(name, params);
+export function navigate<RouteName extends keyof RootStackParamList>(
+  name: RouteName,
+  ...args: RootStackParamList[RouteName] extends undefined
+    ? []
+    : [RootStackParamList[RouteName]]
+) {
+  const params = args[0];
+  if (params !== undefined) {
+    (navigationRef.current?.navigate as (name: RouteName, params: RootStackParamList[RouteName]) => void)(
+      name,
+      params
+    );
+  } else {
+    (navigationRef.current?.navigate as (name: RouteName) => void)(name);
+  }
 }
 
 // 返回上一个屏幕
@@ -16,14 +29,37 @@ export function goBack() {
 }
 
 // 重置导航到指定路由
-export function reset(name: string, params?: object) {
+export function reset<RouteName extends keyof RootStackParamList>(
+  name: RouteName,
+  params?: RootStackParamList[RouteName] extends undefined
+    ? undefined
+    : RootStackParamList[RouteName]
+) {
   navigationRef.current?.reset({
     index: 0,
-    routes: [{ name, params }],
+    routes: [
+      {
+        name,
+        params,
+      },
+    ] as never,
   });
 }
 
 // 压入新的路由
-export function push(name: string, params?: object) {
-  navigationRef.current?.navigate(name, params);
+export function push<RouteName extends keyof RootStackParamList>(
+  name: RouteName,
+  ...args: RootStackParamList[RouteName] extends undefined
+    ? []
+    : [RootStackParamList[RouteName]]
+) {
+  const params = args[0];
+  if (params !== undefined) {
+    (navigationRef.current?.navigate as (name: RouteName, params: RootStackParamList[RouteName]) => void)(
+      name,
+      params
+    );
+  } else {
+    (navigationRef.current?.navigate as (name: RouteName) => void)(name);
+  }
 } 

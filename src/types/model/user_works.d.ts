@@ -1,7 +1,6 @@
 /**
  * 用户作品数据模型接口
  * 对应CloudBase数据库中的user_works集合
- * 基于test.json数据结构
  */
 export interface UserWorkModel {
   /** 文档ID（CloudBase自动生成） */

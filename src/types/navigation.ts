@@ -16,13 +16,8 @@ export type RootStackParamList = {
     activityId: string;
     activityName: string;
   };
-  Settings: undefined;
-  Profile: undefined;
   NewProfile: undefined;
-  TestCenter: undefined;
   SelfieGuide: undefined;
-  Notifications: undefined;
-  Login: undefined;
   NewAuth: {
     initialMode?: 'phone-verify' | 'register';
   } | undefined;
@@ -32,11 +27,7 @@ export type RootStackParamList = {
     authMode: 'phone-verify' | 'register';
   };
   Subscription: undefined;
-  RevenueCatSubscription: undefined;
-  RevenueCatPaywall: undefined;
   CoinPurchase: undefined;
-  ServiceTest: undefined;
-  SubscriptionTest: undefined;
   UserWorkPreview: {
     work?: UserWorkModel;
     initialWorkId?: string;
@@ -47,11 +38,4 @@ export type RootStackParamList = {
     url: string;
     title?: string;
   };
-  Detail: {
-    id: string;
-    title: string;
-    content: string;
-  };
-  COSUploadTest: undefined;
-  DatabaseTest: undefined;
 };

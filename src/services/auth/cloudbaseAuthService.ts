@@ -3,7 +3,6 @@ import { MMKV } from 'react-native-mmkv';
 import { getCloudbaseConfig } from '../../config/cloudbase';
 import { CloudBaseAuthResponse, RegisterRequest, LoginRequest, AuthCredentials, STORAGE_KEYS } from '../../types/auth';
 import { userDataService } from '../database/userDataService';
-import { authService } from './authService';
 
 // 获取腾讯云开发配置
 const CLOUDBASE_CONFIG = getCloudbaseConfig();

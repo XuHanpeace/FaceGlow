@@ -5,40 +5,30 @@ import {
   TouchableOpacity,
   StyleSheet,
   StatusBar,
-  Dimensions,
   TextInput,
   Alert,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import { useAuthState } from '../hooks/useAuthState';
 import { authService, verificationService } from '../services/auth';
-import { userDataService } from '../services/database/userDataService';
 import { Linking } from 'react-native';
 import GradientButton from '../components/GradientButton';
 import { showSuccessToast } from '../utils/toast';
 import BackButton from '../components/BackButton';
 
 type VerificationCodeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type VerificationCodeScreenRouteProp = RouteProp<RootStackParamList, 'VerificationCode'>;
 
-interface VerificationCodeScreenProps {
-  route: {
-    params: {
-      phoneNumber: string;
-      verificationId: string;
-      authMode: 'phone-verify' | 'register';
-    };
-  };
-}
-
-const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({ route }) => {
+const VerificationCodeScreen: React.FC = () => {
   const navigation = useNavigation<VerificationCodeScreenNavigationProp>();
+  const route = useRoute<VerificationCodeScreenRouteProp>();
   const { setAuthData } = useAuthState();
   
   const { phoneNumber, verificationId, authMode } = route.params;

@@ -257,7 +257,7 @@ const UserWorkPreviewScreen: React.FC = () => {
       <FlatList
         data={allWorks}
         renderItem={renderWorkItem}
-        keyExtractor={(item) => item._id || (item.created_at ? item.created_at.toString() : Math.random().toString())}
+        keyExtractor={(item) => item._id || (item.createdAt ? item.createdAt!.toString() : Math.random().toString())}
         pagingEnabled
         showsVerticalScrollIndicator={false}
         decelerationRate="fast"

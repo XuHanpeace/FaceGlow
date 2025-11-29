@@ -15,12 +15,10 @@ import CustomToast from './src/components/CustomToast';
 import { RootStackParamList } from './src/types/navigation';
 import { ModalProvider } from './src/components/modal';
 import { store } from './src/store';
-import { shareService } from './src/services/shareService';
 import { appLifecycleManager } from './src/services/auth/appLifecycleManager';
 import { revenueCatService } from './src/services/revenueCat/revenueCatService';
 import { authService } from './src/services/auth/authService';
 import { loginPromptService } from './src/services/loginPromptService';
-import CLOUDBASE_CONFIG from './src/config/cloudbase';
 import LoginPromptManager from './src/components/LoginPromptManager';
 import { navigationRef } from './src/navigation/navigationUtils';
 
@@ -71,22 +69,6 @@ function App(): JSX.Element {
         } catch (error) {
           console.error('❌ RevenueCat SDK 初始化失败:', error);
           // RevenueCat 初始化失败不影响其他功能
-        }
-
-        // 初始化微信SDK
-        const { APP_ID } = CLOUDBASE_CONFIG.WECHAT;
-        
-        // 如果配置了真实的AppId（不是占位符），则初始化
-        if (APP_ID && !APP_ID.includes('your_app_id')) {
-          console.log('🔄 初始化微信SDK...');
-          const success = await shareService.initWeChat(APP_ID);
-          if (success) {
-            console.log('✅ 微信SDK初始化成功');
-          } else {
-            console.warn('⚠️ 微信SDK初始化失败（不影响其他功能）');
-          }
-        } else {
-          console.log('ℹ️ 微信AppId未配置，跳过微信SDK初始化');
         }
       } catch (error) {
         console.error('❌ 应用初始化异常:', error);

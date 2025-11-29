@@ -35,9 +35,9 @@ class BalanceService {
     try {
       console.log('检查用户余额:', { userId, requiredAmount });
 
-      const userResult = await userDataService.getUserData(userId);
+      const userResult = await userDataService.getUserByUid(userId);
       
-      if (!userResult.success || !userResult.data) {
+      if (!userResult.success || !userResult.data?.record) {
         return {
           sufficient: false,
           currentBalance: 0,
@@ -46,7 +46,7 @@ class BalanceService {
         };
       }
 
-      const currentBalance = userResult.data.balance || 0;
+      const currentBalance = userResult.data?.record.balance || 0;
       const sufficient = currentBalance >= requiredAmount;
       const shortfall = sufficient ? 0 : requiredAmount - currentBalance;
 
@@ -86,24 +86,22 @@ class BalanceService {
       }
 
       // 获取用户当前数据
-      const userResult = await userDataService.getUserData(userId);
-      if (!userResult.success || !userResult.data) {
+      const userResult = await userDataService.getUserByUid(userId);
+      if (!userResult.success || !userResult.data?.record) {
         return {
           success: false,
           error: '用户不存在',
         };
       }
 
-      const currentUser = userResult.data;
-      const newBalance = currentUser.balance - amount;
+      const currentUser = userResult.data?.record;
+      const newBalance = currentUser?.balance - amount;
 
       // 创建交易记录（先创建为待处理状态）
       const transactionResult = await transactionService.createTransaction({
         user_id: userId,
         transaction_type: 'coin_consumption',
         coin_amount: -amount,
-        balance_before: currentUser.balance || 0,
-        balance_after: newBalance,
         payment_method: 'internal',
         description,
         related_id: relatedId,
@@ -120,9 +118,8 @@ class BalanceService {
       const transactionId = transactionResult.data._id;
 
       // 更新用户余额
-      const updateResult = await userDataService.updateUserData(userId, {
+      const updateResult = await userDataService.updateUserData({
         balance: newBalance,
-        updated_at: Date.now(),
       });
 
       if (!updateResult.success) {
@@ -154,86 +151,6 @@ class BalanceService {
   }
 
   /**
-   * 充值余额（用于奖励等场景）
-   */
-  async addBalance(
-    userId: string, 
-    amount: number, 
-    description: string,
-    paymentMethod: 'system_bonus' | 'admin_gift' | 'refund' = 'system_bonus',
-    metadata?: any
-  ): Promise<DeductBalanceResult> {
-    try {
-      console.log('充值用户余额:', { userId, amount, description });
-
-      // 获取用户当前数据
-      const userResult = await userDataService.getUserData(userId);
-      if (!userResult.success || !userResult.data) {
-        return {
-          success: false,
-          error: '用户不存在',
-        };
-      }
-
-      const currentUser = userResult.data;
-      const newBalance = (currentUser.balance || 0) + amount;
-
-      // 创建交易记录
-      const transactionResult = await transactionService.createTransaction({
-        user_id: userId,
-        transaction_type: 'bonus',
-        coin_amount: amount,
-        balance_before: currentUser.balance || 0,
-        balance_after: newBalance,
-        payment_method: paymentMethod,
-        description,
-        metadata,
-      });
-
-      if (!transactionResult.success || !transactionResult.data) {
-        return {
-          success: false,
-          error: '创建交易记录失败',
-        };
-      }
-
-      const transactionId = transactionResult.data._id;
-
-      // 更新用户余额
-      const updateResult = await userDataService.updateUserData(userId, {
-        balance: newBalance,
-        updated_at: Date.now(),
-      });
-
-      if (!updateResult.success) {
-        // 如果更新用户余额失败，将交易记录标记为失败
-        await transactionService.updateTransactionStatus(transactionId, 'failed');
-        return {
-          success: false,
-          error: '更新用户余额失败',
-        };
-      }
-
-      // 更新交易状态为已完成
-      await transactionService.updateTransactionStatus(transactionId, 'completed');
-
-      console.log('余额充值成功:', { userId, amount, newBalance });
-
-      return {
-        success: true,
-        transactionId,
-        newBalance,
-      };
-    } catch (error: any) {
-      console.error('充值余额失败:', error);
-      return {
-        success: false,
-        error: error.message || '充值余额失败',
-      };
-    }
-  }
-
-  /**
    * 获取用户余额
    */
   async getUserBalance(userId: string): Promise<{
@@ -242,9 +159,9 @@ class BalanceService {
     error?: string;
   }> {
     try {
-      const userResult = await userDataService.getUserData(userId);
+      const userResult = await userDataService.getUserByUid(userId);
       
-      if (!userResult.success || !userResult.data) {
+      if (!userResult.success || !userResult.data?.record) {
         return {
           success: false,
           error: '用户不存在',
@@ -253,7 +170,8 @@ class BalanceService {
 
       return {
         success: true,
-        balance: userResult.data.balance || 0,
+        balance: userResult.data?.record.balance || 0,
+        error: undefined,
       };
     } catch (error: any) {
       console.error('获取用户余额失败:', error);

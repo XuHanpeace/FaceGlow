@@ -45,7 +45,7 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
       onProfilePress();
     } else {
       // 默认导航到个人页面
-      navigation.navigate('Profile');
+      navigation.navigate('NewProfile');
     }
   };
 

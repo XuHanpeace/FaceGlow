@@ -44,7 +44,6 @@
     "react-native-vector-icons": "^10.2.0",
     "react-native-video": "^6.18.0",
     "react-native-webview": "^13.16.0",
-    "react-native-wechat-lib": "^1.1.27",
     "react-redux": "^9.2.0",
     "toastify-react-native": "^7.2.3"
   },

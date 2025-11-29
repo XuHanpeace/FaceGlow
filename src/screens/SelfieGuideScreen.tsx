@@ -304,21 +304,6 @@ const SelfieGuideScreen: React.FC = () => {
         <Text style={styles.title}>创作AI头像</Text>
         <Text style={styles.subtitle}>别担心,这是一次性操作</Text>
 
-       
-
-        {/* 上传成功的照片展示 */}
-        {uploadedImageUrl && (
-          <View style={styles.uploadedImageContainer}>
-            <Text style={styles.uploadedImageTitle}>上传成功！</Text>
-            <Image
-              source={{ uri: uploadedImageUrl }}
-              style={styles.uploadedImage}
-              resizeMode="cover"
-            />
-            <Text style={styles.uploadedImageSubtitle}>您的自拍照已成功上传</Text>
-          </View>
-        )}
-
         {/* 过程展示区域 - selfie + temp = ai-result */}
         <View style={styles.processShowcaseContainer}>
           <View style={styles.processItem}>
