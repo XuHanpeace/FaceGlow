@@ -217,8 +217,12 @@ const NewAuthScreen: React.FC = () => {
       
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.innerContainer}>
-          {/* 关闭按钮 */}
-          <BackButton iconType="close" onPress={handleClosePress} />
+          {/* 关闭按钮 - 右侧 */}
+          <BackButton 
+            iconType="close" 
+            onPress={handleClosePress} 
+            style={{ left: undefined, right: 20 }}
+          />
 
           {/* 主要内容 */}
           <View style={styles.content}>

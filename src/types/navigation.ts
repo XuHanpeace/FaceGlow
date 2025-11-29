@@ -54,5 +54,4 @@ export type RootStackParamList = {
   };
   COSUploadTest: undefined;
   DatabaseTest: undefined;
-  Scan: undefined;
 };

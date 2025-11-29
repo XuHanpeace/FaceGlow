@@ -51,8 +51,9 @@ const BackButton: React.FC<BackButtonProps> = ({
         styles.absoluteContainer,
         {
           top: insets.top + 8,
+          left: 20, // 默认左侧
         },
-        style,
+        style, // 允许通过 style 覆盖位置
       ]
     : [
         styles.container,
@@ -89,8 +90,8 @@ const styles = StyleSheet.create({
   },
   absoluteContainer: {
     position: 'absolute',
-    left: 20,
     zIndex: 10,
+    // left 位置通过内联样式设置，允许覆盖为 right
   },
   relativeContainer: {
     // 相对定位，参与 flex 布局

@@ -22,7 +22,7 @@ import { appVersion, jsVersion } from '../config/version';
 
 const AboutUsScreen: React.FC = () => {
   const navigation = useNavigation<AboutUsScreenNavigationProp>();
-  const { checkUpdate, downloadUpdate, switchVersion, updateInfo, currentHash } = useUpdate();
+  const { checkUpdate, downloadUpdate, switchVersion } = useUpdate();
   const [checking, setChecking] = useState(false);
   
   const handleBackPress = () => {
@@ -36,18 +36,21 @@ const AboutUsScreen: React.FC = () => {
       const info = await checkUpdate();
       console.log('Update info:', info);
       
-      if (info?.update) {
+      if (!info) {
+        Alert.alert('提示', '检查更新失败，请稍后重试');
+        return;
+      }
+      
+      if ('update' in info && info.update) {
         Alert.alert(
           '发现新版本',
-          `版本: ${info.name}\n描述: ${info.description}`,
+          `版本: ${info.name || '未知'}\n描述: ${info.description || '无'}`,
           [
             { text: '取消', style: 'cancel' },
             { 
               text: '立即更新', 
               onPress: async () => {
                 try {
-                  // 注意：Pushy 的 downloadUpdate 没有返回具体的进度对象给 await
-                  // 这里简化处理，直接下载后重启
                   Alert.alert('正在下载', '请稍候...');
                   const hash = await downloadUpdate();
                   if (hash) {
@@ -62,10 +65,12 @@ const AboutUsScreen: React.FC = () => {
             }
           ]
         );
-      } else if (info.upToDate) {
+      } else if ('upToDate' in info && info.upToDate) {
         Alert.alert('提示', '当前已是最新版本');
+      } else if ('expired' in info && info.expired) {
+        Alert.alert('提示', '当前版本已过期，请前往 App Store 更新');
       } else {
-        Alert.alert('提示', `检查结果: ${JSON.stringify(info)}`);
+        Alert.alert('提示', '暂无可用更新');
       }
     } catch (err) {
       Alert.alert('检查更新出错', String(err));
@@ -108,9 +113,9 @@ const AboutUsScreen: React.FC = () => {
       
       {/* 头部导航 */}
       <View style={styles.header}>
-        <BackButton iconType="close" onPress={handleBackPress} absolute={false} />
-        <Text style={styles.headerTitle}>关于我们123456</Text>
         <View style={styles.placeholder} />
+        <Text style={styles.headerTitle}>关于我们</Text>
+        <BackButton iconType="close" onPress={handleBackPress} absolute={false} />
       </View>
 
       <ScrollView 
@@ -129,32 +134,8 @@ const AboutUsScreen: React.FC = () => {
 
         {/* 版本号 */}
         <Text style={styles.versionText}>
-          App v{appVersion} (Bundle v{jsVersion}){'\n'}
-          Hash: {currentHash ? currentHash.substring(0, 8) : 'Default'}
+          App v{appVersion} (Bundle v{jsVersion})
         </Text>
-
-        {/* 手动检查更新按钮 */}
-        <TouchableOpacity 
-          style={styles.checkButton} 
-          onPress={handleCheckUpdate}
-          disabled={checking}
-        >
-          {checking ? (
-            <ActivityIndicator size="small" color="#000" />
-          ) : (
-            <Text style={styles.checkButtonText}>检查更新</Text>
-          )}
-        </TouchableOpacity>
-
-        {/* Pushy 热更新测试文案 */}
-        <View style={styles.serviceSection}>
-          <Text style={styles.testLabel}>🔥 Pushy 热更新测试 - V6</Text>
-          <Text style={styles.testDesc}>
-            这是第六次热更新测试（完整流程验证）。
-            如果你看到这段文字，说明从 IPA 内置的 1.0.11 成功热更新到了新版本！
-            热更新功能完全正常！🎉🎉🎉
-          </Text>
-        </View>
 
         {/* App 服务描述 */}
         <View style={styles.serviceSection}>
@@ -187,6 +168,19 @@ const AboutUsScreen: React.FC = () => {
             <Text style={styles.legalLinkText}>订阅协议</Text>
           </TouchableOpacity>
         </View>
+
+        {/* 检查更新按钮 - 弱化展示 */}
+        <TouchableOpacity 
+          style={styles.checkUpdateButton} 
+          onPress={handleCheckUpdate}
+          disabled={checking}
+        >
+          {checking ? (
+            <ActivityIndicator size="small" color="rgba(255, 255, 255, 0.4)" />
+          ) : (
+            <Text style={styles.checkUpdateButtonText}>检查更新</Text>
+          )}
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -249,22 +243,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.6)',
     fontSize: 14,
     textAlign: 'center',
-    marginBottom: 20,
-  },
-  checkButton: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    alignSelf: 'center',
-    marginBottom: 30,
-    minWidth: 120,
-    alignItems: 'center',
-  },
-  checkButtonText: {
-    color: '#000',
-    fontSize: 14,
-    fontWeight: '600',
+    marginBottom: 40,
   },
   serviceSection: {
     marginBottom: 40,
@@ -274,19 +253,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 15,
     lineHeight: 24,
-    textAlign: 'center',
-  },
-  testLabel: {
-    color: '#FFB347',
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  testDesc: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 13,
-    lineHeight: 20,
     textAlign: 'center',
   },
   footer: {
@@ -305,7 +271,18 @@ const styles = StyleSheet.create({
   recordText: {
     color: 'rgba(255, 255, 255, 0.4)',
     fontSize: 11,
-    marginBottom: 24,
+    marginBottom: 16,
+  },
+  checkUpdateButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignSelf: 'center',
+    marginTop: 8,
+  },
+  checkUpdateButtonText: {
+    color: 'rgba(255, 255, 255, 0.4)',
+    fontSize: 11,
+    textDecorationLine: 'underline',
   },
   legalLinksContainer: {
     flexDirection: 'row',

@@ -38,11 +38,11 @@ const WebViewScreen: React.FC = () => {
       
       {/* 头部导航 */}
       <View style={styles.header}>
-        <BackButton iconType="close" onPress={handleBackPress} absolute={false} />
+        <View style={styles.placeholder} />
         <Text style={styles.headerTitle} numberOfLines={1}>
           {title}
         </Text>
-        <View style={styles.placeholder} />
+        <BackButton iconType="close" onPress={handleBackPress} absolute={false} />
       </View>
 
       {/* WebView */}

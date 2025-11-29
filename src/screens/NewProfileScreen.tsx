@@ -389,14 +389,7 @@ const NewProfileScreen: React.FC = () => {
       
       {/* 头部导航 */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={[styles.backButton, { backgroundColor: 'transparent' }]}
-          onPress={() => {
-            navigation.navigate('Scan');
-          }}
-        >
-          <FontAwesome name="terminal" size={20} color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.placeholder} />
         <Text style={styles.headerTitle}>简介</Text>
         <BackButton iconType="close" onPress={handleBackPress} absolute={false} />
       </View>
@@ -421,9 +414,11 @@ const NewProfileScreen: React.FC = () => {
           <View style={styles.userDetails}>
             <View style={styles.nameRow}>
               <Text style={styles.username}>{userInfo.name || userInfo.username || '未设置用户名'}</Text>
-              <TouchableOpacity style={styles.editButton} onPress={handleEditProfilePress}>
-                <FontAwesome name="pencil" size={14} color="#fff" />
-              </TouchableOpacity>
+              {isLoggedIn && (
+                <TouchableOpacity style={styles.editButton} onPress={handleEditProfilePress}>
+                  <FontAwesome name="pencil" size={14} color="#fff" />
+                </TouchableOpacity>
+              )}
             </View>
             
             {/* 会员徽章 - 仅会员显示 */}
@@ -565,15 +560,17 @@ const NewProfileScreen: React.FC = () => {
                 </View>
               </TouchableOpacity>
 
-              {/* 删除账户入口 */}
-              <View style={styles.accountActions}>
-                <TouchableOpacity 
-                  style={styles.deleteAccountButton}
-                  onPress={() => setShowDeleteConfirm(true)}
-                >
-                  <Text style={styles.deleteAccountText}>删除账户</Text>
-                </TouchableOpacity>
-              </View>
+              {/* 删除账户入口 - 仅登录用户显示 */}
+              {isLoggedIn && (
+                <View style={styles.accountActions}>
+                  <TouchableOpacity 
+                    style={styles.deleteAccountButton}
+                    onPress={() => setShowDeleteConfirm(true)}
+                  >
+                    <Text style={styles.deleteAccountText}>删除账户</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           )}
           {activeTab === 'works' && (

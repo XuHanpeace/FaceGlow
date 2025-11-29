@@ -22,8 +22,8 @@ fi
 echo "🚀 开始上传 IPA 到 Pushy..."
 echo "📦 IPA 路径: $IPA_PATH"
 
-# 使用 Pushy CLI 上传 IPA
-npx react-native-update-cli uploadIpa --platform ios --ipaPath "$IPA_PATH"
+# 使用 Pushy CLI 上传 IPA（直接传路径，不需要参数）
+npx react-native-update-cli uploadIpa "$IPA_PATH"
 
 echo "✅ IPA 上传完成！"
 
