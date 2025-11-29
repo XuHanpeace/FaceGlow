@@ -23,6 +23,8 @@ import { RootStackParamList } from '../types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+import ScanScreen from '../screens/ScanScreen';
+
 const StackNavigator = () => {
   return (
     <Stack.Navigator
@@ -31,6 +33,14 @@ const StackNavigator = () => {
         headerShown: false,
       }}
     >
+      <Stack.Screen
+        name="Scan"
+        component={ScanScreen}
+        options={{
+          headerShown: false,
+          animation: 'fade',
+        }}
+      />
       <Stack.Screen
         name="NewHome"
         component={NewHomeScreen}

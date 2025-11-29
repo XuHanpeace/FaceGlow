@@ -1,0 +1,163 @@
+const fs = require('fs');
+const path = require('path');
+const { spawn } = require('child_process');
+const readline = require('readline');
+
+// Configuration
+const packageJsonPath = path.resolve(__dirname, '../package.json');
+const configPath = path.resolve(__dirname, '../pushy-config.json');
+
+// Helper: Run Command
+function runCommand(command, args, options = {}) {
+  return new Promise((resolve, reject) => {
+    console.log(`🏃 Running: ${command} ${args.join(' ')}`);
+    
+    const proc = spawn(command, args, {
+      stdio: options.interactive ? 'inherit' : ['pipe', 'pipe', 'pipe'],
+      ...options
+    });
+
+    let output = '';
+
+    if (!options.interactive) {
+      proc.stdout.on('data', (data) => {
+        const str = data.toString();
+        output += str;
+        process.stdout.write(str);
+        
+        // Handle Inputs if any
+        if (options.inputs) {
+          options.inputs.forEach((inputConfig) => {
+            if (!inputConfig.sent && str.includes(inputConfig.prompt)) {
+              console.log(`⌨️  Providing input for: "${inputConfig.prompt}"`);
+              proc.stdin.write(inputConfig.value + '\n');
+              inputConfig.sent = true;
+            }
+          });
+        }
+      });
+
+      proc.stderr.on('data', (data) => {
+        process.stderr.write(data);
+      });
+    }
+
+    proc.on('close', (code) => {
+      if (code === 0) {
+        resolve(output);
+      } else {
+        reject(new Error(`Command failed with code ${code}`));
+      }
+    });
+  });
+}
+
+// Helper: Ask Question
+function askQuestion(query) {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) => {
+    rl.question(query, (answer) => {
+      rl.close();
+      resolve(answer.trim());
+    });
+  });
+}
+
+async function main() {
+  try {
+    console.log("🚀 Starting Full iOS Release Process...");
+
+    // 1. Load Pushy Config
+    if (!fs.existsSync(configPath)) {
+      console.error('❌ Error: pushy-config.json not found.');
+      process.exit(1);
+    }
+    const pushyConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+
+    // 2. Bump Version
+    console.log("\n📦 Step 1: Bumping Version...");
+    require('./bump-version.js'); // This runs the bump script synchronously if required or we can spawn it.
+    // Since bump-version.js is a script that runs on require if not wrapped, let's check.
+    // The current bump-version.js runs immediately.
+    // Re-reading package.json to get new version
+    delete require.cache[require.resolve(packageJsonPath)];
+    const packageJson = require(packageJsonPath);
+    const version = packageJson.version;
+    console.log(`✅ Version bumped to: ${version}`);
+
+    // 3. Git Tag
+    console.log("\n🏷️  Step 2: Git Tagging...");
+    try {
+      await runCommand('git', ['add', '.']);
+      await runCommand('git', ['commit', '-m', `chore: bump version to ${version}`]);
+      await runCommand('git', ['tag', `v${version}`]);
+      console.log(`✅ Git tag v${version} created.`);
+    } catch (e) {
+      console.warn(`⚠️  Git tagging failed (maybe no changes or tag exists): ${e.message}`);
+    }
+
+    // 4. Pod Install
+    console.log("\n🥥 Step 3: Pod Install...");
+    await runCommand('pod', ['install'], { cwd: path.resolve(__dirname, '../ios') });
+
+    // 5. Login to Pushy
+    console.log("\n🔐 Step 4: Logging in to Pushy...");
+    await runCommand('npx', ['react-native-update-cli', 'login'], {
+      inputs: [
+        { prompt: 'email:', value: pushyConfig.email, sent: false },
+        { prompt: 'password:', value: pushyConfig.password, sent: false }
+      ]
+    });
+
+    // 6. Build IPA (Manual Interaction Required)
+    console.log("\n📲 Step 5: Build IPA (Xcode Interaction Required)");
+    console.log("   ⚠️  We cannot automatically build IPA due to signing requirements.");
+    console.log("   ⚠️  Opening Xcode now...");
+    
+    await runCommand('xed', ['ios/MyCrossPlatformApp.xcworkspace']);
+
+    console.log("\n🛑  ACTION REQUIRED IN XCODE:");
+    console.log("   1. Select 'Generic iOS Device' or your device.");
+    console.log("   2. Menu: Product -> Archive.");
+    console.log("   3. In Organizer: Distribute App -> App Store Connect / Development -> Export.");
+    console.log("   4. Save the .ipa file to a known location.");
+    
+    const ipaPath = await askQuestion("\n📝 Please paste the full path to the exported .ipa file: ");
+    
+    if (!ipaPath || !fs.existsSync(ipaPath)) {
+        console.error("❌ IPA file not found at provided path.");
+        // Ask if user wants to skip IPA upload (maybe they just want to do JS bundle)
+        const skip = await askQuestion("Do you want to skip IPA upload and proceed to JS Bundle upload? (y/n): ");
+        if (skip.toLowerCase() !== 'y') {
+            process.exit(1);
+        }
+    } else {
+        // 7. Upload IPA
+        console.log("\n📤 Step 6: Uploading IPA to Pushy...");
+        await runCommand('npx', ['react-native-update-cli', 'uploadIpa', ipaPath]);
+        console.log("✅ IPA Uploaded.");
+    }
+
+    // 8. Upload JS Bundle
+    console.log("\n📦 Step 7: Uploading JS Bundle to Pushy...");
+    await runCommand('npx', ['react-native-update-cli', 'bundle', '--platform', 'ios'], {
+      inputs: [
+        { prompt: '(Y/N)', value: 'Y', sent: false },
+        { prompt: 'upload', value: 'Y', sent: false }
+      ]
+    });
+
+    console.log("\n🎉🎉🎉 Full Release Process Completed! 🎉🎉🎉");
+
+  } catch (error) {
+    console.error('\n❌ Release Failed:', error);
+    process.exit(1);
+  }
+}
+
+main();
+

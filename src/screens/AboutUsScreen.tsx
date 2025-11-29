@@ -14,10 +14,11 @@ import { RootStackParamList } from '../types/navigation';
 import BackButton from '../components/BackButton';
 type AboutUsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+import { appVersion, jsVersion } from '../config/version';
+
 const AboutUsScreen: React.FC = () => {
   const navigation = useNavigation<AboutUsScreenNavigationProp>();
-  const appVersion = '1.7';
-
+  
   const handleBackPress = () => {
     navigation.goBack();
   };
@@ -76,7 +77,7 @@ const AboutUsScreen: React.FC = () => {
         </View>
 
         {/* 版本号 */}
-        <Text style={styles.versionText}>版本 v{appVersion}</Text>
+        <Text style={styles.versionText}>App v{appVersion} (Bundle v{jsVersion})</Text>
 
         {/* App 服务描述 */}
         <View style={styles.serviceSection}>

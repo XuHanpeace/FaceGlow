@@ -389,7 +389,14 @@ const NewProfileScreen: React.FC = () => {
       
       {/* 头部导航 */}
       <View style={styles.header}>
-        <View style={styles.placeholder} />
+        <TouchableOpacity 
+          style={[styles.backButton, { backgroundColor: 'transparent' }]}
+          onPress={() => {
+            navigation.navigate('Scan');
+          }}
+        >
+          <FontAwesome name="terminal" size={20} color="#fff" />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>简介</Text>
         <BackButton iconType="close" onPress={handleBackPress} absolute={false} />
       </View>

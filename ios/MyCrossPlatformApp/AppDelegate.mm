@@ -1,4 +1,5 @@
 #import "AppDelegate.h"
+#import "RCTPushy.h"
 
 #import <React/RCTBundleURLProvider.h>
 
@@ -25,7 +26,7 @@
 #if DEBUG
   return [[RCTBundleURLProvider sharedSettings] jsBundleURLForBundleRoot:@"index"];
 #else
-  return [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];
+  return [RCTPushy bundleURL];
 #endif
 }
 

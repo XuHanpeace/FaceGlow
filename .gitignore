@@ -78,3 +78,7 @@ src/config/cosSecrets.js
 src/config/cosSecrets.local.js
 src/config/cosSecrets.prod.js
 src/config/cosSecrets.dev.js
+
+# react-native-update
+.update
+.pushypushy-config.json

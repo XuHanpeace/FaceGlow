@@ -1,0 +1,36 @@
+diff --git a/node_modules/react-native-camera-kit/src/Camera.ios.tsx b/node_modules/react-native-camera-kit/src/Camera.ios.tsx
+index 2c5c970..e28b6e8 100644
+--- a/node_modules/react-native-camera-kit/src/Camera.ios.tsx
++++ b/node_modules/react-native-camera-kit/src/Camera.ios.tsx
+@@ -8,15 +8,17 @@ import NativeCameraKitModule from './specs/NativeCameraKitModule';
+ const Camera = React.forwardRef<CameraApi, CameraProps>((props, ref) => {
+   const nativeRef = React.useRef(null);
+ 
++  const nativeProps = { ...props };
++
+   // RN doesn't support optional view props yet (sigh)
+   // so we have to use -1 to indicate 'undefined'
+   // All int/float/double props from src/specs/CameraNativeComponent.ts need be mentioned here
+-  props.zoom = props.zoom ?? -1;
+-  props.maxZoom = props.maxZoom ?? -1;
+-  props.scanThrottleDelay = props.scanThrottleDelay ?? -1;
++  nativeProps.zoom = nativeProps.zoom ?? -1;
++  nativeProps.maxZoom = nativeProps.maxZoom ?? -1;
++  nativeProps.scanThrottleDelay = nativeProps.scanThrottleDelay ?? -1;
+ 
+-  props.resetFocusTimeout = props.resetFocusTimeout ?? 0;
+-  props.resetFocusWhenMotionDetected = props.resetFocusWhenMotionDetected ?? true;
++  nativeProps.resetFocusTimeout = nativeProps.resetFocusTimeout ?? 0;
++  nativeProps.resetFocusWhenMotionDetected = nativeProps.resetFocusWhenMotionDetected ?? true;
+ 
+   React.useImperativeHandle(ref, () => ({
+     capture: async () => {
+@@ -31,7 +33,7 @@ const Camera = React.forwardRef<CameraApi, CameraProps>((props, ref) => {
+   }));
+ 
+   // @ts-expect-error props for codegen differ a bit from the user-facing ones
+-  return <NativeCamera style={{ minWidth: 100, minHeight: 100 }} ref={nativeRef} {...props} />;
++  return <NativeCamera style={{ minWidth: 100, minHeight: 100 }} ref={nativeRef} {...nativeProps} />;
+ });
+ 
+ export default Camera;
