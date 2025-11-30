@@ -1,0 +1,16 @@
+# Rules
+
+1.  **Response Language**: Always respond in **Chinese** (中文).
+2.  **Code Commit**: Do NOT commit code changes automatically without explicit permission.
+3.  **AuthGuard**: Avoid complex AuthGuard solutions; avoid rebuilding the app (e.g., `npx react-native run-ios`) for JS-only changes.
+4.  **State Management**: Implement new pages using **Redux**.
+5.  **Test Pages**: Do NOT create test pages.
+6.  **Type Safety**: Prohibit using the `any` type; ensure strict typing.
+7.  **Documentation**: Do NOT create new markdown files for every change unless requested. Record rules in this `Rules` file.
+8.  **Run iOS**: Use `npx react-native run-ios` to start the iOS app.
+9.  **Auth Logic**: `verificationId` should be passed via parameters, not stored. Server enforces expiration.
+10. **Network**: Use `axios` for network requests.
+11. **Resource Reference**: Do NOT reference non-existent resources.
+12. **Execution**: Do NOT immediately execute planned commands unless requested.
+13. **Module Imports**: Ensure module import paths are correct when generating code. (New)
+

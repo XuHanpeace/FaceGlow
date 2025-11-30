@@ -37,17 +37,26 @@ const AlbumCard: React.FC<AlbumCardProps> = ({
           style={styles.image}
           resizeMode="cover"
         />
-        {album.level !== '0' && (
+        {album.level !== '0' && !album.srcImage && (
           <View style={styles.premiumBadge}>
             <FontAwesome name="star" size={12} color="#FFD700" />
           </View>
         )}
-        {/* 显示相册内模板数量 */}
-        <View style={styles.templateCountBadge}>
-          <Text style={styles.templateCountText}>
-            {album.template_list.length} 模板
-          </Text>
-        </View>
+        {/* 显示相册内模板数量，如果是异步任务(有srcImage)则不显示 */}
+        {!album.srcImage && (
+          <View style={styles.templateCountBadge}>
+            <Text style={styles.templateCountText}>
+              {album.template_list.length} 模板
+            </Text>
+          </View>
+        )}
+        
+        {/* 异步任务源图片 */}
+        {album.srcImage && (
+          <View style={styles.srcImageContainer}>
+            <Image source={{ uri: album.srcImage }} style={styles.srcImage} />
+          </View>
+        )}
       </View>
       
       <View style={styles.infoContainer}>
@@ -62,7 +71,7 @@ const AlbumCard: React.FC<AlbumCardProps> = ({
             </Text>
           </View>
         </View>
-        <Text style={styles.description} numberOfLines={2}>
+        <Text style={styles.description} numberOfLines={1}>
           {album.album_description}
         </Text>
       </View>
@@ -146,6 +155,22 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.7)',
     fontSize: 12,
     lineHeight: 18,
+  },
+  srcImageContainer: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: '#fff',
+    overflow: 'hidden',
+    backgroundColor: '#ccc',
+  },
+  srcImage: {
+    width: '100%',
+    height: '100%',
   },
 });
 

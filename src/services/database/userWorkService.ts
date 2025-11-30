@@ -98,6 +98,7 @@ export class UserWorkService {
     try {
       const createData = {
         ...workData,
+        activity_type: workData.activity_type || 'album',
         download_count: workData.download_count || '0',
         likes: workData.likes || '0',
         uid: workData.uid,

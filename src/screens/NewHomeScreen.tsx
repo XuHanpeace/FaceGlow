@@ -20,7 +20,7 @@ import { useTypedSelector, useAppDispatch } from '../store/hooks';
 import { fetchActivities } from '../store/slices/activitySlice';
 import { useUser } from '../hooks/useUser';
 import { authService } from '../services/auth/authService';
-import { Album } from '../types/model/activity';
+import { Album, AlbumLevel } from '../types/model/activity';
 
 type NewHomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -135,17 +135,37 @@ const NewHomeScreen: React.FC = () => {
         />
 
         {/* 使用Redux中的活动数据 */}
-        {activities.map((activity, index) => (
-          <ContentSection
-            key={activity.activiy_id}
-            title={activity.activity_title}
-            albums={activity.album_id_list}
-            categoryId={activity.activiy_id}
-            activityId={activity.activiy_id}
-            onAlbumPress={handleAlbumPress}
-            onViewAllPress={handleViewAllPress}
-          />
-        ))}
+        {activities.map((activity, index) => {
+          // 处理 asyncTask 类型的活动
+          let albumsToDisplay = activity.album_id_list;
+          
+          if (activity.activity_type === 'asyncTask' && activity.promptData) {
+            // 构造伪造的 Album 对象用于展示
+            const fakeAlbum: Album = {
+              album_id: activity.activiy_id, // 使用活动ID作为相册ID
+              album_name: activity.promptData.styleTitle || activity.activity_title,
+              album_description: activity.promptData.styleDesc || '',
+              album_image: activity.promptData.resultImage || '',
+              level: AlbumLevel.FREE, // 默认为免费
+              price: 0,
+              template_list: [], // 空模板列表
+              srcImage: activity.promptData.srcImage // 传递 srcImage
+            };
+            albumsToDisplay = [fakeAlbum];
+          }
+
+          return (
+            <ContentSection
+              key={activity.activiy_id}
+              title={activity.activity_title}
+              albums={albumsToDisplay}
+              categoryId={activity.activiy_id}
+              activityId={activity.activiy_id}
+              onAlbumPress={handleAlbumPress}
+              onViewAllPress={handleViewAllPress}
+            />
+          );
+        })}
       </ScrollView>
 
       {/* 默认自拍选择器 */}

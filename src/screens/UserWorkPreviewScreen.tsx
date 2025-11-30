@@ -23,7 +23,8 @@ import GradientButton from '../components/GradientButton';
 import { showSuccessToast } from '../utils/toast';
 import BackButton from '../components/BackButton';
 import LinearGradient from 'react-native-linear-gradient';
-import { UserWorkModel } from '../types/model/user_works';
+import { UserWorkModel, TaskStatus } from '../types/model/user_works';
+import { ActivityIndicator } from 'react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -178,6 +179,21 @@ const UserWorkPreviewScreen: React.FC = () => {
   // 当前激活的作品
   const activeWork = allWorks[activeWorkIndex];
 
+  // 检查是否是 asyncTask
+  const isAsyncTask = activeWork?.activity_type === 'asyncTask';
+  
+  // 获取 taskStatus
+  const getTaskStatus = (work: UserWorkModel) => {
+    try {
+      if (work.ext_data) {
+        const ext = JSON.parse(work.ext_data);
+        return ext.task_status;
+      }
+    } catch(e) { return null; }
+    return null;
+  };
+  const taskStatus = activeWork ? getTaskStatus(activeWork) : null;
+
   const handleBackPress = () => {
     navigation.goBack();
   };
@@ -278,7 +294,8 @@ const UserWorkPreviewScreen: React.FC = () => {
         removeClippedSubviews={true}
       />
 
-      {/* 底部控制区域 (Fixed Overlay) */}
+      {/* 底部控制区域 (Fixed Overlay) - asyncTask 且未完成时不显示对比模式 */}
+      {!isAsyncTask && (
       <View style={[styles.bottomOverlay, { paddingBottom: Math.max(insets.bottom, 20) }]}>
         {/* 对比模式切换按钮 */}
         <View style={styles.comparisonToggle}>
@@ -300,6 +317,23 @@ const UserWorkPreviewScreen: React.FC = () => {
           />
         </View>
       </View>
+      )}
+
+      {/* asyncTask 状态展示 */}
+      {isAsyncTask && taskStatus === TaskStatus.PENDING && (
+        <View style={styles.fullScreenStatusOverlay}>
+            <ActivityIndicator size="large" color="#00E096" />
+            <Text style={styles.statusTextBig}>作品生成中...</Text>
+            <Text style={styles.statusSubText}>请稍候，我们正在为您创作</Text>
+        </View>
+      )}
+
+      {isAsyncTask && taskStatus === TaskStatus.FAILED && (
+        <View style={styles.fullScreenStatusOverlay}>
+            <FontAwesome name="exclamation-circle" size={50} color="#FF4D4F" />
+            <Text style={styles.statusTextBig}>作品生成失败</Text>
+        </View>
+      )}
 
       {/* 分享Modal */}
       <ShareModal
@@ -401,6 +435,28 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  fullScreenStatusOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 20,
+  },
+  statusTextBig: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginTop: 16,
+  },
+  statusSubText: {
+    color: '#ccc',
+    fontSize: 14,
+    marginTop: 8,
   },
 });
 

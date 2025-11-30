@@ -15,7 +15,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { useTypedSelector, useAppDispatch } from '../store/hooks';
 import { fetchActivities } from '../store/slices/activitySlice';
-import { Album } from '../types/model/activity';
+import { Album, AlbumLevel } from '../types/model/activity';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import GradientButton from '../components/GradientButton';
 import BackButton from '../components/BackButton';
@@ -23,6 +23,10 @@ import BackButton from '../components/BackButton';
 const { width: screenWidth } = Dimensions.get('window');
 const numColumns = 2;
 const itemWidth = (screenWidth - 60) / numColumns;
+
+interface AlbumWithSrc extends Album {
+  srcImage?: string;
+}
 
 type AlbumMarketScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type AlbumMarketScreenRouteProp = RouteProp<RootStackParamList, 'AlbumMarket'>;
@@ -41,7 +45,23 @@ const AlbumMarketScreen: React.FC = () => {
 
   // 找到对应的Activity并获取其album列表
   const currentActivity = activities.find(activity => activity.activiy_id === activityId);
-  const albums: Album[] = currentActivity?.album_id_list || [];
+  
+  let albums: Album[] = currentActivity?.album_id_list || [];
+
+  // 如果是 asyncTask，构造伪造的 Album
+  if (currentActivity?.activity_type === 'asyncTask' && currentActivity.promptData) {
+      const fakeAlbum: Album = {
+          album_id: currentActivity.activiy_id,
+          album_name: currentActivity.promptData.styleTitle || currentActivity.activity_title,
+          album_description: currentActivity.promptData.styleDesc || '',
+          album_image: currentActivity.promptData.resultImage || '',
+          level: AlbumLevel.FREE, // 默认为免费
+          price: 0,
+          template_list: [], // 空模板列表
+          srcImage: currentActivity.promptData.srcImage // 传递 srcImage
+      };
+      albums = [fakeAlbum];
+  }
 
   useEffect(() => {
     // 如果活动数据为空，则发起请求
@@ -68,18 +88,23 @@ const AlbumMarketScreen: React.FC = () => {
   };
 
   const renderAlbumItem = ({ item }: { item: Album }) => {
-    // 取第一个template作为封面
-    const coverImage = item.template_list[0]?.template_url || item.album_image;
+    const albumItem = item as AlbumWithSrc;
+    // 取第一个template作为封面，如果是 asyncTask 则直接使用 album_image
+    const coverImage = (albumItem.template_list && albumItem.template_list.length > 0)
+      ? (albumItem.template_list[0]?.template_url || albumItem.album_image)
+      : albumItem.album_image;
     
     // 计算总点赞数（所有template的点赞数之和）
-    const totalLikes = item.template_list.reduce((sum, template) => {
+    const totalLikes = albumItem.template_list?.reduce((sum, template) => {
       return sum + Math.floor(Math.random() * 100);
-    }, 0);
+    }, 0) || 0;
+
+    const srcImage = albumItem.srcImage;
 
     return (
       <TouchableOpacity
         style={styles.albumItem}
-        onPress={() => handleAlbumPress(item.album_id)}
+        onPress={() => handleAlbumPress(albumItem.album_id)}
         activeOpacity={0.8}
       >
         <View style={styles.imageContainer}>
@@ -88,34 +113,43 @@ const AlbumMarketScreen: React.FC = () => {
             style={styles.albumImage}
             resizeMode="cover"
           />
-          {item.level !== '0' && (
+          {albumItem.level !== '0' && !srcImage && (
             <View style={styles.premiumBadge}>
               <FontAwesome name="star" size={12} color="#FFD700" />
             </View>
           )}
-          {/* 显示相册内模板数量 */}
+          {/* 显示相册内模板数量，如果有 srcImage 则不显示 */}
+          {!srcImage && (
           <View style={styles.templateCountBadge}>
             <Text style={styles.templateCountText}>
-              {item.template_list.length} 模板
+              {albumItem.template_list?.length || 0} 模板
             </Text>
           </View>
+          )}
+          
+          {/* 异步任务源图片 */}
+          {srcImage && (
+            <View style={styles.srcImageContainer}>
+              <Image source={{ uri: srcImage }} style={styles.srcImage} />
+            </View>
+          )}
         </View>
         
         <View style={styles.itemInfo}>
-          <View style={styles.textContent}>
+          <View style={styles.titleRow}>
             <Text style={styles.itemTitle} numberOfLines={1}>
-              {item.album_name}
+              {albumItem.album_name}
             </Text>
-            <Text style={styles.itemDescription} numberOfLines={2}>
-              {item.album_description}
-            </Text>
+            <View style={styles.likesContainer}>
+              <FontAwesome name="heart" size={12} color="#FF6B9D" style={styles.likesIcon} />
+              <Text style={styles.likesText}>
+                {totalLikes >= 1000 ? `${(totalLikes / 1000).toFixed(1)}K` : totalLikes}
+              </Text>
+            </View>
           </View>
-          <View style={styles.likesContainer}>
-            <FontAwesome name="heart" size={14} color="#FF6B9D" style={styles.likesIcon} />
-            <Text style={styles.likesText}>
-              {totalLikes >= 1000 ? `${(totalLikes / 1000).toFixed(1)}K` : totalLikes}
-            </Text>
-          </View>
+          <Text style={styles.itemDescription} numberOfLines={2}>
+            {albumItem.album_description}
+          </Text>
         </View>
       </TouchableOpacity>
     );
@@ -288,14 +322,18 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'column',
   },
-  textContent: {
-    flex: 1,
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
   },
   itemTitle: {
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
-    marginBottom: 4,
+    flex: 1,
+    marginRight: 8,
   },
   itemDescription: {
     color: 'rgba(255, 255, 255, 0.7)',
@@ -304,8 +342,6 @@ const styles = StyleSheet.create({
   likesContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 'auto',
-    paddingTop: 8,
   },
   likesIcon: {
     fontSize: 12,
@@ -340,6 +376,21 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     marginTop: 8,
+  },
+  srcImageContainer: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#fff',
+    overflow: 'hidden',
+  },
+  srcImage: {
+    width: '100%',
+    height: '100%',
   },
 });
 

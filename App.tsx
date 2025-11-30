@@ -20,6 +20,8 @@ import { revenueCatService } from './src/services/revenueCat/revenueCatService';
 import { authService } from './src/services/auth/authService';
 import { loginPromptService } from './src/services/loginPromptService';
 import LoginPromptManager from './src/components/LoginPromptManager';
+import AsyncTaskFloatBar from './src/components/AsyncTaskFloatBar';
+import AsyncTaskPanel from './src/components/AsyncTaskPanel';
 import { navigationRef } from './src/navigation/navigationUtils';
 
 // Pushy 集成
@@ -97,6 +99,8 @@ function App(): JSX.Element {
           </View>
          
           <LoginPromptManager />
+          <AsyncTaskFloatBar />
+          <AsyncTaskPanel />
         </ModalProvider>
          <ToastProvider
             config={{

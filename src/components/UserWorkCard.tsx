@@ -6,8 +6,9 @@ import {
   TouchableOpacity,
   Image,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { UserWorkModel } from '../types/model/user_works';
+import { UserWorkModel, TaskStatus } from '../types/model/user_works';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { DeleteIcon } from './DeleteIcon';
 
@@ -69,6 +70,7 @@ const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress, onDelete, ca
 
   const extData = getExtData();
   const selfieUrl = extData.selfie_url;
+  const taskStatus = extData.task_status;
 
   // 获取作品封面图片
   const getCoverImage = () => {
@@ -120,6 +122,21 @@ const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress, onDelete, ca
           style={[styles.workImage, { height: imageHeight }]}
           resizeMode="cover"
         />
+
+        {/* 任务状态覆盖层 */}
+        {taskStatus === TaskStatus.PENDING && (
+          <View style={styles.statusOverlay}>
+            <ActivityIndicator size="small" color="#00E096" />
+            <Text style={styles.statusText}>生成中...</Text>
+          </View>
+        )}
+        
+        {taskStatus === TaskStatus.FAILED && (
+          <View style={styles.statusOverlay}>
+            <FontAwesome name="exclamation-circle" size={24} color="#FF4D4F" />
+            <Text style={styles.statusText}>生成失败</Text>
+          </View>
+        )}
         
         {/* 自定义 Overlay: 无渐变，左下角头像，右下角时间 */}
         <View style={styles.imageOverlay}>
@@ -251,6 +268,23 @@ const styles = StyleSheet.create({
     top: 4,
     right: 4,
     zIndex: 10,
+  },
+  statusOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 5,
+  },
+  statusText: {
+    color: '#fff',
+    fontSize: 12,
+    marginTop: 8,
+    fontWeight: '600',
   },
 });
 

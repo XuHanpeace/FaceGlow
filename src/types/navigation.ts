@@ -8,9 +8,13 @@ export type RootStackParamList = {
     activityId: string;
   };
   CreationResult: {
-    albumData: Album;
-    selfieUrl: string;
-    activityId: string;
+    albumData?: Album;
+    selfieUrl?: string;
+    activityId?: string;
+    isAsyncTask?: boolean;
+    resultImage?: string;
+    workId?: string;
+    activityTitle?: string;
   };
   AlbumMarket: {
     activityId: string;

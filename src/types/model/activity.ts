@@ -5,7 +5,9 @@ export enum ActivityType {
   /** 相册类型活动 */
   ALBUM = 'album',
   /** 其他类型活动 */
-  OTHER = 'other'
+  OTHER = 'other',
+  /** 异步生成任务 */
+  ASYNC_TASK = 'asyncTask'
 }
 
 /**
@@ -66,6 +68,8 @@ export interface Album {
   price: number;
   /** 相册包含的模板列表 */
   template_list: Template[];
+  /** 来源图片（用于异步任务展示） */
+  srcImage?: string;
 }
 
 /**
@@ -82,6 +86,14 @@ export interface Activity {
   activity_title: string;
   /** 活动包含的相册列表 */
   album_id_list: Album[];
+  /** 提示词数据（当 activity_type 为 asyncTask 时使用） */
+  promptData?: {
+    text?: string;
+    styleDesc?: string;
+    styleTitle?: string;
+    resultImage?: string;
+    srcImage?: string;
+  };
 }
 
 /**

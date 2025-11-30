@@ -16,13 +16,15 @@ import ReactNativeHapticFeedback from "react-native-haptic-feedback";
 import LinearGradient from 'react-native-linear-gradient';
 
 import { RootStackParamList } from '../types/navigation';
-import { useTypedSelector } from '../store/hooks';
+import { useAppDispatch, useTypedSelector } from '../store/hooks';
 import { useAuthState } from '../hooks/useAuthState';
 import { authService } from '../services/auth/authService';
-import { Album, Template } from '../types/model/activity';
+import { ActivityType, Album, Template } from '../types/model/activity';
 import GradientButton from '../components/GradientButton';
 import BackButton from '../components/BackButton';
 import SelfieSelector from '../components/SelfieSelector';
+import { startAsyncTask } from '../store/slices/asyncTaskSlice';
+import { CrossFadeImage } from '../components/CrossFadeImage';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -50,13 +52,26 @@ const TemplateSlide = React.memo(({
   onUseStyle: (template: Template) => void, 
   onSelfieSelect: (url: string) => void 
 }) => {
+  const srcImage = (album as any).srcImage;
+
   return (
     <View style={styles.pageContainer}>
-      <Image
-        source={{ uri: template.template_url }}
-        style={styles.mainImage}
-        resizeMode="cover"
-      />
+      {srcImage ? (
+        <CrossFadeImage
+          image1={srcImage}
+          image2={template.template_url}
+          duration={1500}
+          interval={2000}
+          imageStyle={styles.mainImage}
+          containerStyle={styles.mainImageContainer}
+        />
+      ) : (
+        <Image
+          source={{ uri: template.template_url }}
+          style={styles.mainImage}
+          resizeMode="cover"
+        />
+      )}
       
       <LinearGradient
         colors={['transparent', 'rgba(0,0,0,0.8)']}
@@ -112,7 +127,16 @@ const AlbumSlide = React.memo(({
   onUseStyle: (template: Template) => void, 
   onSelfieSelect: (url: string) => void 
 }) => {
-  const templates = album.template_list || [];
+  // 如果是 asyncTask，可能 template_list 为空，构造一个虚拟 template
+  const templates = (album.template_list && album.template_list.length > 0) 
+    ? album.template_list 
+    : [{
+        template_id: 'default',
+        template_url: album.album_image, // 使用相册封面作为模板图
+        template_name: album.album_name,
+        template_description: album.album_description,
+        price: 0
+      } as Template];
 
   const renderTemplateItem = useCallback(({ item }: { item: Template }) => {
     return (
@@ -150,13 +174,12 @@ const AlbumSlide = React.memo(({
 const BeforeCreationScreen: React.FC = () => {
   const navigation = useNavigation<BeforeCreationScreenNavigationProp>();
   const route = useRoute<BeforeCreationScreenRouteProp>();
+  const dispatch = useAppDispatch();
   const { albumData, activityId } = route.params;
-  
-  const { isLoggedIn } = useAuthState();
   
   // Redux state
   const activities = useTypedSelector((state) => state.activity.activities);
-  const isProcessing = useTypedSelector((state) => state.selfies.uploading);
+  const user = useTypedSelector((state) => state.auth);
 
   // 扁平化所有 Albums，并注入 activityId
   const allAlbums = useMemo<AlbumWithActivityId[]>(() => {
@@ -168,7 +191,21 @@ const BeforeCreationScreen: React.FC = () => {
     activities.forEach(activity => {
       // 兼容 activity_id 和 activiy_id (以防拼写错误被修正或混用)
       const actId = (activity as any).activity_id || activity.activiy_id;
-      if (activity.album_id_list) {
+      
+      if (activity.activity_type === 'asyncTask' && activity.promptData) {
+         // 如果是 asyncTask，也构建一个 Album 加入列表
+         albums.push({
+             album_id: actId,
+             album_name: activity.promptData.styleTitle || activity.activity_title,
+             album_description: activity.promptData.styleDesc || '',
+             album_image: activity.promptData.resultImage || '',
+             level: '0', // default
+             price: 0,
+             template_list: [],
+             activityId: actId,
+             srcImage: activity.promptData.srcImage
+         } as any);
+      } else if (activity.album_id_list) {
         activity.album_id_list.forEach(album => {
           albums.push({
             ...album,
@@ -249,33 +286,60 @@ const BeforeCreationScreen: React.FC = () => {
         return;
       }
 
-      // 开始人脸融合处理
+      // 开始处理
       setIsFusionProcessing(true);
       
-      if (!currentTemplate) {
-        Alert.alert('错误', '未找到选中的模板');
-        return;
-      }
-
       // 获取当前选中的 Album 和对应的 Activity ID
       const currentAlbum = allAlbums[activeAlbumIndex];
-      // 直接从 currentAlbum 中获取 activityId，如果没有则回退到 route params
       const currentActivityId = currentAlbum.activityId || activityId;
 
-      // 跳转到CreationResult页面
-      navigation.navigate('CreationResult', {
-        albumData: currentAlbum, // 使用当前激活的 Album Data
-        selfieUrl: selectedSelfieUrl,
-        activityId: currentActivityId, 
-      });
+      // 查找 Activity 以判断类型
+      const activity = activities.find(a => a.activiy_id === currentActivityId);
+      const isAsyncTask = activity?.activity_type === ActivityType.ASYNC_TASK || currentAlbum.srcImage; // 补充判断
+
+      if (isAsyncTask) {
+        // 异步任务逻辑
+        const promptData = activity?.promptData;
+        if (!user.uid) throw new Error('用户未登录');
+
+        await dispatch(startAsyncTask({
+             prompt: promptData?.text || '',
+             images: [selectedSelfieUrl],
+             activityId: currentActivityId,
+             activityTitle: activity?.activity_title || currentAlbum.album_name,
+             activityDescription: activity?.promptData?.styleDesc || '',
+             activityImage: activity?.promptData?.resultImage || '',
+             uid: user.uid,
+             templateId: currentTemplate?.template_id || 'async_task_template',
+             promptData: promptData
+        })).unwrap();
+
+        Alert.alert('任务已提交', '创作任务已在后台运行，请留意悬浮条任务列表。', [
+            { text: '好的', onPress: () => navigation.goBack() }
+        ]);
+
+      } else {
+        // 同步任务（原有逻辑）
+        if (!currentTemplate) {
+          Alert.alert('错误', '未找到选中的模板');
+          return;
+        }
+
+        // 跳转到CreationResult页面
+        navigation.navigate('CreationResult', {
+          albumData: currentAlbum,
+          selfieUrl: selectedSelfieUrl,
+          activityId: currentActivityId, 
+        });
+      }
 
     } catch (error: any) {
-      console.error('人脸融合失败:', error);
+      console.error('处理失败:', error);
       Alert.alert('错误', error.message || '处理失败，请重试');
     } finally {
       setIsFusionProcessing(false);
     }
-  }, [selectedSelfieUrl, navigation, activityId, allAlbums, activeAlbumIndex]);
+  }, [selectedSelfieUrl, navigation, activityId, allAlbums, activeAlbumIndex, activities, dispatch, user]);
 
   const handleBackPress = () => {
     navigation.goBack();
@@ -358,6 +422,10 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   mainImage: {
+    width: '100%',
+    height: '100%',
+  },
+  mainImageContainer: {
     width: '100%',
     height: '100%',
   },
