@@ -178,15 +178,6 @@ const NewProfileScreen: React.FC = () => {
     navigation.navigate('SelfieGuide');
   };
 
-  const handleAddMockSelfie = () => {
-
-  };
-
-  const handleAddPostPress = () => {
-    // 处理添加帖子
-    console.log('Add post pressed');
-  };
-
   const handleTabPress = (tab: TabType) => {
     setActiveTab(tab);
     // 切换到"我的作品"时，如果已有缓存数据，不重新加载
@@ -586,13 +577,13 @@ const NewProfileScreen: React.FC = () => {
               ) : userWorks.length > 0 ? (
                 <View style={styles.worksGrid}>
                   {userWorks.map((work) => (
-                <UserWorkCard
-                  key={work._id}
-                  work={work}
-                  onPress={handleWorkPress}
-                  onDelete={handleWorkDelete}
-                  cardWidth={CARD_WIDTH}
-                />
+                      <UserWorkCard
+                        key={work._id}
+                        work={work}
+                        onPress={handleWorkPress}
+                        onDelete={handleWorkDelete}
+                        cardWidth={CARD_WIDTH}
+                      />
                   ))}
                 </View>
               ) : (

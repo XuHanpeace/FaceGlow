@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   StatusBar,
   Dimensions,
   FlatList,
@@ -31,6 +30,7 @@ import { pollAsyncTask, AsyncTask } from '../store/slices/asyncTaskSlice';
 import { userWorkService } from '../services/database/userWorkService';
 import { fetchUserWorks } from '../store/slices/userWorksSlice';
 import { OneTimeReveal } from '../components/OneTimeReveal';
+import FastImage from 'react-native-fast-image';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -124,10 +124,10 @@ const ResultItem = React.memo(({
         return (
             <View style={styles.pageContainer}>
                 {coverImage && (
-                    <Image 
+                    <FastImage 
                         source={{ uri: coverImage }} 
                         style={[styles.resultImage, { opacity: 0.4 }]} 
-                        resizeMode="cover" 
+                        resizeMode={FastImage.resizeMode.cover} 
                     />
                 )}
                 <View style={[styles.statusContainer, { position: 'absolute', width: '100%', height: '100%' }]}>
@@ -147,16 +147,7 @@ const ResultItem = React.memo(({
                 image2={item.result_image || undefined}
                 trigger={playReveal}
                 revealed={false} // Always animate reveal on entry
-                duration={2500}
-                onAnimationStart={() => {
-                    console.log('[ResultItem] Start Reveal Anim');
-                    if (onInteractionStart) onInteractionStart();
-                }}
-                onAnimationEnd={() => {
-                    console.log('[ResultItem] End Reveal Anim');
-                    if (onInteractionEnd) onInteractionEnd();
-                    // Keep playReveal true so OneTimeReveal stays at "1" (revealed)
-                }}
+                duration={1500}
                 containerStyle={{ width: screenWidth, height: screenHeight }}
             />
 
@@ -180,9 +171,10 @@ const ResultItem = React.memo(({
             {/* Small Original Image (Always show if available) */}
             {selfieUrl && (
                 <View style={styles.smallOriginalContainer}>
-                    <Image 
+                    <FastImage 
                       source={{ uri: selfieUrl }} 
                       style={styles.smallOriginalImage} 
+                      resizeMode={FastImage.resizeMode.cover}
                     />
                 </View>
             )}
@@ -202,10 +194,10 @@ const ResultItem = React.memo(({
           onInteractionEnd={onInteractionEnd}
         />
       ) : (
-        <Image
+        <FastImage
           source={{ uri: item.result_image }}
           style={styles.resultImage}
-          resizeMode="cover"
+          resizeMode={FastImage.resizeMode.cover}
         />
       )}
       
@@ -223,14 +215,12 @@ const ResultItem = React.memo(({
 // 单个作品组件（包含多个结果）
 const WorkSlide = React.memo(({ 
   work, 
-  isActive,
   showComparison,
   onInteractionStart,
   onInteractionEnd,
   onRefresh
 }: { 
   work: UserWorkModel,
-  isActive: boolean,
   showComparison: boolean,
   onInteractionStart: () => void,
   onInteractionEnd: () => void,
@@ -303,7 +293,7 @@ const WorkSlide = React.memo(({
       <FlatList
         data={work.result_data || []}
         renderItem={renderResultItem}
-        keyExtractor={(item, index) => `result-${index}`}
+        keyExtractor={(_item, index) => `result-${index}`}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
@@ -555,18 +545,17 @@ const UserWorkPreviewScreen: React.FC = () => {
     setIsVerticalScrollEnabled(true);
   }, []);
 
-  const renderWorkItem = useCallback(({ item, index }: { item: UserWorkModel, index: number }) => {
+  const renderWorkItem = useCallback(({ item }: { item: UserWorkModel }) => {
     return (
       <WorkSlide
         work={item}
-        isActive={index === activeWorkIndex}
         showComparison={showComparison}
         onInteractionStart={handleInteractionStart}
         onInteractionEnd={handleInteractionEnd}
         onRefresh={handleRefreshTask}
       />
     );
-  }, [activeWorkIndex, showComparison, handleInteractionStart, handleInteractionEnd, handleRefreshTask]);
+  }, [showComparison, handleInteractionStart, handleInteractionEnd, handleRefreshTask]);
 
   if (!activeWork) return null;
 
@@ -599,7 +588,7 @@ const UserWorkPreviewScreen: React.FC = () => {
         viewabilityConfig={{
           itemVisiblePercentThreshold: 50
         }}
-        getItemLayout={(data, index) => (
+        getItemLayout={(_data, index) => (
           {length: screenHeight, offset: screenHeight * index, index}
         )}
         initialNumToRender={1}

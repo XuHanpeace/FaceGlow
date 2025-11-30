@@ -17,24 +17,20 @@ import LinearGradient from 'react-native-linear-gradient';
 
 import { RootStackParamList } from '../types/navigation';
 import { useAppDispatch, useTypedSelector } from '../store/hooks';
-import { useAuthState } from '../hooks/useAuthState';
 import { authService } from '../services/auth/authService';
 import { ActivityType, Album, Template } from '../types/model/activity';
+import { AlbumWithActivityId, selectAllAlbums } from '../store/slices/activitySlice';
 import GradientButton from '../components/GradientButton';
 import BackButton from '../components/BackButton';
 import SelfieSelector from '../components/SelfieSelector';
 import { startAsyncTask } from '../store/slices/asyncTaskSlice';
 import { CrossFadeImage } from '../components/CrossFadeImage';
+import FastImage from 'react-native-fast-image';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 type BeforeCreationScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type BeforeCreationScreenRouteProp = RouteProp<RootStackParamList, 'BeforeCreation'>;
-
-// 扩展 Album 类型，包含 activityId
-interface AlbumWithActivityId extends Album {
-  activityId: string;
-}
 
 // 单个模版页面组件
 const TemplateSlide = React.memo(({ 
@@ -66,11 +62,10 @@ const TemplateSlide = React.memo(({
           containerStyle={styles.mainImageContainer}
         />
       ) : (
-        <Image
+        <FastImage
           source={{ uri: template.template_url }}
           style={styles.mainImage}
-          resizeMode="cover"
-          fadeDuration={0}
+          resizeMode={FastImage.resizeMode.cover}
         />
       )}
       
@@ -115,19 +110,18 @@ const TemplateSlide = React.memo(({
 // 单个相册组件（包含多个模版）
 const AlbumSlide = React.memo(({ 
   album, 
-  isActive,
   selectedSelfieUrl, 
   isFusionProcessing, 
   onUseStyle, 
   onSelfieSelect 
 }: { 
   album: Album, 
-  isActive: boolean,
   selectedSelfieUrl: string | null, 
   isFusionProcessing: boolean, 
   onUseStyle: (template: Template) => void, 
   onSelfieSelect: (url: string) => void 
 }) => {
+  
   // 如果是 asyncTask，可能 template_list 为空，构造一个虚拟 template
   const templates = (album.template_list && album.template_list.length > 0) 
     ? album.template_list 
@@ -178,61 +172,41 @@ const BeforeCreationScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const { albumData, activityId } = route.params;
   
-  // Redux state
+  // Redux state - 直接使用已计算好的 allAlbums
+  const allAlbums = useTypedSelector(selectAllAlbums);
   const activities = useTypedSelector((state) => state.activity.activities);
   const user = useTypedSelector((state) => state.auth);
-
-  // 扁平化所有 Albums，并注入 activityId
-  const allAlbums = useMemo<AlbumWithActivityId[]>(() => {
-    if (!activities || activities.length === 0) {
+  // 确保当前 albumData 在列表中，如果不在（比如来自非 redux 数据源），则添加
+  const albumsWithCurrent = useMemo<AlbumWithActivityId[]>(() => {
+    // 如果 allAlbums 为空，说明数据还没加载，先返回当前 albumData
+    if (!allAlbums || allAlbums.length === 0) {
       return [{ ...albumData, activityId: activityId }];
     }
     
-    const albums: AlbumWithActivityId[] = [];
-    activities.forEach(activity => {
-      // 兼容 activity_id 和 activiy_id (以防拼写错误被修正或混用)
-      const actId = (activity as any).activity_id || activity.activiy_id;
-      
-      if (activity.activity_type === 'asyncTask' && activity.promptData) {
-         // 如果是 asyncTask，也构建一个 Album 加入列表
-         albums.push({
-             album_id: actId,
-             album_name: activity.promptData.styleTitle || activity.activity_title,
-             album_description: activity.promptData.styleDesc || '',
-             album_image: activity.promptData.resultImage || '',
-             level: '0', // default
-             price: 0,
-             template_list: [],
-             activityId: actId,
-             srcImage: activity.promptData.srcImage
-         } as any);
-      } else if (activity.album_id_list) {
-        activity.album_id_list.forEach(album => {
-          albums.push({
-            ...album,
-            activityId: actId
-          });
-        });
-      }
-    });
-
-    // 确保当前 albumData 在列表中，如果不在（比如来自非 redux 数据源），则添加
-    const exists = albums.some(a => a.album_id === albumData.album_id);
+    // 检查当前 albumData 是否已在列表中
+    const exists = allAlbums.some(a => a.album_id === albumData.album_id);
     if (!exists) {
-      return [{ ...albumData, activityId: activityId }, ...albums];
+      // 如果不在，添加到列表开头
+      return [{ ...albumData, activityId: activityId }, ...allAlbums];
     }
-    return albums;
-  }, [activities, albumData, activityId]);
+    
+    return allAlbums;
+  }, [allAlbums, albumData, activityId]);
 
-  // 初始 Index
+  // 初始 Index - 根据传入的 albumData 和 activityId 定位
   const initialIndex = useMemo(() => {
-    const index = allAlbums.findIndex(a => a.album_id === albumData.album_id);
+    const index = albumsWithCurrent.findIndex(a => 
+      a.album_id === albumData.album_id && 
+      (a.activityId === activityId || !a.activityId)
+    );
     return index >= 0 ? index : 0;
-  }, [allAlbums, albumData]);
+  }, [albumsWithCurrent, albumData, activityId]);
 
   const [isFusionProcessing, setIsFusionProcessing] = useState(false);
   const [selectedSelfieUrl, setSelectedSelfieUrl] = useState<string | null>(null);
   const [activeAlbumIndex, setActiveAlbumIndex] = useState(initialIndex);
+
+console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
 
   // 垂直滑动回调
   const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
@@ -291,7 +265,7 @@ const BeforeCreationScreen: React.FC = () => {
       setIsFusionProcessing(true);
       
       // 获取当前选中的 Album 和对应的 Activity ID
-      const currentAlbum = allAlbums[activeAlbumIndex];
+      const currentAlbum = albumsWithCurrent[activeAlbumIndex];
       const currentActivityId = currentAlbum.activityId || activityId;
 
       // 查找 Activity 以判断类型
@@ -360,7 +334,7 @@ const BeforeCreationScreen: React.FC = () => {
     } finally {
       setIsFusionProcessing(false);
     }
-  }, [selectedSelfieUrl, navigation, activityId, allAlbums, activeAlbumIndex, activities, dispatch, user]);
+  }, [selectedSelfieUrl, navigation, activityId, albumsWithCurrent, activeAlbumIndex, activities, dispatch, user]);
 
   const handleBackPress = () => {
     navigation.goBack();
@@ -370,21 +344,20 @@ const BeforeCreationScreen: React.FC = () => {
     setSelectedSelfieUrl(selfieUrl);
   }, []);
 
-  const renderAlbumItem = useCallback(({ item, index }: { item: Album, index: number }) => {
+  const renderAlbumItem = useCallback(({ item }: { item: Album }) => {
     return (
       <AlbumSlide
         album={item}
-        isActive={index === activeAlbumIndex}
         selectedSelfieUrl={selectedSelfieUrl}
         isFusionProcessing={isFusionProcessing}
         onUseStyle={handleUseStylePress}
         onSelfieSelect={handleSelfieSelect}
       />
     );
-  }, [activeAlbumIndex, selectedSelfieUrl, isFusionProcessing, handleUseStylePress, handleSelfieSelect]);
+  }, [selectedSelfieUrl, isFusionProcessing, handleUseStylePress, handleSelfieSelect]);
 
   // 如果没有数据，显示 Loading 或空状态
-  if (!allAlbums || allAlbums.length === 0) {
+  if (!albumsWithCurrent || albumsWithCurrent.length === 0) {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
@@ -403,7 +376,7 @@ const BeforeCreationScreen: React.FC = () => {
       <BackButton iconType="arrow" onPress={handleBackPress} />
 
       <FlatList
-        data={allAlbums}
+        data={albumsWithCurrent}
         renderItem={renderAlbumItem}
         keyExtractor={(item) => item.album_id}
         pagingEnabled
@@ -416,7 +389,7 @@ const BeforeCreationScreen: React.FC = () => {
         viewabilityConfig={{
           itemVisiblePercentThreshold: 50
         }}
-        getItemLayout={(data, index) => (
+        getItemLayout={(_data, index) => (
           {length: screenHeight, offset: screenHeight * index, index}
         )}
         initialNumToRender={1}

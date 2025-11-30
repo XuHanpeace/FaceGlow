@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Animated, StyleSheet, StyleProp, ViewStyle, ImageStyle, LayoutChangeEvent, Easing, Image } from 'react-native';
+import { View, Animated, StyleSheet, StyleProp, ViewStyle, LayoutChangeEvent, Easing } from 'react-native';
+import FastImage from 'react-native-fast-image';
 import LinearGradient from 'react-native-linear-gradient';
 
 interface OneTimeRevealProps {
@@ -11,7 +12,6 @@ interface OneTimeRevealProps {
   onAnimationStart?: () => void;
   onAnimationEnd?: () => void;
   containerStyle?: StyleProp<ViewStyle>;
-  imageStyle?: StyleProp<ImageStyle>;
 }
 
 export const OneTimeReveal: React.FC<OneTimeRevealProps> = ({
@@ -22,13 +22,12 @@ export const OneTimeReveal: React.FC<OneTimeRevealProps> = ({
   revealed = false,
   onAnimationStart,
   onAnimationEnd,
-  containerStyle,
-  imageStyle
+  containerStyle
 }) => {
   const scanAnim = useRef(new Animated.Value(revealed ? 1 : 0)).current;
+  const trailOpacityAnim = useRef(new Animated.Value(1)).current; // 绿光透明度动画，初始为1（完全可见）
   const [layoutHeight, setLayoutHeight] = useState(0);
   const [hasStarted, setHasStarted] = useState(false);
-  const [hasFinished, setHasFinished] = useState(false);
 
   useEffect(() => {
     // If already revealed, don't animate
@@ -38,15 +37,32 @@ export const OneTimeReveal: React.FC<OneTimeRevealProps> = ({
       setHasStarted(true);
       if (onAnimationStart) onAnimationStart();
 
-      Animated.timing(scanAnim, {
+      // 计算淡出开始时间（最后20%的时间）
+      const fadeStartTime = duration * 0.8;
+      const fadeDuration = duration * 0.2;
+
+      // 主扫描动画
+      const scanAnimation = Animated.timing(scanAnim, {
         toValue: 1,
         duration: duration,
         useNativeDriver: false, // height animation
         easing: Easing.inOut(Easing.ease),
-      }).start(({ finished }) => {
-        if (finished) {
-          setHasFinished(true);
-          if (onAnimationEnd) onAnimationEnd();
+      });
+
+      // 绿光淡出动画（在最后20%时间内淡出）
+      const fadeAnimation = Animated.sequence([
+        Animated.delay(fadeStartTime),
+        Animated.timing(trailOpacityAnim, {
+          toValue: 0,
+          duration: fadeDuration,
+          useNativeDriver: true, // opacity can use native driver
+          easing: Easing.out(Easing.ease),
+        }),
+      ]);
+
+      Animated.parallel([scanAnimation, fadeAnimation]).start(({ finished }) => {
+        if (finished && onAnimationEnd) {
+          onAnimationEnd();
         }
       });
     }
@@ -62,10 +78,10 @@ export const OneTimeReveal: React.FC<OneTimeRevealProps> = ({
       onLayout={handleLayout}
     >
       {/* Layer 1: Background (Source/Cover) */}
-      <Image
+      <FastImage
         source={{ uri: image1 }}
-        style={[styles.image, imageStyle]}
-        resizeMode="cover"
+        style={[styles.image]}
+        resizeMode={FastImage.resizeMode.cover}
       />
 
       {/* Layer 2: Foreground (Result) - Revealed */}
@@ -73,11 +89,10 @@ export const OneTimeReveal: React.FC<OneTimeRevealProps> = ({
           // Static Revealed State - Immediate render, no layout dependency
           image2 && (
             <View style={[styles.absolute, { height: '100%', width: '100%' }]}>
-                <Image
+                <FastImage
                     source={{ uri: image2 }}
-                    style={[styles.image, imageStyle]}
-                    resizeMode="cover"
-                    fadeDuration={0}
+                    style={[styles.image]}
+                    resizeMode={FastImage.resizeMode.cover}
                 />
             </View>
           )
@@ -97,15 +112,24 @@ export const OneTimeReveal: React.FC<OneTimeRevealProps> = ({
               ]}
             >
               {/* Result Image - Fixed height */}
-              <Image
+              <FastImage
                 source={{ uri: image2 }}
-                style={[styles.image, imageStyle, { height: layoutHeight }]}
-                resizeMode="cover"
+                style={[styles.image, { height: layoutHeight }]}
+                resizeMode={FastImage.resizeMode.cover}
               />
 
-              {/* Scan Light Trail - Hide if finished */}
-              {!hasFinished && (
-                 <LinearGradient
+              {/* Scan Light Trail - Positioned at the bottom of revealed area, fade out smoothly at the end */}
+              <Animated.View 
+                style={{ 
+                  opacity: trailOpacityAnim,
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  height: 120,
+                }}
+              >
+                <LinearGradient
                   colors={[
                     'rgba(0, 224, 150, 0)', 
                     'rgba(0, 224, 150, 0.1)', 
@@ -117,7 +141,7 @@ export const OneTimeReveal: React.FC<OneTimeRevealProps> = ({
                   end={{x: 0, y: 1}}
                   style={styles.scanTrail}
                 />
-              )}
+              </Animated.View>
             </Animated.View>
           )
       )}

@@ -9,6 +9,7 @@ import {
   Dimensions,
   TouchableWithoutFeedback,
 } from 'react-native';
+import FastImage from 'react-native-fast-image';
 
 // 获取屏幕尺寸
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -75,10 +76,10 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
   const renderComparison = (containerWidth: number, containerHeight: number) => (
     <View style={[styles.container, { width: containerWidth, height: containerHeight }]}>
       {/* 处理后的图片（底层） */}
-      <Image
+      <FastImage
         source={{ uri: afterImage }}
         style={[styles.image, { width: containerWidth, height: containerHeight }]}
-        resizeMode="cover"
+        resizeMode={FastImage.resizeMode.cover}
         onLoad={() => {
           setIsAfterImageLoaded(true);
           // 启动淡入动画
@@ -100,10 +101,10 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
           },
         ]}
       >
-        <Image
+        <FastImage
           source={{ uri: beforeImage }}
           style={[styles.image, { width: containerWidth, height: containerHeight }]}
-          resizeMode="cover"
+          resizeMode={FastImage.resizeMode.cover}
         />
       </Animated.View>
 
@@ -122,10 +123,10 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
         ]}
         pointerEvents={isAfterImageLoaded ? 'none' : 'auto'}
       >
-        <Image
+        <FastImage
           source={{ uri: beforeImage }}
           style={[styles.image, { width: containerWidth, height: containerHeight }]}
-          resizeMode="cover"
+          resizeMode={FastImage.resizeMode.cover}
         />
         <View style={styles.blurOverlay} />
       </Animated.View>

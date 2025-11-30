@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Image, StyleSheet, ViewStyle, ImageStyle, TouchableOpacity } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { useUser, useUserAvatar } from '../hooks/useUser';
+import FastImage from 'react-native-fast-image';
 
 interface UserAvatarProps {
   /** 头像尺寸 */
@@ -78,17 +79,16 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
       },
     ]}>
       {hasAvatar && avatarSource ? (
-        <Image 
+        <FastImage 
           source={typeof avatarSource === 'string' ? { uri: avatarSource } : avatarSource} 
           style={[
-            styles.avatarImage, 
             { 
               width: size - borderWidth * 2, 
               height: size - borderWidth * 2, 
               borderRadius: (size - borderWidth * 2) / 2 
-            },
-            imageStyle
+            }
           ]} 
+          resizeMode={FastImage.resizeMode.cover}
         />
       ) : (
         <View style={[
@@ -132,9 +132,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#333',
-  },
-  avatarImage: {
-    resizeMode: 'cover',
   },
   defaultAvatar: {
     backgroundColor: '#333',

@@ -11,6 +11,7 @@ import {
 import { UserWorkModel, TaskStatus } from '../types/model/user_works';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { DeleteIcon } from './DeleteIcon';
+import FastImage from 'react-native-fast-image';
 
 interface UserWorkCardProps {
   work: UserWorkModel;
@@ -123,10 +124,10 @@ const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress, onDelete, ca
       activeOpacity={0.8}
     >
       <View style={{ position: 'relative' }}>
-        <Image 
+        <FastImage 
           source={{ uri: getCoverImage() }} 
           style={[styles.workImage, { height: imageHeight }]}
-          resizeMode="cover"
+          resizeMode={FastImage.resizeMode.cover}
         />
 
         {/* 任务状态覆盖层 */}
@@ -150,9 +151,10 @@ const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress, onDelete, ca
             {/* 左下角：自拍头像 (放大) */}
             <View style={styles.selfieContainer}>
               {selfieUrl ? (
-                <Image 
+                <FastImage 
                   source={{ uri: selfieUrl }} 
                   style={styles.overlaySelfie} 
+                  resizeMode={FastImage.resizeMode.cover}
                 />
               ) : null}
             </View>

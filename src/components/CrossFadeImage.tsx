@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Animated, StyleSheet, StyleProp, ViewStyle, ImageStyle, LayoutChangeEvent, Easing } from 'react-native';
+import FastImage from 'react-native-fast-image';
 import LinearGradient from 'react-native-linear-gradient';
 
 interface CrossFadeImageProps {
@@ -66,11 +67,13 @@ export const CrossFadeImage: React.FC<CrossFadeImageProps> = ({
       onLayout={handleLayout}
     >
       {/* Layer 1: Source Image (Background) - Always visible */}
-      <Animated.Image
-        source={{ uri: image1 }}
-        style={[styles.image, imageStyle]}
-        resizeMode="cover"
-      />
+      <Animated.View style={[styles.image, imageStyle]}>
+        <FastImage
+          source={{ uri: image1 }}
+          style={StyleSheet.absoluteFill}
+          resizeMode={FastImage.resizeMode.cover}
+        />
+      </Animated.View>
 
       {/* Layer 2: Result Image (Foreground) - Revealed by Height */}
       {layoutHeight > 0 && (
