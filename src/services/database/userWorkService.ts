@@ -31,6 +31,11 @@ export class UserWorkService {
         }
       }));
 
+      // 添加排序参数：按创建时间倒序
+      params.append('orderBy', JSON.stringify({
+        createdAt: 'DESC'
+      }));
+
       // 使用GET请求到list端点
       const response = await databaseService.get<DatabaseResponse<UserWorkModel>>(
         `/model/prod/${this.modelName}/list?${params.toString()}`
@@ -133,6 +138,89 @@ export class UserWorkService {
         error: {
           code: error instanceof DatabaseError ? error.code : 'CREATE_WORK_ERROR',
           message: error instanceof Error ? error.message : '创建作品时发生未知错误',
+        },
+      };
+    }
+  }
+
+  // 根据任务ID获取单个作品详情
+  async getWorkByTaskId(taskId: string) {
+    try {
+      // 按照文档截图使用 POST 方式调用 get 接口查询单条数据
+      const response = await databaseService.post<DatabaseResponse<UserWorkModel>>(
+        `/model/prod/${this.modelName}/get`,
+        {
+          filter: {
+            where: {
+              taskId: {
+                $eq: taskId
+              }
+            }
+          }
+        }
+      );
+
+      if (response.success && response.data) {
+        return {
+          success: true,
+          data: response.data,
+        };
+      }
+
+      return {
+        success: false,
+        error: {
+          code: 'WORK_NOT_FOUND',
+          message: '未找到对应任务ID的作品',
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: {
+          code: error instanceof DatabaseError ? error.code : 'GET_WORK_ERROR',
+          message: error instanceof Error ? error.message : '根据任务ID获取作品失败',
+        },
+      };
+    }
+  }
+
+  // 更新作品信息
+  async updateWork(workId: string, updateData: Partial<UserWorkModel>) {
+    try {
+      const response = await databaseService.put<DatabaseUpdateResponse<any>>(
+        `/model/prod/${this.modelName}/update`,
+        {
+          filter: {
+            where: {
+              _id: {
+                $eq: workId
+              }
+            }
+          },
+          data: updateData
+        }
+      );
+
+      if (response.success) {
+        return {
+          success: true,
+        };
+      }
+
+      return {
+        success: false,
+        error: {
+          code: response.error?.code || 'UPDATE_WORK_ERROR',
+          message: response.error?.message || '更新作品失败',
+        },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: {
+          code: error instanceof DatabaseError ? error.code : 'UPDATE_WORK_ERROR',
+          message: error instanceof Error ? error.message : '更新作品时发生未知错误',
         },
       };
     }

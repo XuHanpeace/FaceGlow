@@ -69,13 +69,19 @@ const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress, onDelete, ca
   };
 
   const extData = getExtData();
-  const selfieUrl = extData.selfie_url;
-  const taskStatus = extData.task_status;
+  // 优先使用顶层 taskStatus，兼容旧数据 ext_data.task_status
+  const taskStatus = work.taskStatus || extData.task_status;
+  // 增强 selfieUrl 获取逻辑：优先 ext_data，其次尝试取 result_data 中的 template_image (原图)
+  const selfieUrl = extData.selfie_url || (work.result_data?.[0]?.template_image);
 
   // 获取作品封面图片
   const getCoverImage = () => {
+    // 如果是 asyncTask 且 result_image 为空 (生成中/失败)，优先展示 activity_image 或 template_image
+    if (work.activity_type === 'asyncTask' && (!work.result_data?.[0]?.result_image)) {
+       return work.activity_image || work.result_data?.[0]?.template_image;
+    }
     if (work.result_data && work.result_data.length > 0) {
-      return work.result_data[0].result_image;
+      return work.result_data[0].result_image || work.activity_image;
     }
     return work.activity_image;
   };

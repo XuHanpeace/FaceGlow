@@ -4,7 +4,7 @@ import { useAppDispatch, useTypedSelector } from '../store/hooks';
 import { togglePanel, pollAsyncTask, removeTask } from '../store/slices/asyncTaskSlice';
 import { TaskStatus } from '../types/model/user_works';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
-import { navigate } from '../navigation/navigationUtils';
+// import { navigate } from '../navigation/navigationUtils'; // Removed
 
 const { height } = Dimensions.get('window');
 
@@ -18,8 +18,7 @@ const AsyncTaskPanel: React.FC = () => {
 
   // 轮询逻辑
   useEffect(() => {
-    if (!isPanelOpen) return;
-
+    // 只要有 PENDING 任务，就开始轮询，不依赖面板打开状态
     const pendingTasks = tasks.filter(t => t.status === TaskStatus.PENDING);
     if (pendingTasks.length === 0) return;
 
@@ -30,17 +29,7 @@ const AsyncTaskPanel: React.FC = () => {
     }, 3000); // 每3秒轮询一次
 
     return () => clearInterval(intervalId);
-  }, [isPanelOpen, tasks, dispatch]);
-
-  const handleTaskPress = (task: any) => {
-    if (task.status === TaskStatus.SUCCESS) {
-        handleClose();
-        // 跳转到作品预览页
-        navigate('UserWorkPreview', {
-            initialWorkId: task.workId
-        });
-    }
-  };
+  }, [tasks, dispatch]); // 移除 isPanelOpen 依赖
 
   const renderItem = ({ item }: { item: any }) => {
     let statusIcon;
@@ -62,11 +51,7 @@ const AsyncTaskPanel: React.FC = () => {
     }
 
     return (
-      <TouchableOpacity 
-        style={styles.taskItem} 
-        onPress={() => handleTaskPress(item)}
-        disabled={item.status === TaskStatus.PENDING}
-      >
+      <View style={styles.taskItem}>
         <Image source={{ uri: item.coverImage }} style={styles.coverImage} />
         <View style={styles.taskInfo}>
           <Text style={styles.taskTitle} numberOfLines={1}>{item.activityTitle}</Text>
@@ -84,7 +69,7 @@ const AsyncTaskPanel: React.FC = () => {
                 <FontAwesome name="times" size={14} color="#999" />
             </TouchableOpacity>
         )}
-      </TouchableOpacity>
+      </View>
     );
   };
 
@@ -98,9 +83,12 @@ const AsyncTaskPanel: React.FC = () => {
       <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={handleClose}>
         <TouchableOpacity activeOpacity={1} style={styles.panel}>
           <View style={styles.header}>
-            <Text style={styles.title}>创作任务</Text>
+            <View>
+              <Text style={styles.title}>创作任务</Text>
+              <Text style={styles.subtitle}>AI 正在努力创作中，预计耗时 1-3 分钟，请耐心等待...</Text>
+            </View>
             <TouchableOpacity onPress={handleClose}>
-              <FontAwesome name="times" size={20} color="#333" />
+              <FontAwesome name="angle-down" size={24} color="#fff" />
             </TouchableOpacity>
           </View>
           
@@ -124,11 +112,11 @@ const AsyncTaskPanel: React.FC = () => {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'transparent',
     justifyContent: 'flex-end',
   },
   panel: {
-    backgroundColor: '#fff',
+    backgroundColor: '#1E1E1E',
     height: height * 0.5,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
@@ -137,13 +125,21 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 20,
+  },
+  headerContent: {
+    flex: 1,
   },
   title: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#fff',
+  },
+  subtitle: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.6)',
+    marginTop: 4,
   },
   listContent: {
     paddingBottom: 20,
@@ -152,7 +148,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: '#2C2C2C',
     borderRadius: 12,
     marginBottom: 10,
   },
@@ -168,12 +164,12 @@ const styles = StyleSheet.create({
   taskTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: '#fff',
     marginBottom: 4,
   },
   taskStatus: {
     fontSize: 12,
-    color: '#666',
+    color: 'rgba(255, 255, 255, 0.6)',
   },
   errorText: {
     fontSize: 10,
@@ -193,10 +189,9 @@ const styles = StyleSheet.create({
     paddingTop: 40,
   },
   emptyText: {
-    color: '#999',
+    color: 'rgba(255, 255, 255, 0.4)',
     fontSize: 14,
   },
 });
 
 export default AsyncTaskPanel;
-

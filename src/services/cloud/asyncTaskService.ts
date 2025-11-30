@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { CLOUDBASE_CONFIG } from '../../config/cloudbase';
+import { authService } from '../auth/authService';
 
 /**
  * 阿里云百炼异步任务参数
@@ -45,7 +45,9 @@ export interface TaskQueryResponse {
 
 class AsyncTaskService {
   // 使用环境ID构建云函数URL
-  private readonly baseUrl = `https://${CLOUDBASE_CONFIG.ENV_ID}.service.tcloudbase.com`;
+  // 注意：HTTP 访问需使用 HTTP 访问域名，通常格式为：https://<env-id>-<app-id>.<region>.app.tcloudbase.com
+  // 参考 tcb.ts 中的 fusion 调用
+  private readonly baseUrl = `https://startup-2gn33jt0ca955730-1257391807.ap-shanghai.app.tcloudbase.com`;
 
   /**
    * 调用 callBailian 云函数发起异步任务
@@ -53,8 +55,17 @@ class AsyncTaskService {
   async callBailian(params: BailianParams): Promise<BailianResponse> {
     try {
       console.log('🔄 调用 callBailian 云函数:', params);
-      const response = await axios.post(`${this.baseUrl}/callBailian`, params, {
-        headers: { 'Content-Type': 'application/json' },
+      
+      const token = authService.getCurrentAccessToken();
+      const headers: any = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await axios.post(`${this.baseUrl}/callBailian`, {
+        data: params
+      }, {
+        headers,
         timeout: 60000, // 60秒超时
       });
 
@@ -74,8 +85,16 @@ class AsyncTaskService {
    */
   async queryTask(taskId: string): Promise<TaskQueryResponse> {
     try {
-      const response = await axios.post(`${this.baseUrl}/queryTask`, { taskId }, {
-        headers: { 'Content-Type': 'application/json' },
+      const token = authService.getCurrentAccessToken();
+      const headers: any = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await axios.post(`${this.baseUrl}/queryTask`, {
+        data: { taskId }
+      }, {
+        headers,
         timeout: 15000,
       });
 

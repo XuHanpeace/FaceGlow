@@ -8,12 +8,7 @@ import {
   StatusBar,
   Modal,
   Alert,
-  TextInput,
   Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableWithoutFeedback,
-  Keyboard,
   Image,
 } from 'react-native';
 import FastImage from 'react-native-fast-image';
@@ -23,21 +18,19 @@ import { RootStackParamList } from '../types/navigation';
 import { useTypedSelector, useAppDispatch } from '../store/hooks';
 import { clearAllSelfies } from '../store/slices/selfieSlice';
 import { resetUser } from '../store/slices/userSlice';
+import { fetchUserWorks } from '../store/slices/userWorksSlice'; // Added
 import { logoutUser } from '../store/middleware/asyncMiddleware';
 import { useUser, useUserSelfies } from '../hooks/useUser';
 import UserAvatar from '../components/UserAvatar';
 import { userWorkService } from '../services/database/userWorkService';
 import { UserWorkModel } from '../types/model/user_works';
 import { useAuthState } from '../hooks/useAuthState';
-import { useAppSelector } from '../store/hooks';
 import { userDataService } from '../services/database/userDataService';
 import UserWorkCard from '../components/UserWorkCard';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { updateProfile } from '../store/slices/userSlice';
-import GradientButton from '../components/GradientButton';
 import BackButton from '../components/BackButton';
 import { showSuccessToast } from '../utils/toast';
-import { authService } from '../services/auth/authService';
 import { EditNameModal, EditNameModalRef } from '../components/EditNameModal';
 import AvatarSelectorModal, { AvatarSelectorModalRef } from '../components/AvatarSelectorModal';
 import { DeleteIcon } from '../components/DeleteIcon';
@@ -99,9 +92,10 @@ const NewProfileScreen: React.FC = () => {
   const membershipStatus = getCurrentMembershipStatus();
   const { selfies, hasSelfies, defaultSelfieUrl } = useUserSelfies();
   
-  // 用户作品状态
-  const [userWorks, setUserWorks] = useState<UserWorkModel[]>([]);
-  const [worksLoading, setWorksLoading] = useState(false);
+  // 用户作品状态 (Redux)
+  const { works: userWorks, status: worksStatus } = useTypedSelector(state => state.userWorks);
+  const worksLoading = worksStatus === 'loading';
+
   const { user, logout } = useAuthState();
 
   // 根据会员类型获取主题色
@@ -197,7 +191,7 @@ const NewProfileScreen: React.FC = () => {
     setActiveTab(tab);
     // 切换到"我的作品"时，如果已有缓存数据，不重新加载
     if (tab === 'works' && userWorks.length === 0) {
-      fetchUserWorks();
+      loadUserWorks();
     }
   };
   
@@ -287,7 +281,7 @@ const NewProfileScreen: React.FC = () => {
               await logout();
               
               // 清除作品列表
-              setUserWorks([]);
+              // setUserWorks([]);
               
               showSuccessToast('已退出登录');
               
@@ -321,7 +315,7 @@ const NewProfileScreen: React.FC = () => {
         
         await logout();
         
-        setUserWorks([]); 
+        // setUserWorks([]); 
         setShowDeleteConfirm(false);
         
         Alert.alert(
@@ -361,7 +355,7 @@ const NewProfileScreen: React.FC = () => {
       const result = await userWorkService.deleteWork(work._id);
       if (result.success) {
         showSuccessToast('删除成功');
-        setUserWorks(prev => prev.filter(item => item._id !== work._id));
+        loadUserWorks();
       } else {
         Alert.alert('删除失败', result.error?.message || '请稍后重试');
       }
@@ -370,39 +364,19 @@ const NewProfileScreen: React.FC = () => {
     }
   };
 
-  // 获取用户作品
-  const fetchUserWorks = async () => {
+  // 获取用户作品 (Redux)
+  const loadUserWorks = () => {
     if (!user?.uid) {
       console.log('❌ 用户未登录，无法获取作品');
       return;
     }
-
-    setWorksLoading(true);
-    try {
-      console.log('🔄 开始获取用户作品...');
-      const result = await userWorkService.getUserWorks({ uid: user.uid });
-      
-      if (result.success && result.data) {
-        const works = Array.isArray(result.data.records) ? result.data.records : [];
-        console.log('✅ 获取用户作品成功:', works.length, '个作品');
-        setUserWorks(works);
-      } else {
-        console.log('❌ 获取用户作品失败:', result.error?.message);
-        setUserWorks([]);
-      }
-    } catch (error: any) {
-      console.error('❌ 获取用户作品异常:', error);
-      setUserWorks([]);
-    } finally {
-      setWorksLoading(false);
-    }
+    console.log('🔄 开始获取用户作品(Redux)...');
+    dispatch(fetchUserWorks({ uid: user.uid }));
   };
 
   useEffect(() => {
     if (isLoggedIn && user?.uid && userProfile) {
-      fetchUserWorks();
-    } else {
-      setUserWorks([]);
+      loadUserWorks();
     }
   }, [isLoggedIn, user?.uid, userProfile]);
 

@@ -13,4 +13,5 @@
 11. **Resource Reference**: Do NOT reference non-existent resources.
 12. **Execution**: Do NOT immediately execute planned commands unless requested.
 13. **Module Imports**: Ensure module import paths are correct when generating code. (New)
-
+14. **Method Verification**: Verify method existence in imported services before calling them. Read definition files first. (New)
+15. **Check Imports**: Before using a component or module (especially React Native components like Image, View, Text), ALWAYS verify it is imported. (New)

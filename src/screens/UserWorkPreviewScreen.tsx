@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   Dimensions,
   FlatList,
   ViewToken,
+  Animated,
+  Easing,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -24,7 +26,11 @@ import { showSuccessToast } from '../utils/toast';
 import BackButton from '../components/BackButton';
 import LinearGradient from 'react-native-linear-gradient';
 import { UserWorkModel, TaskStatus } from '../types/model/user_works';
-import { ActivityIndicator } from 'react-native';
+import { useAppDispatch, useTypedSelector } from '../store/hooks';
+import { pollAsyncTask, AsyncTask } from '../store/slices/asyncTaskSlice';
+import { userWorkService } from '../services/database/userWorkService';
+import { fetchUserWorks } from '../store/slices/userWorksSlice';
+import { OneTimeReveal } from '../components/OneTimeReveal';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -37,14 +43,153 @@ const ResultItem = React.memo(({
   showComparison, 
   selfieUrl,
   onInteractionStart,
-  onInteractionEnd
+  onInteractionEnd,
+  isAsyncTask,
+  taskStatus,
+  onRefresh,
+  coverImage
 }: { 
   item: any, 
   showComparison: boolean, 
   selfieUrl: string | null,
   onInteractionStart?: () => void,
-  onInteractionEnd?: () => void
+  onInteractionEnd?: () => void,
+  isAsyncTask?: boolean,
+  taskStatus?: TaskStatus,
+  onRefresh?: () => void,
+  coverImage?: string
 }) => {
+  // Hourglass Animation
+  const spinValue = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (isAsyncTask && taskStatus === TaskStatus.PENDING) {
+        const spin = Animated.sequence([
+            Animated.timing(spinValue, {
+                toValue: 1, // 180 deg
+                duration: 800,
+                useNativeDriver: true,
+                easing: Easing.inOut(Easing.ease)
+            }),
+            Animated.delay(300),
+            Animated.timing(spinValue, {
+                toValue: 2, // 360 deg
+                duration: 800,
+                useNativeDriver: true,
+                easing: Easing.inOut(Easing.ease)
+            }),
+            Animated.delay(300),
+            Animated.timing(spinValue, {
+                toValue: 0, // reset
+                duration: 0,
+                useNativeDriver: true
+            })
+        ]);
+        Animated.loop(spin).start();
+    } else {
+        spinValue.setValue(0);
+        spinValue.stopAnimation();
+    }
+  }, [taskStatus, isAsyncTask]);
+
+  const spin = spinValue.interpolate({
+    inputRange: [0, 1, 2],
+    outputRange: ['0deg', '180deg', '360deg']
+  });
+
+  // Reveal Animation Logic
+  const [playReveal, setPlayReveal] = useState(false);
+  // Track previous status to detect the edge.
+  const prevStatusRef = useRef(taskStatus);
+
+  useEffect(() => {
+      if (!isAsyncTask) return;
+
+      if (taskStatus === TaskStatus.SUCCESS) {
+          // Case 1: Transition from !SUCCESS -> SUCCESS
+          if (prevStatusRef.current !== TaskStatus.SUCCESS) {
+              setTimeout(() => {
+                  setPlayReveal(true);
+              }, 500);
+          }
+          // Case 2: Already SUCCESS on mount (Entry)
+          else if (!playReveal) {
+              setPlayReveal(true);
+          }
+      }
+      prevStatusRef.current = taskStatus;
+  }, [taskStatus, isAsyncTask]);
+
+  if (isAsyncTask) {
+    if (taskStatus === TaskStatus.FAILED) {
+        return (
+            <View style={styles.pageContainer}>
+                {coverImage && (
+                    <Image 
+                        source={{ uri: coverImage }} 
+                        style={[styles.resultImage, { opacity: 0.4 }]} 
+                        resizeMode="cover" 
+                    />
+                )}
+                <View style={[styles.statusContainer, { position: 'absolute', width: '100%', height: '100%' }]}>
+                    <FontAwesome name="exclamation-circle" size={50} color="#FF4D4F" />
+                    <Text style={styles.statusTextBig}>作品生成失败</Text>
+                </View>
+            </View>
+        );
+    }
+    
+    // Unified View for PENDING and SUCCESS (Static & Transition)
+    return (
+        <View style={styles.pageContainer}>
+            {/* Main Content: OneTimeReveal handles both static cover, transition, and static result */}
+            <OneTimeReveal 
+                image1={coverImage || ''}
+                image2={item.result_image || undefined}
+                trigger={playReveal}
+                revealed={false} // Always animate reveal on entry
+                duration={2500}
+                onAnimationStart={() => {
+                    console.log('[ResultItem] Start Reveal Anim');
+                    if (onInteractionStart) onInteractionStart();
+                }}
+                onAnimationEnd={() => {
+                    console.log('[ResultItem] End Reveal Anim');
+                    if (onInteractionEnd) onInteractionEnd();
+                    // Keep playReveal true so OneTimeReveal stays at "1" (revealed)
+                }}
+                containerStyle={{ width: screenWidth, height: screenHeight }}
+            />
+
+            {/* Overlays for PENDING state */}
+            {taskStatus === TaskStatus.PENDING && (
+                <>
+                    <View style={styles.loadingHintContainer}>
+                        <Animated.View style={{ transform: [{ rotate: spin }], marginRight: 8 }}>
+                            <FontAwesome name="hourglass-half" size={16} color="#fff" />
+                        </Animated.View>
+                        <Text style={styles.loadingHintText}>美颜换换正在施展魔法，预计1分钟完成...</Text>
+                    </View>
+
+                    <TouchableOpacity onPress={onRefresh} style={styles.manualRefreshButton}>
+                        <FontAwesome name="refresh" size={14} color="rgba(255,255,255,0.8)" style={{ marginRight: 6 }} />
+                        <Text style={styles.manualRefreshText}>刷新进度</Text>
+                    </TouchableOpacity>
+                </>
+            )}
+
+            {/* Small Original Image (Always show if available) */}
+            {selfieUrl && (
+                <View style={styles.smallOriginalContainer}>
+                    <Image 
+                      source={{ uri: selfieUrl }} 
+                      style={styles.smallOriginalImage} 
+                    />
+                </View>
+            )}
+        </View>
+    );
+  }
+
   return (
     <View style={styles.pageContainer}>
       {showComparison && selfieUrl && item.template_image ? (
@@ -81,28 +226,51 @@ const WorkSlide = React.memo(({
   isActive,
   showComparison,
   onInteractionStart,
-  onInteractionEnd
+  onInteractionEnd,
+  onRefresh
 }: { 
-  work: UserWorkModel, 
+  work: UserWorkModel,
   isActive: boolean,
   showComparison: boolean,
   onInteractionStart: () => void,
-  onInteractionEnd: () => void
+  onInteractionEnd: () => void,
+  onRefresh: () => void
 }) => {
   const [scrollEnabled, setScrollEnabled] = useState(true);
 
-  // 获取自拍照URL（从ext_data中解析）
+  const isAsyncTask = work.activity_type === 'asyncTask';
+  
+  // 仅依赖 work 中的状态 (Single Source of Truth)
+  const getTaskStatus = (w: UserWorkModel) => {
+    if (w.taskStatus) return w.taskStatus;
+    try {
+      if (w.ext_data) {
+        const ext = JSON.parse(w.ext_data);
+        return ext.task_status;
+      }
+    } catch(e) { return null; }
+    return null;
+  };
+  const taskStatus = getTaskStatus(work);
+
+  // 获取自拍照URL（从ext_data中解析，兜底 template_image）
   const selfieUrl = useMemo(() => {
+    let extSelfie = null;
     try {
       if (work.ext_data) {
         const extData = JSON.parse(work.ext_data);
-        return extData.selfie_url || null;
+        extSelfie = extData.selfie_url || null;
       }
     } catch (error) {
       console.error('解析ext_data失败:', error);
     }
-    return null;
-  }, [work.ext_data]);
+    return extSelfie || work.result_data?.[0]?.template_image;
+  }, [work.ext_data, work.result_data]);
+
+  // 获取封面/底图
+  const coverImage = useMemo(() => {
+      return work.activity_image || work.result_data?.[0]?.template_image;
+  }, [work.activity_image, work.result_data]);
 
   const handleInteractionStart = useCallback(() => {
     setScrollEnabled(false); // 禁用自身水平滚动
@@ -122,9 +290,13 @@ const WorkSlide = React.memo(({
         selfieUrl={selfieUrl}
         onInteractionStart={handleInteractionStart}
         onInteractionEnd={handleInteractionEnd}
+        isAsyncTask={isAsyncTask}
+        taskStatus={taskStatus}
+        onRefresh={onRefresh}
+        coverImage={coverImage}
       />
     );
-  }, [showComparison, selfieUrl, handleInteractionStart, handleInteractionEnd]);
+  }, [showComparison, selfieUrl, handleInteractionStart, handleInteractionEnd, isAsyncTask, taskStatus, onRefresh, coverImage]);
 
   return (
     <View style={styles.workContainer}>
@@ -150,69 +322,213 @@ const WorkSlide = React.memo(({
 const UserWorkPreviewScreen: React.FC = () => {
   const navigation = useNavigation<UserWorkPreviewScreenNavigationProp>();
   const route = useRoute<UserWorkPreviewScreenRouteProp>();
-  const { work, initialWorkId, worksList } = route.params;
+  const { work: paramWork, initialWorkId, worksList: paramWorksList } = route.params;
+  
   const insets = useSafeAreaInsets();
+  const dispatch = useAppDispatch();
+  const { tasks } = useTypedSelector(state => state.asyncTask);
+  const { works: globalUserWorks } = useTypedSelector(state => state.userWorks);
   
   const [isVerticalScrollEnabled, setIsVerticalScrollEnabled] = useState(true);
 
-  // 构造作品列表
-  const allWorks = useMemo(() => {
-    if (worksList && worksList.length > 0) {
-      return worksList;
+  // 1. 初始化作品列表 State
+  const [worksList, setWorksList] = useState<UserWorkModel[]>(() => {
+    if (paramWorksList && paramWorksList.length > 0) {
+      return paramWorksList;
     }
-    // 兼容旧调用方式，只传了一个 work
-    return work ? [work] : [];
-  }, [worksList, work]);
+    return paramWork ? [paramWork] : [];
+  });
 
   // 初始索引
   const initialIndex = useMemo(() => {
-    const targetId = initialWorkId || work?._id;
-    const index = allWorks.findIndex(w => w._id === targetId);
+    const targetId = initialWorkId || paramWork?._id;
+    const list = paramWorksList && paramWorksList.length > 0 ? paramWorksList : (paramWork ? [paramWork] : []);
+    const index = list.findIndex(w => w._id === targetId);
     return index >= 0 ? index : 0;
-  }, [allWorks, initialWorkId, work]);
+  }, [initialWorkId, paramWork, paramWorksList]);
 
   const [activeWorkIndex, setActiveWorkIndex] = useState(initialIndex);
   const [showComparison, setShowComparison] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
-  const [shareImageUrl, setShareImageUrl] = useState<string>('');
+  const [shareImageUrl, setShareImageUrl] = useState('');
   
   // 当前激活的作品
-  const activeWork = allWorks[activeWorkIndex];
+  const activeWork = worksList[activeWorkIndex];
 
-  // 检查是否是 asyncTask
+  useEffect(() => {
+      console.log('[Preview] 当前激活作品变更:', activeWork?._id, 'TaskId:', activeWork?.taskId, 'Status:', activeWork?.taskStatus); // LOG
+  }, [activeWork]);
+
+  // 2. 监听 Redux 任务更新 (asyncTask)
+  useEffect(() => {
+      if (!activeWork?.taskId) return;
+      
+      const task = tasks.find(t => t.taskId === activeWork.taskId);
+      
+      // 优先使用 Redux 推送的 updatedWork
+      if (task && task.updatedWork) {
+          const updated = task.updatedWork;
+          // 检查是否需要更新
+          if (updated.taskStatus !== activeWork.taskStatus || 
+              updated.result_data?.[0]?.result_image !== activeWork.result_data?.[0]?.result_image) {
+              
+              console.log('[Preview] 接收到 Redux 任务更新数据，更新界面');
+              setWorksList(prev => {
+                  const newList = [...prev];
+                  const idx = newList.findIndex(w => w.taskId === updated.taskId);
+                  if (idx !== -1) {
+                      newList[idx] = updated;
+                  }
+                  return newList;
+              });
+          }
+      } 
+      // 兜底：如果 Redux 没推 updatedWork 但状态成功了，主动拉取
+      else if (task && task.status === TaskStatus.SUCCESS) {
+          const isLocalPending = activeWork.taskStatus !== TaskStatus.SUCCESS;
+          const isLocalNoImage = !activeWork.result_data?.[0]?.result_image;
+          
+          if (isLocalPending || isLocalNoImage) {
+             console.log('[Preview] Redux任务成功(无推送)，主动请求最新作品数据...');
+             refreshWorkData(activeWork.taskId);
+          }
+      }
+  }, [tasks, activeWork]); 
+
+  // 3. 监听全局 userWorks 更新并同步到本地 list
+  useEffect(() => {
+    if (globalUserWorks.length > 0 && worksList.length > 0) {
+        setWorksList(prev => {
+            let hasChange = false;
+            // 创建新数组以避免直接修改 state
+            const newList = [...prev];
+            
+            // 遍历本地列表，查找全局是否有更新
+            for (let i = 0; i < newList.length; i++) {
+                const localItem = newList[i];
+                const globalItem = globalUserWorks.find(g => g._id === localItem._id);
+                
+                if (globalItem) {
+                    const isStatusChanged = globalItem.taskStatus !== localItem.taskStatus;
+                    // 注意：比较可选链可能 undefined
+                    const localImg = localItem.result_data?.[0]?.result_image;
+                    const globalImg = globalItem.result_data?.[0]?.result_image;
+                    const isResultChanged = globalImg !== localImg;
+                    
+                    if (isStatusChanged || isResultChanged) {
+                        console.log('[Preview] 从全局 Store 同步更新作品:', localItem._id, 'Status:', globalItem.taskStatus);
+                        newList[i] = globalItem;
+                        hasChange = true;
+                    }
+                }
+            }
+            return hasChange ? newList : prev;
+        });
+    }
+  }, [globalUserWorks]);
+
+  const refreshWorkData = async (taskId: string) => {
+      console.log('[Preview] 正在刷新作品数据 taskId:', taskId); // LOG
+      try {
+          const result = await userWorkService.getWorkByTaskId(taskId);
+          if (result.success && result.data) {
+               console.log('[Preview] 刷新成功，更新本地状态'); // LOG
+               // 兼容 TCB 返回
+               const rawData = result.data as any;
+               const newData = rawData.record ? rawData.record : rawData;
+               
+               setWorksList(prev => {
+                  const newList = [...prev];
+                  const idx = newList.findIndex(w => w.taskId === taskId);
+                  if (idx !== -1) {
+                      newList[idx] = newData;
+                  }
+                  return newList;
+               });
+
+               // 同步更新全局 Redux userWorks 数据
+               if (newData.uid) {
+                   dispatch(fetchUserWorks({ uid: newData.uid }));
+               }
+          }
+      } catch (e) {
+          console.error('[Preview] 刷新失败', e);
+      }
+  };
+
   const isAsyncTask = activeWork?.activity_type === 'asyncTask';
   
-  // 获取 taskStatus
+  // 辅助函数：获取状态
   const getTaskStatus = (work: UserWorkModel) => {
+    if (work.taskStatus) return work.taskStatus;
     try {
-      if (work.ext_data) {
-        const ext = JSON.parse(work.ext_data);
-        return ext.task_status;
-      }
-    } catch(e) { return null; }
+        if (work.ext_data) {
+            const ext = JSON.parse(work.ext_data);
+            return ext.task_status;
+        }
+    } catch(e) {}
     return null;
   };
-  const taskStatus = activeWork ? getTaskStatus(activeWork) : null;
+
+  // 自动刷新逻辑
+  useEffect(() => {
+      if (activeWork && activeWork.taskId) {
+          const currentStatus = getTaskStatus(activeWork);
+          if (currentStatus === TaskStatus.PENDING) {
+              const taskInRedux = tasks.find(t => t.taskId === activeWork.taskId);
+              if (!taskInRedux || taskInRedux.status === TaskStatus.PENDING) {
+                 console.log('[Preview] 自动触发 handleRefreshTask'); // LOG
+                 handleRefreshTask();
+              }
+          }
+      }
+  }, [activeWork?._id]);
 
   const handleBackPress = () => {
     navigation.goBack();
   };
 
   const handleSharePress = () => {
-    const currentResult = activeWork?.result_data?.[0]; // 暂时取第一个，后续可优化
-    if (currentResult) {
-      setShareImageUrl(currentResult.result_image);
+    const currentResultImage = activeWork?.result_data?.[0]?.result_image;
+    if (currentResultImage) {
+      setShareImageUrl(currentResultImage);
       setShowShareModal(true);
     }
   };
 
-  // 分享选项配置
+  const handleRefreshTask = useCallback(() => {
+      console.log('[Preview] 主动触发 handleRefreshTask'); // LOG
+      try {
+          let targetTaskId = activeWork?.taskId;
+          if (!targetTaskId && activeWork?.ext_data) {
+              try {
+                  const ext = JSON.parse(activeWork.ext_data);
+                  targetTaskId = ext.task_id;
+              } catch(e) {}
+          }
+
+          if (activeWork && targetTaskId) {
+               const task: AsyncTask = {
+                   taskId: targetTaskId,
+                   workId: activeWork._id!,
+                   status: TaskStatus.PENDING,
+                   activityTitle: activeWork.activity_title || 'Task',
+                   startTime: Date.now(),
+                   coverImage: activeWork.activity_image
+               };
+               dispatch(pollAsyncTask(task));
+          }
+      } catch (e) {
+          console.error('Failed to parse ext_data for refresh', e);
+      }
+  }, [activeWork, dispatch]);
+
   const getShareOptions = () => [
     {
       id: 'save',
       icon: '💾',
       iconName: 'download',
-      iconColor: '#4CAF50', // 绿色 - 保存
+      iconColor: '#4CAF50', 
       label: '保存到相册',
       onPress: async () => {
         const result = await shareService.saveImageToAlbum(shareImageUrl);
@@ -231,7 +547,6 @@ const UserWorkPreviewScreen: React.FC = () => {
     }
   }).current;
 
-  // 处理垂直滚动的禁用/启用
   const handleInteractionStart = useCallback(() => {
     setIsVerticalScrollEnabled(false);
   }, []);
@@ -248,9 +563,10 @@ const UserWorkPreviewScreen: React.FC = () => {
         showComparison={showComparison}
         onInteractionStart={handleInteractionStart}
         onInteractionEnd={handleInteractionEnd}
+        onRefresh={handleRefreshTask}
       />
     );
-  }, [activeWorkIndex, showComparison, handleInteractionStart, handleInteractionEnd]);
+  }, [activeWorkIndex, showComparison, handleInteractionStart, handleInteractionEnd, handleRefreshTask]);
 
   if (!activeWork) return null;
 
@@ -258,7 +574,6 @@ const UserWorkPreviewScreen: React.FC = () => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       
-      {/* 头部导航 (Fixed Overlay) */}
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <BackButton iconType="arrow" onPress={handleBackPress} absolute={false} />
         <Text style={styles.headerTitle} numberOfLines={1}>
@@ -269,9 +584,8 @@ const UserWorkPreviewScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      {/* 主列表 - 垂直滑动切换作品 */}
       <FlatList
-        data={allWorks}
+        data={worksList}
         renderItem={renderWorkItem}
         keyExtractor={(item) => item._id || (item.createdAt ? item.createdAt!.toString() : Math.random().toString())}
         pagingEnabled
@@ -279,7 +593,7 @@ const UserWorkPreviewScreen: React.FC = () => {
         decelerationRate="fast"
         snapToInterval={screenHeight}
         snapToAlignment="start"
-        scrollEnabled={isVerticalScrollEnabled} // 控制垂直滚动
+        scrollEnabled={isVerticalScrollEnabled}
         initialScrollIndex={initialIndex}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{
@@ -294,10 +608,8 @@ const UserWorkPreviewScreen: React.FC = () => {
         removeClippedSubviews={true}
       />
 
-      {/* 底部控制区域 (Fixed Overlay) - asyncTask 且未完成时不显示对比模式 */}
       {!isAsyncTask && (
       <View style={[styles.bottomOverlay, { paddingBottom: Math.max(insets.bottom, 20) }]}>
-        {/* 对比模式切换按钮 */}
         <View style={styles.comparisonToggle}>
           <GradientButton
             title="对比模式"
@@ -319,23 +631,6 @@ const UserWorkPreviewScreen: React.FC = () => {
       </View>
       )}
 
-      {/* asyncTask 状态展示 */}
-      {isAsyncTask && taskStatus === TaskStatus.PENDING && (
-        <View style={styles.fullScreenStatusOverlay}>
-            <ActivityIndicator size="large" color="#00E096" />
-            <Text style={styles.statusTextBig}>作品生成中...</Text>
-            <Text style={styles.statusSubText}>请稍候，我们正在为您创作</Text>
-        </View>
-      )}
-
-      {isAsyncTask && taskStatus === TaskStatus.FAILED && (
-        <View style={styles.fullScreenStatusOverlay}>
-            <FontAwesome name="exclamation-circle" size={50} color="#FF4D4F" />
-            <Text style={styles.statusTextBig}>作品生成失败</Text>
-        </View>
-      )}
-
-      {/* 分享Modal */}
       <ShareModal
         visible={showShareModal}
         onClose={() => setShowShareModal(false)}
@@ -436,16 +731,9 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  fullScreenStatusOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+  statusContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 20,
   },
   statusTextBig: {
     color: '#fff',
@@ -453,11 +741,48 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: 16,
   },
-  statusSubText: {
-    color: '#ccc',
-    fontSize: 14,
-    marginTop: 8,
+  smallOriginalContainer: {
+    position: 'absolute',
+    bottom: 180,
+    left: 20,
+    width: 120, 
+    height: 120, 
+    borderRadius: 60,
+    borderWidth: 2,
+    borderColor: '#fff',
+    overflow: 'hidden',
+    zIndex: 10,
   },
+  smallOriginalImage: {
+    width: '100%',
+    height: '100%',
+  },
+  loadingHintContainer: {
+    position: 'absolute',
+    bottom: 100, // Adjust as needed
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  loadingHintText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  manualRefreshButton: {
+    position: 'absolute',
+    bottom: 60,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+  },
+  manualRefreshText: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 12,
+  }
 });
 
 export default UserWorkPreviewScreen;

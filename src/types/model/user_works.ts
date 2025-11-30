@@ -1,10 +1,10 @@
 export enum TaskStatus {
   /** 进行中 */
-  PENDING = 1,
+  PENDING = '1',
   /** 完成 */
-  SUCCESS = 2,
+  SUCCESS = '2',
   /** 失败 */
-  FAILED = 3
+  FAILED = '3'
 }
 
 /**
@@ -38,6 +38,10 @@ export interface UserWorkModel {
   result_data: ResultData[];
   /** 扩展数据（JSON字符串） */
   ext_data: string;
+  /** 任务ID (异步任务) */
+  taskId?: string;
+  /** 任务状态 (异步任务) */
+  taskStatus?: TaskStatus;
   /** 创建时间戳 */
   createdAt?: number;
   /** 更新时间戳 */

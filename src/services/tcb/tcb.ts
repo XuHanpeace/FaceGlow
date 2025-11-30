@@ -1,5 +1,6 @@
 import axios, { AxiosResponse } from 'axios';
 import { getCloudbaseConfig } from '../../config/cloudbase';
+import { authService } from '../auth/authService';
 
 // 获取腾讯云开发配置
 const CLOUDBASE_CONFIG = getCloudbaseConfig();
@@ -28,6 +29,15 @@ export const callFaceFusionCloudFunction = async (params: FusionParams): Promise
   try {
     console.log('🔄 调用人脸融合云函数:', params);
     
+    const token = authService.getCurrentAccessToken();
+    const headers: any = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     // 使用axios调用CloudBase云函数
     const response: AxiosResponse<FusionResult> = await axios.post(
       'https://startup-2gn33jt0ca955730-1257391807.ap-shanghai.app.tcloudbase.com/fusion',
@@ -40,10 +50,7 @@ export const callFaceFusionCloudFunction = async (params: FusionParams): Promise
       },
       {
         timeout: CLOUDBASE_CONFIG.API.TIMEOUT,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers,
       }
     );
 

@@ -70,6 +70,7 @@ const TemplateSlide = React.memo(({
           source={{ uri: template.template_url }}
           style={styles.mainImage}
           resizeMode="cover"
+          fadeDuration={0}
         />
       )}
       
@@ -295,24 +296,44 @@ const BeforeCreationScreen: React.FC = () => {
 
       // 查找 Activity 以判断类型
       const activity = activities.find(a => a.activiy_id === currentActivityId);
-      const isAsyncTask = activity?.activity_type === ActivityType.ASYNC_TASK || currentAlbum.srcImage; // 补充判断
+      const isAsyncTask = activity?.activity_type === ActivityType.ASYNC_TASK || (currentAlbum as any).srcImage;
+
+      console.log('[BeforeCreation] Check AsyncTask:', { 
+          currentActivityId, 
+          activityType: activity?.activity_type, 
+          hasSrcImage: !!(currentAlbum as any).srcImage,
+          isAsyncTask 
+      });
 
       if (isAsyncTask) {
         // 异步任务逻辑
         const promptData = activity?.promptData;
-        if (!user.uid) throw new Error('用户未登录');
+        console.log('[BeforeCreation] Starting AsyncTask with PromptData:', promptData);
+        
+        // 尝试从 authService 直接获取当前用户信息，作为兜底
+        const currentUid = authService.getCurrentUserId();
+        const uid = currentUid || user?.uid;
 
-        await dispatch(startAsyncTask({
+        if (!uid) {
+             console.error('[BeforeCreation] User UID not found in Redux or Auth Service');
+             throw new Error('用户未登录');
+        }
+
+        const taskParams = {
              prompt: promptData?.text || '',
              images: [selectedSelfieUrl],
              activityId: currentActivityId,
              activityTitle: activity?.activity_title || currentAlbum.album_name,
-             activityDescription: activity?.promptData?.styleDesc || '',
-             activityImage: activity?.promptData?.resultImage || '',
-             uid: user.uid,
+             activityDescription: activity?.promptData?.styleDesc || currentAlbum.album_description,
+             activityImage: activity?.promptData?.resultImage || currentAlbum.album_image,
+             uid: uid,
              templateId: currentTemplate?.template_id || 'async_task_template',
              promptData: promptData
-        })).unwrap();
+        };
+        console.log('[BeforeCreation] Dispatching startAsyncTask:', taskParams);
+
+        await dispatch(startAsyncTask(taskParams)).unwrap();
+        console.log('[BeforeCreation] AsyncTask started successfully');
 
         Alert.alert('任务已提交', '创作任务已在后台运行，请留意悬浮条任务列表。', [
             { text: '好的', onPress: () => navigation.goBack() }
