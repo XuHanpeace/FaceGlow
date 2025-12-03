@@ -95,8 +95,39 @@ export class DatabaseService {
       (response: AxiosResponse) => {
         return response;
       },
-      (error) => {
+      async (error) => {
         if (error.response) {
+          // 处理401错误
+          if (error.response.status === 401) {
+            // 尝试刷新token
+            try {
+              const refreshResult = await authService.refreshAccessToken();
+              if (!refreshResult.success) {
+                // 刷新失败，排除网络错误
+                const errorCode = refreshResult.error?.code;
+                const errorMessage = refreshResult.error?.message || '';
+                
+                // 检查是否是token过期或token不匹配的错误（排除网络不通）
+                const isTokenError = errorCode === 'REFRESH_ERROR' && 
+                  (errorMessage.includes('过期') || 
+                   errorMessage.includes('expired') || 
+                   errorMessage.includes('invalid') ||
+                   errorMessage.includes('not match') ||
+                   errorMessage.includes('不匹配'));
+                
+                if (isTokenError) {
+                  // 触发登录提示弹窗
+                  const { loginPromptService } = require('../loginPromptService');
+                  loginPromptService.showManually('authLost');
+                }
+              }
+            } catch (refreshError) {
+              // 刷新token时发生异常，也触发登录提示
+              const { loginPromptService } = require('../loginPromptService');
+              loginPromptService.showManually('authLost');
+            }
+          }
+          
           // 服务器响应了错误状态码
           const errorData = error.response.data || {};
           throw new DatabaseError(
@@ -105,7 +136,7 @@ export class DatabaseService {
             error.response.status
           );
         } else if (error.request) {
-          // 请求已发出但没有收到响应
+          // 请求已发出但没有收到响应（网络不通，不触发登录提示）
           throw new DatabaseError(
             '网络请求失败，请检查网络连接',
             'NETWORK_ERROR'

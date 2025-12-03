@@ -92,11 +92,7 @@ const TemplateSlide = React.memo(({
         </View>
 
         <GradientButton
-          title={
-             (template.price && template.price > 0) ? `${template.price} 💎 立即创作` : 
-             (album.price && album.price > 0) ? `${album.price} 💎 立即创作` : 
-             "立即创作"
-          }
+          title="立即创作"
           onPress={() => onUseStyle(template)}
           variant="primary"
           size="large"
@@ -105,6 +101,20 @@ const TemplateSlide = React.memo(({
           borderRadius={28}
           loading={isFusionProcessing}
           disabled={isFusionProcessing}
+          rightComponent={
+            ((template.price && template.price > 0) || (album.price && album.price > 0)) ? (
+              <View style={styles.priceContainer}>
+                <Image 
+                  source={require('../assets/mm-coins.png')} 
+                  style={styles.coinIcon}
+                  resizeMode="contain"
+                />
+                <Text style={styles.priceText}>
+                  {template.price && template.price > 0 ? template.price : album.price}
+                </Text>
+              </View>
+            ) : null
+          }
         />
       </View>
     </View>
@@ -465,6 +475,20 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
+  },
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  coinIcon: {
+    width: 22,
+    height: 22,
+  },
+  priceText: {
+    color: '#FFD700',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   useButton: {
     width: '100%',

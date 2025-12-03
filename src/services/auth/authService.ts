@@ -340,6 +340,29 @@ export class AuthService {
       };
     } catch (error: any) {
       console.log('❌ AccessToken刷新失败:', error.message);
+      
+      // 检查是否是token过期或token不匹配的错误（排除网络不通）
+      const errorMessage = error.message || '';
+      const isNetworkError = errorMessage.includes('网络') || 
+                            errorMessage.includes('network') ||
+                            errorMessage.includes('timeout') ||
+                            error.request; // axios的request属性表示网络请求失败
+      
+      const isTokenError = !isNetworkError && (
+        errorMessage.includes('过期') || 
+        errorMessage.includes('expired') || 
+        errorMessage.includes('invalid') ||
+        errorMessage.includes('not match') ||
+        errorMessage.includes('不匹配') ||
+        error.response?.status === 401
+      );
+      
+      if (isTokenError) {
+        // 触发登录提示弹窗
+        const { loginPromptService } = require('../loginPromptService');
+        loginPromptService.showManually('authLost');
+      }
+      
       return {
         success: false,
         error: {

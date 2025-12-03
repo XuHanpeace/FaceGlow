@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, Dimensions } from 'react-native';
 import { AlbumRecord, AlbumLevel } from '../types/model/album';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import LinearGradient from 'react-native-linear-gradient';
 
 const { width: screenWidth } = Dimensions.get('window');
 // 2 column layout: Screen Width / 2 - Padding
@@ -33,45 +34,53 @@ export const NewAlbumCard: React.FC<NewAlbumCardProps> = ({
 
   const cardHeight = COLUMN_WIDTH * aspectRatio;
 
-  // Badge Logic
+  // Badge Logic with Gradient
   const renderBadge = () => {
     if (album.activity_tag_type) {
-        let bgColor = '#000';
+        let gradientColors: string[] = ['#000', '#000'];
         let icon = 'tag';
         let text = album.activity_tag_text || '';
 
         switch (album.activity_tag_type) {
             case 'new':
-                bgColor = '#4CAF50'; // Green
+                gradientColors = ['#4CAF50', '#66BB6A']; // Green gradient
                 icon = 'bolt';
-                text = text || 'NEW';
+                text = text || '新品';
                 break;
             case 'discount':
-                bgColor = '#FF5722'; // Deep Orange
+                gradientColors = ['#FF5722', '#FF7043']; // Deep Orange gradient
                 icon = 'percent';
-                text = text || 'SALE';
+                text = text || '限时';
                 break;
             case 'free':
-                bgColor = '#2196F3'; // Blue
+                gradientColors = ['#2196F3', '#42A5F5']; // Blue gradient
                 icon = 'gift';
-                text = text || 'FREE';
+                text = text || '免费';
                 break;
             case 'premium':
-                bgColor = '#9C27B0'; // Purple
+                gradientColors = ['#9C27B0', '#BA68C8']; // Purple gradient
                 icon = 'diamond';
-                text = text || 'HOT';
+                text = text || '热门';
                 break;
              case 'member':
-                bgColor = '#FFD700'; // Gold
-                icon = 'crown';
-                text = text || 'VIP';
+                gradientColors = ['#FFD700', '#FFE082']; // Gold gradient
+                icon = 'star';
+                text = text || '会员';
                 break;
         }
 
         return (
-            <View style={[styles.activityBadge, { backgroundColor: bgColor }]}>
-                <FontAwesome name={icon} size={10} color="#fff" style={{ marginRight: 4 }} />
-                <Text style={styles.activityBadgeText}>{text}</Text>
+            <View style={styles.activityBadge}>
+                <LinearGradient
+                    colors={gradientColors}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={StyleSheet.absoluteFill}
+                />
+                <View style={styles.badgeContent}>
+                    <FontAwesome name={icon} size={10} color="#fff" style={{ marginRight: 4 }} />
+                    <Text style={styles.activityBadgeText}>{text}</Text>
+                </View>
             </View>
         );
     }
@@ -79,21 +88,33 @@ export const NewAlbumCard: React.FC<NewAlbumCardProps> = ({
     // Fallback to level badge if no activity tag
     if (album.level !== AlbumLevel.FREE) {
        return (
-          <View style={[styles.activityBadge, { backgroundColor: '#FFD700' }]}>
-            <FontAwesome name="crown" size={10} color="#000" style={{ marginRight: 4 }} />
-            <Text style={[styles.activityBadgeText, { color: '#000' }]}>VIP</Text>
+          <View style={styles.activityBadge}>
+            <LinearGradient
+                colors={['#FFD700', '#FFE082']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.badgeContent}>
+                <FontAwesome name="star" size={10} color="#000" style={{ marginRight: 4 }} />
+                <Text style={[styles.activityBadgeText, { color: '#000' }]}>会员</Text>
+            </View>
           </View>
        );
     }
     return null;
   };
 
-  // Price Logic
+  // Price Logic with Coin Icon
   const renderPrice = () => {
       if (album.price > 0) {
           return (
               <View style={styles.priceContainer}>
-                <FontAwesome name="dollar" size={10} color="#FFD700" style={{ marginRight: 2 }} />
+                <Image 
+                  source={require('../assets/mm-coins.png')} 
+                  style={styles.coinIcon}
+                  resizeMode="contain"
+                />
                 <Text style={styles.priceText}>{album.price}</Text>
                 {album.original_price && (
                     <Text style={styles.originalPriceText}>{album.original_price}</Text>
@@ -179,11 +200,16 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     left: 8,
+    borderRadius: 12,
+    overflow: 'hidden',
+    minHeight: 20,
+  },
+  badgeContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 6,
+    justifyContent: 'center',
+    paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 4,
   },
   activityBadgeText: {
     color: '#fff',
@@ -243,6 +269,10 @@ const styles = StyleSheet.create({
   priceContainer: {
       flexDirection: 'row',
       alignItems: 'center',
+  },
+  coinIcon: {
+    width: 20,
+    height: 20,
   },
   priceText: {
       color: '#FFD700',

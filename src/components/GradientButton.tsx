@@ -21,6 +21,7 @@ interface GradientButtonProps {
   style?: ViewStyle;
   textStyle?: TextStyle;
   icon?: React.ReactNode;
+  rightComponent?: React.ReactNode; // 支持在文案后面自定义渲染组件
   width?: number;
   height?: number;
   fontSize?: number;
@@ -40,6 +41,7 @@ const GradientButton: React.FC<GradientButtonProps> = ({
   style,
   textStyle,
   icon,
+  rightComponent,
   width,
   height,
   fontSize,
@@ -111,6 +113,11 @@ const GradientButton: React.FC<GradientButtonProps> = ({
             >
               {title}
             </Text>
+            {rightComponent && (
+              <View style={styles.rightComponentContainer}>
+                {rightComponent}
+              </View>
+            )}
           </View>
         )}
       </LinearGradient>
@@ -141,6 +148,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     includeFontPadding: false,
     textAlignVertical: 'center',
+  },
+  rightComponentContainer: {
+    marginLeft: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

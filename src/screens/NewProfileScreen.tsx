@@ -13,7 +13,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import FastImage from 'react-native-fast-image';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { useTypedSelector, useAppDispatch } from '../store/hooks';
@@ -99,28 +99,42 @@ const NewProfileScreen: React.FC = () => {
 
   const { user, logout } = useAuthState();
 
-  // 根据会员类型获取主题色
-  const getMembershipTheme = (type: string) => {
+  // 根据会员类型获取主题色和图标
+  const getMembershipTheme = (type: string | null) => {
     if (type === 'yearly') {
       return {
         primary: '#FFD700', // 金色
+        textColor: '#fff',
         gradient: ['rgba(255, 215, 0, 0.15)', 'rgba(255, 140, 0, 0.1)'],
         border: 'rgba(255, 215, 0, 0.3)',
         iconBg: 'rgba(255, 215, 0, 0.15)',
-        name: '尊贵年度会员'
+        name: '尊贵年度会员',
+        icon: 'star' // 年度会员用皇冠
       };
-    } else {
+    } else if (type === 'monthly') {
       return {
         primary: '#FFFFFF', // 提亮为纯白/亮银色
+        textColor: '#fff',
         gradient: ['rgba(255, 255, 255, 0.15)', 'rgba(255, 255, 255, 0.05)'], // 更清透的白色渐变
         border: 'rgba(255, 255, 255, 0.3)',
         iconBg: 'rgba(255, 255, 255, 0.15)',
-        name: '尊享月度会员'
+        name: '尊享月度会员',
+        icon: 'star' // 月度会员用星星
+      };
+    } else {
+      // 普通用户
+      return {
+        primary: 'rgba(255, 255, 255, 0.3)', // 暗淡的白色
+        gradient: ['rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.03)'],
+        border: 'rgba(255, 255, 255, 0.15)',
+        iconBg: 'rgba(255, 255, 255, 0.08)',
+        name: '普通用户',
+        icon: 'user' // 普通用户用用户图标
       };
     }
   };
 
-  const memberTheme = membershipStatus ? getMembershipTheme(membershipStatus.type || '') : null;
+  const memberTheme = getMembershipTheme(membershipStatus?.type || null);
 
   // 从Redux获取其他数据
   const handleBackPress = () => {
@@ -372,6 +386,13 @@ const NewProfileScreen: React.FC = () => {
     }
   }, [isLoggedIn, user?.uid, userProfile]);
 
+  // Focus Effect: 从其他页面返回时刷新用户数据（特别是从购买页/订阅页返回）
+  useFocusEffect(
+    React.useCallback(() => {
+      refreshUserData();
+    }, [refreshUserData])
+  );
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
@@ -411,15 +432,27 @@ const NewProfileScreen: React.FC = () => {
               )}
             </View>
             
-            {/* 会员徽章 - 仅会员显示 */}
-            {membershipStatus && memberTheme && (
-              <View style={[styles.badgeContainer, { borderColor: memberTheme.primary }]}>
-                <FontAwesome name="star" size={10} color={memberTheme.primary} style={{marginRight: 4}} />
-                <Text style={styles.badgeText}>
-                  {membershipStatus.type === 'yearly' ? '年度会员' : '月度会员'}
-                </Text>
-              </View>
-            )}
+            {/* 会员徽章 - 所有用户都显示 */}
+            <TouchableOpacity 
+              style={[styles.badgeContainer, { borderColor: memberTheme.primary }]}
+              onPress={() => {
+                if (!membershipStatus) {
+                  // 普通用户点击跳转会员购买
+                  navigation.navigate('Subscription');
+                }
+              }}
+              activeOpacity={!membershipStatus ? 0.7 : 1}
+            >
+              <FontAwesome 
+                name={memberTheme.icon} 
+                size={10} 
+                color={memberTheme.primary} 
+                style={{marginRight: 4}} 
+              />
+              <Text style={[styles.badgeText, { color: memberTheme.textColor }]}>
+                {memberTheme.name}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -464,7 +497,7 @@ const NewProfileScreen: React.FC = () => {
         <View style={styles.contentArea}>
           {activeTab === 'account' && (
             <View style={styles.membershipContainer}>
-              {membershipStatus && memberTheme ? (
+              {membershipStatus ? (
                 <TouchableOpacity 
                   style={[styles.premiumCardContainer, { borderColor: memberTheme.border }]}
                   onPress={handleManageMembership}
@@ -479,7 +512,7 @@ const NewProfileScreen: React.FC = () => {
                     <View style={styles.premiumCardHeader}>
                       <View style={styles.premiumTitleRow}>
                         <View style={[styles.premiumIconBg, { backgroundColor: memberTheme.iconBg }]}>
-                          <FontAwesome name="star" size={16} color={memberTheme.primary} />
+                          <FontAwesome name={memberTheme.icon} size={16} color={memberTheme.primary} />
                         </View>
                         <Text style={[styles.premiumTitleText, { color: memberTheme.primary }]}>
                           {memberTheme.name}

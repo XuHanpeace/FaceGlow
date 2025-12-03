@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTypedSelector, useAppDispatch } from '../store/hooks';
 import { fetchUserProfile } from '../store/middleware/asyncMiddleware';
 import { authService } from '../services/auth/authService';
@@ -17,29 +17,60 @@ export const useUser = () => {
   const userError = useTypedSelector((state) => state.user.error);
   const defaultSelfieUrl = useTypedSelector((state) => state.user.default_selfie_url);
 
+  // 使用 ref 跟踪上次尝试加载的 userId，避免重复请求
+  const lastAttemptedUserIdRef = useRef<string | null>(null);
+  const hasAttemptedLoadRef = useRef(false);
+
   // 自动获取用户数据
   useEffect(() => {
     const loadUserData = async () => {
       const currentUserId = authService.getCurrentUserId();
       
-      // 如果正在加载或已经有错误（避免无限重试），则跳过
-      if (userLoading) return;
-      
-      // 如果有用户ID且没有用户资料，则加载数据
-      if (currentUserId && !userProfile) {
-        // 如果已经报错且没有手动清除错误，避免自动重试
-        if (userError) {
-             console.log('[useUser] 上次加载失败，跳过自动重试:', userError);
-             return;
+      // 如果没有用户ID，清除跟踪状态并返回
+      if (!currentUserId) {
+        // 如果之前有用户资料但现在没有用户ID，说明用户已登出
+        if (userProfile) {
+          console.log('[useUser] 检测到用户已登出，等待状态更新');
         }
+        lastAttemptedUserIdRef.current = null;
+        hasAttemptedLoadRef.current = false;
+        return;
+      }
 
+      // 如果正在加载，跳过
+      if (userLoading) {
+        return;
+      }
+
+      // 如果已经有用户资料且匹配当前用户ID，不需要重新加载
+      if (userProfile && userProfile.uid === currentUserId) {
+        lastAttemptedUserIdRef.current = currentUserId;
+        hasAttemptedLoadRef.current = true;
+        return;
+      }
+
+      // 如果用户ID改变，重置跟踪状态
+      if (lastAttemptedUserIdRef.current !== currentUserId) {
+        lastAttemptedUserIdRef.current = currentUserId;
+        hasAttemptedLoadRef.current = false;
+      }
+
+      // 如果已经尝试过加载且失败，不再自动重试（需要手动调用 refreshUserData）
+      if (hasAttemptedLoadRef.current && userError) {
+        console.log('[useUser] 上次加载失败，跳过自动重试。请手动调用 refreshUserData()');
+        return;
+      }
+
+      // 如果有用户ID且没有用户资料，则加载数据
+      if (!userProfile) {
+        hasAttemptedLoadRef.current = true;
         try {
           await dispatch(fetchUserProfile({ userId: currentUserId })).unwrap();
+          // 加载成功后，错误会被清除，hasAttemptedLoadRef 保持为 true 表示已尝试过
         } catch (error) {
           console.error('[useUser] 获取用户数据失败:', error);
+          // 失败后，hasAttemptedLoadRef 保持为 true，下次不会自动重试
         }
-      } else if (!currentUserId && userProfile) {
-        console.log('[useUser] 检测到用户已登出，等待状态更新');
       }
     };
 
@@ -63,11 +94,15 @@ export const useUser = () => {
     if (currentUserId) {
       try {
         console.log('🔄 开始刷新用户数据...');
+        // 重置尝试状态，允许重新加载
+        hasAttemptedLoadRef.current = false;
+        lastAttemptedUserIdRef.current = currentUserId;
         const result = await dispatch(fetchUserProfile({ userId: currentUserId })).unwrap();
-        // 打印会在 useEffect 中自动触发
+        hasAttemptedLoadRef.current = true;
         return result;
       } catch (error) {
         console.error('[useUser] 刷新用户数据失败:', error);
+        hasAttemptedLoadRef.current = true; // 即使失败也标记为已尝试，避免自动重试
         throw error;
       }
     }
