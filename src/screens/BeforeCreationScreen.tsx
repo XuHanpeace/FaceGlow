@@ -18,7 +18,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { RootStackParamList } from '../types/navigation';
 import { useAppDispatch, useTypedSelector } from '../store/hooks';
 import { authService } from '../services/auth/authService';
-import { ActivityType, Album, Template } from '../types/model/activity';
+import { Album, Template } from '../types/model/activity';
 import { AlbumWithActivityId, selectAllAlbums } from '../store/slices/activitySlice';
 import GradientButton from '../components/GradientButton';
 import BackButton from '../components/BackButton';
@@ -26,6 +26,9 @@ import SelfieSelector from '../components/SelfieSelector';
 import { startAsyncTask } from '../store/slices/asyncTaskSlice';
 import { CrossFadeImage } from '../components/CrossFadeImage';
 import FastImage from 'react-native-fast-image';
+import { useUser, useUserBalance } from '../hooks/useUser';
+import { balanceService } from '../services/balanceService';
+import { AlbumRecord } from '../types/model/album';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -48,7 +51,9 @@ const TemplateSlide = React.memo(({
   onUseStyle: (template: Template) => void, 
   onSelfieSelect: (url: string) => void 
 }) => {
-  const srcImage = (album as any).srcImage;
+  // 使用 AlbumRecord 结构中的 src_image 字段
+  const albumRecord = album as AlbumRecord;
+  const srcImage = albumRecord.src_image;
 
   return (
     <View style={styles.pageContainer}>
@@ -190,6 +195,10 @@ const BeforeCreationScreen: React.FC = () => {
   const allAlbums = useTypedSelector(selectAllAlbums);
   const activities = useTypedSelector((state) => state.activity.activities);
   const user = useTypedSelector((state) => state.auth);
+  
+  // 用户信息和余额
+  const { userInfo, isVip } = useUser();
+  const { balance } = useUserBalance();
   // 确保当前 albumData 在列表中，如果不在（比如来自非 redux 数据源），则添加
   const albumsWithCurrent = useMemo<AlbumWithActivityId[]>(() => {
     // 如果 allAlbums 为空，说明数据还没加载，先返回当前 albumData
@@ -275,28 +284,88 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
         return;
       }
 
-      // 开始处理
-      setIsFusionProcessing(true);
-      
       // 获取当前选中的 Album 和对应的 Activity ID
       const currentAlbum = albumsWithCurrent[activeAlbumIndex];
       const currentActivityId = currentAlbum.activityId || activityId;
+      
+      // 将 AlbumWithActivityId 转换为 AlbumRecord 进行类型检查
+      // 注意：AlbumWithActivityId 可能不包含所有 AlbumRecord 字段，需要安全访问
+      const albumRecord = currentAlbum as unknown as AlbumRecord;
+      
+      // 3.1 检查用户余额是否充足
+      const albumPrice = currentAlbum.price || 0;
+      const templatePrice = currentTemplate?.price || 0;
+      const totalPrice = templatePrice > 0 ? templatePrice : albumPrice;
+      
+      if (totalPrice > 0 && user?.uid) {
+        const balanceCheck = await balanceService.checkBalance(user.uid, totalPrice);
+        
+        if (!balanceCheck.sufficient) {
+          Alert.alert(
+            '💎 余额不足',
+            `创作需要${totalPrice}美美币，当前余额${balanceCheck.currentBalance}美美币\n是否前往充值？`,
+            [
+              { text: '取消', style: 'cancel' },
+              { 
+                text: '去充值', 
+                onPress: () => navigation.navigate('CoinPurchase')
+              }
+            ]
+          );
+          return;
+        }
+      }
+      
+      // 3.2 检查用户权限（会员专享）
+      const albumLevel = albumRecord.level || currentAlbum.level || '0';
+      const isMemberOnly = albumRecord.activity_tag_type === 'member';
+      
+      // level: '0'=免费, '1'=高级会员, '2'=VIP会员
+      // 或者 activity_tag_type === 'member' 表示会员专享
+      if ((albumLevel !== '0' || isMemberOnly) && !isVip) {
+        Alert.alert(
+          '👑 会员专享',
+          '此功能为会员专享，普通用户无法使用\n是否前往开通会员？',
+          [
+            { text: '取消', style: 'cancel' },
+            { 
+              text: '去开通', 
+              onPress: () => navigation.navigate('Subscription')
+            }
+          ]
+        );
+        return;
+      }
 
-      // 查找 Activity 以判断类型
-      const activity = activities.find(a => a.activiy_id === currentActivityId);
-      const isAsyncTask = activity?.activity_type === ActivityType.ASYNC_TASK || (currentAlbum as any).srcImage;
+      // 开始处理
+      setIsFusionProcessing(true);
+
+      // 3.3 判断任务类型并检查字段取值
+      // 根据新的 AlbumRecord 结构判断：task_execution_type === 'async' 或 function_type === 'image_to_image'
+      const isAsyncTask = albumRecord.task_execution_type === 'async' || 
+                         albumRecord.function_type === 'image_to_image' ||
+                         !!albumRecord.src_image;
 
       console.log('[BeforeCreation] Check AsyncTask:', { 
           currentActivityId, 
-          activityType: activity?.activity_type, 
-          hasSrcImage: !!(currentAlbum as any).srcImage,
+          task_execution_type: albumRecord.task_execution_type,
+          function_type: albumRecord.function_type,
+          hasSrcImage: !!albumRecord.src_image,
           isAsyncTask 
       });
 
       if (isAsyncTask) {
-        // 异步任务逻辑
-        const promptData = activity?.promptData;
-        console.log('[BeforeCreation] Starting AsyncTask with PromptData:', promptData);
+        // 异步任务逻辑（图生图）- 使用 prompt 数据
+        // 从 AlbumRecord 中获取 prompt_text
+        const promptText = albumRecord.prompt_text || '';
+        
+        if (!promptText) {
+          Alert.alert('错误', '缺少提示词数据，无法进行图生图创作');
+          setIsFusionProcessing(false);
+          return;
+        }
+        
+        console.log('[BeforeCreation] Starting AsyncTask with Prompt:', promptText);
         
         // 尝试从 authService 直接获取当前用户信息，作为兜底
         const currentUid = authService.getCurrentUserId();
@@ -308,15 +377,21 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
         }
 
         const taskParams = {
-             prompt: promptData?.text || '',
+             prompt: promptText, // 使用 AlbumRecord 中的 prompt_text
              images: [selectedSelfieUrl],
              activityId: currentActivityId,
-             activityTitle: activity?.activity_title || currentAlbum.album_name,
-             activityDescription: activity?.promptData?.styleDesc || currentAlbum.album_description,
-             activityImage: activity?.promptData?.resultImage || currentAlbum.album_image,
+             activityTitle: albumRecord.album_name,
+             activityDescription: albumRecord.album_description,
+             activityImage: albumRecord.result_image || albumRecord.album_image,
              uid: uid,
-             templateId: currentTemplate?.template_id || 'async_task_template',
-             promptData: promptData
+             templateId: currentTemplate?.template_id || albumRecord.album_id, // 使用 template_id 或 album_id
+             promptData: {
+               text: promptText,
+               srcImage: albumRecord.src_image,
+               resultImage: albumRecord.result_image,
+               styleTitle: albumRecord.album_name,
+               styleDesc: albumRecord.album_description,
+             }
         };
         console.log('[BeforeCreation] Dispatching startAsyncTask:', taskParams);
 
@@ -328,13 +403,21 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
         ]);
 
       } else {
-        // 同步任务（原有逻辑）
+        // 同步任务（换脸）- 使用 templateId
         if (!currentTemplate) {
           Alert.alert('错误', '未找到选中的模板');
+          setIsFusionProcessing(false);
           return;
         }
 
-        // 跳转到CreationResult页面
+        // 验证 template_id 是否存在（换脸需要 templateId）
+        if (!currentTemplate.template_id) {
+          Alert.alert('错误', '模板ID缺失，无法进行换脸创作');
+          setIsFusionProcessing(false);
+          return;
+        }
+
+        // 跳转到CreationResult页面（换脸使用 templateId）
         navigation.navigate('CreationResult', {
           albumData: currentAlbum,
           selfieUrl: selectedSelfieUrl,
@@ -348,7 +431,7 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
     } finally {
       setIsFusionProcessing(false);
     }
-  }, [selectedSelfieUrl, navigation, activityId, albumsWithCurrent, activeAlbumIndex, activities, dispatch, user]);
+  }, [selectedSelfieUrl, navigation, activityId, albumsWithCurrent, activeAlbumIndex, activities, dispatch, user, userInfo, isVip, balance]);
 
   const handleBackPress = () => {
     navigation.goBack();

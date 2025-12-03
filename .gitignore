@@ -86,3 +86,6 @@ src/config/cosSecrets.dev.js
 # react-native-update
 .pushy
 .pushy-config.json
+
+# 软著资料
+软著资料/
