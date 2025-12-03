@@ -3,42 +3,22 @@ import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
-import { useUser, useUserBalance } from '../hooks/useUser';
+import { useUserBalance } from '../hooks/useUser';
 import UserAvatar from './UserAvatar';
-import GradientButton from './GradientButton';
 
 type HomeHeaderNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface HomeHeaderProps {
-  onUpgradePress?: () => void;
   onProfilePress?: () => void;
 }
 
 const HomeHeader: React.FC<HomeHeaderProps> = ({
-  onUpgradePress,
   onProfilePress,
 }) => {
   const navigation = useNavigation<HomeHeaderNavigationProp>();
   
   // 使用用户hooks获取数据
-  const { userProfile, isLoggedIn } = useUser();
-  const { balance, balanceFormatted } = useUserBalance();
-  
-  // 检查是否是年度会员
-  const isYearlyMember = () => {
-    if (!userProfile) return false;
-    const isPremium = userProfile.is_premium || false;
-    const premiumExpiresAt = userProfile.premium_expires_at;
-    const subscriptionType = userProfile.subscription_type;
-    
-    if (isPremium && premiumExpiresAt && subscriptionType === 'yearly') {
-      const now = Date.now();
-      return now < premiumExpiresAt;
-    }
-    return false;
-  };
-  
-  const showUpgradeButton = !isYearlyMember();
+  const { balanceFormatted } = useUserBalance();
 
   const handleProfilePress = () => {
     if (onProfilePress) {
@@ -47,16 +27,6 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
       // 默认导航到个人页面
       navigation.navigate('NewProfile');
     }
-  };
-
-  const handleUpgradePress = () => {
-    // 检查是否已登录，如果没有登录则导航到登录页面
-    if (!isLoggedIn) {
-      navigation.navigate('NewAuth');
-      return;
-    }
-    // 已登录，导航到订阅页面
-    navigation.navigate('Subscription');
   };
 
   return (
@@ -93,7 +63,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     paddingVertical: 15,
   },
   balanceContainer: {

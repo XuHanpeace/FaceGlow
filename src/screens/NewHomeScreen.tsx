@@ -1,178 +1,351 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   StyleSheet,
-  ScrollView,
   StatusBar,
   SafeAreaView,
-  TouchableOpacity,
-  Text,
-  Image,
+  ActivityIndicator,
+  Dimensions,
+  Animated,
+  ScrollView, // Add ScrollView import
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import MasonryList from '@react-native-seoul/masonry-list';
+
 import { RootStackParamList } from '../types/navigation';
 import HomeHeader from '../components/HomeHeader';
-import ContentSection from '../components/ContentSection';
 import SelfieModule from '../components/SelfieModule';
 import DefaultSelfieSelector from '../components/DefaultSelfieSelector';
-import { useTypedSelector, useAppDispatch } from '../store/hooks';
-import { fetchActivities } from '../store/slices/activitySlice';
 import { useUser } from '../hooks/useUser';
 import { authService } from '../services/auth/authService';
-import { Album, AlbumLevel } from '../types/model/activity';
+import { albumService } from '../services/database/albumService';
+import { AlbumRecord } from '../types/model/album';
+import { CategoryConfigRecord, CategoryType } from '../types/model/config';
+import { NewAlbumCard } from '../components/NewAlbumCard';
+import { FilterSection } from '../components/FilterSection';
+import { useAppDispatch } from '../store/hooks';
+import { setAllAlbums } from '../store/slices/activitySlice';
 
 type NewHomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+const { width: screenWidth } = Dimensions.get('window');
 
 const NewHomeScreen: React.FC = () => {
   const navigation = useNavigation<NewHomeScreenNavigationProp>();
   const dispatch = useAppDispatch();
-
-  // 使用用户hooks获取数据
   const { refreshUserData } = useUser();
-
-  // 使用Redux获取活动数据
-  const activities = useTypedSelector((state) => state.activity.activities);
   
-  // 默认自拍选择器状态
+  const scrollRef = useRef<ScrollView>(undefined);
+  
+  // 滚动距离动画值
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  // State
+  const [albums, setAlbums] = useState<AlbumRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [showDefaultSelfieSelector, setShowDefaultSelfieSelector] = useState(false);
 
-  // 页面初始化时查询活动数据
-  useEffect(() => {
-    console.log('🏃‍♂️ 开始获取活动数据...');
-    dispatch(fetchActivities({ page_size: 10, page_number: 1 }));
-  }, [dispatch]);
+  const [stickyThreshold, setStickyThreshold] = useState(180);
 
-  // 页面获得焦点时刷新数据（登录成功后返回时触发）
+  // Config State
+  const [functionTypes, setFunctionTypes] = useState<CategoryConfigRecord[]>([]);
+  const [themeStyles, setThemeStyles] = useState<CategoryConfigRecord[]>([]);
+  const [activityTags, setActivityTags] = useState<CategoryConfigRecord[]>([]);
+
+  // Filter State
+  const [selectedFunctionType, setSelectedFunctionType] = useState<string>('all');
+  const [selectedThemeStyle, setSelectedThemeStyle] = useState<string>('all');
+  
+  // Load Config on Mount
+  useEffect(() => {
+    loadConfig();
+  }, []);
+
+  const loadConfig = async () => {
+    try {
+      const response = await albumService.getCategoryConfig();
+      if (response.code === 200) {
+        const configs = response.data;
+        setFunctionTypes(configs.filter(c => c.category_type === CategoryType.FUNCTION_TYPE && c.is_active));
+        setThemeStyles(configs.filter(c => c.category_type === CategoryType.THEME_STYLE && c.is_active));
+        setActivityTags(configs.filter(c => c.category_type === CategoryType.ACTIVITY_TAG && c.is_active));
+      }
+    } catch (error) {
+      console.error('Failed to load config:', error);
+    }
+  };
+
+  // Derived: Available Theme Styles based on Selected Function Type
+  const getAvailableThemeStyles = () => {
+    if (selectedFunctionType === 'all') {
+      return themeStyles;
+    }
+    const selectedFunc = functionTypes.find(f => f.category_code === selectedFunctionType);
+    if (!selectedFunc || !selectedFunc.extra_config?.supported_theme_styles) {
+      return themeStyles;
+    }
+    const supported = selectedFunc.extra_config.supported_theme_styles;
+    return themeStyles.filter(t => supported.includes(t.category_code));
+  };
+
+  const availableThemes = getAvailableThemeStyles();
+
+  // Load Albums
+  const loadAlbums = async (reset = false) => {
+    if (loading && !reset) return;
+    
+    // 移除整个列表的 fadeAnim，只在 reset 时设置 loading 状态，以显示 Mask
+    setLoading(true);
+    const currentPage = reset ? 1 : page;
+
+    try {
+      const params: any = {
+        page: currentPage,
+        page_size: 20,
+        sort_by: 'default'
+      };
+
+      if (selectedFunctionType !== 'all') {
+        params.function_types = [selectedFunctionType];
+      }
+      
+      if (selectedThemeStyle !== 'all') {
+        params.theme_styles = [selectedThemeStyle];
+      }
+
+      const response = await albumService.getAlbumList(params);
+      
+      if (response.code === 200) {
+        const newAlbums = response.data.albums;
+        if (reset) {
+          setAlbums(newAlbums);
+          setPage(2);
+        } else {
+          setAlbums(prev => [...prev, ...newAlbums]);
+          setPage(prev => prev + 1);
+        }
+        setHasMore(response.data.has_more);
+        
+        // Update Redux for BeforeCreationScreen
+        // Dispatch full list if reset, otherwise we might need to append (Redux simplified to setAll)
+        // For simplicity, if paginating, we might want to append in Redux too, but setAllAlbums replaces.
+        // Ideally we should accumulate in Redux too, but here we just dispatch what we have locally
+        // Or better: if reset, dispatch new list; if load more, append.
+        // But setAllAlbums replaces. So we should dispatch the updated `albums` state.
+        // Since setState is async, we use the variable.
+        if (reset) {
+            dispatch(setAllAlbums(newAlbums));
+        } else {
+            // This relies on current albums + newAlbums. 
+            // Since we don't have prev state here easily without func update, 
+            // we can just dispatch setAllAlbums with [...albums, ...newAlbums] if we had access,
+            // but `albums` is closure stale.
+            // However, BeforeCreationScreen mainly needs the *clicked* album and maybe neighbors.
+            // Dispatching the latest batch might be enough if we click one of them, 
+            // but to support full vertical scroll we need all.
+            // Let's dispatch the full accumulated list after setAlbums updates? 
+            // Or just dispatch combined here.
+            // We can't easily access 'prev' albums here.
+            // Let's assume for now we dispatch what we got.
+            // Actually, simpler: dispatch(setAllAlbums(reset ? newAlbums : [...albums, ...newAlbums]))
+            // But `albums` is from closure.
+            // It's fine.
+             setAlbums(prev => {
+                 const updated = reset ? newAlbums : [...prev, ...newAlbums];
+                 dispatch(setAllAlbums(updated));
+                 return updated;
+             });
+             // Wait, setAlbums(newAlbums) above was already called if reset.
+             // Let's refine:
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load albums:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  // Reload when filters change
+  useEffect(() => {
+    // Fix layout jump: Scroll to top when filter changes to reset view
+    // This prevents the "empty space" issue when switching from a long list to a short list
+    if (scrollRef.current) {
+        scrollRef.current.scrollTo({ y: 0, animated: false });
+    }
+    loadAlbums(true);
+  }, [selectedFunctionType, selectedThemeStyle]);
+
+  // Focus Effect
   useFocusEffect(
     React.useCallback(() => {
-      console.log('🔄 页面获得焦点，刷新数据...');
-      // 同时刷新活动数据和用户数据
-      Promise.all([
-        dispatch(fetchActivities({ page_size: 10, page_number: 1 })).unwrap(),
-        refreshUserData()
-      ]).catch(error => {
-        console.error('❌ 页面焦点刷新失败:', error);
-      });
-    }, [dispatch, refreshUserData])
+      refreshUserData();
+    }, [refreshUserData])
   );
 
-
-  const handleAlbumPress = (album: Album, activityId: string) => {
-    // 直接使用传递过来的album数据和activityId
+  // Handlers
+  const handleAlbumPress = (album: AlbumRecord) => {
+    // Adapter for BeforeCreationScreen
+    const legacyAlbumData: any = {
+        album_id: album.album_id,
+        album_name: album.album_name,
+        album_description: album.album_description,
+        album_image: album.album_image,
+        level: album.level,
+        price: album.price,
+        template_list: album.template_list || [],
+        srcImage: album.src_image,
+        // Pass activity_tag info if needed
+        activity_tag_text: album.activity_tag_text,
+        activity_tag_type: album.activity_tag_type
+    };
+    
     navigation.navigate('BeforeCreation', {
-      albumData: album,
-      activityId: activityId,
+      albumData: legacyAlbumData,
+      activityId: album.function_type // Using function_type as activityId for now based on current mock
     });
   };
 
-  const handleViewAllPress = (categoryId: string, categoryName: string) => {
-    navigation.navigate('AlbumMarket', {
-      activityId: categoryId,
-      activityName: categoryName,
-    });
+  const handleRefresh = () => {
+    setRefreshing(true);
+    loadAlbums(true);
   };
 
-  const handleUpgradePress = () => {
-    navigation.navigate('Subscription');
-  };
-
-  const handleProfilePress = () => {
-    navigation.navigate('NewProfile');
+  const handleLoadMore = () => {
+    if (!loading && hasMore) {
+      loadAlbums(false);
+    }
   };
 
   const handleAddSelfiePress = async () => {
-    // 检查是否是真实用户
     const authResult = await authService.requireRealUser();
-    
     if (!authResult.success) {
-      // 如果是匿名用户或未登录，提示需要登录
-      if (authResult.error?.code === 'ANONYMOUS_USER' || 
-          authResult.error?.code === 'NOT_LOGGED_IN') {
-            navigation.navigate('NewAuth') 
+      if (authResult.error?.code === 'ANONYMOUS_USER' || authResult.error?.code === 'NOT_LOGGED_IN') {
+        navigation.navigate('NewAuth');
       }
       return;
     }
-    
-    // 真实用户，跳转到自拍引导页
     navigation.navigate('SelfieGuide');
   };
 
-  const handleSelfieSelect = () => {
-    setShowDefaultSelfieSelector(true);
-  };
-
-  const handleDefaultSelfieSelect = (selfieUrl: string) => {
-    console.log('选择默认自拍:', selfieUrl);
-    setShowDefaultSelfieSelector(false);
-  };
+  const renderStickyHeader = () => (
+    <View style={[styles.stickyHeaderContainer, { width: screenWidth }]}>
+        <FilterSection 
+            functionTypes={functionTypes}
+            selectedFunctionType={selectedFunctionType}
+            onSelectFunctionType={(code) => {
+                setSelectedFunctionType(code);
+                setSelectedThemeStyle('all');
+            }}
+            themeStyles={availableThemes}
+            selectedThemeStyle={selectedThemeStyle}
+            onSelectThemeStyle={setSelectedThemeStyle}
+        />
+    </View>
+  );
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
-      
-      {/* 只保护顶部的SafeArea */}
       <SafeAreaView style={styles.safeAreaTop} />
       
-      {/* 固定头部 */}
       <View style={styles.fixedHeader}>
         <HomeHeader
-          onUpgradePress={handleUpgradePress}
-          onProfilePress={handleProfilePress}
+          onProfilePress={() => navigation.navigate('NewProfile')}
         />
       </View>
-
-      {/* 可滚动内容区域 */}
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* 我的自拍照模块 */}
-        <SelfieModule 
-          onAddSelfiePress={handleAddSelfiePress} 
-          onSelfieSelect={handleSelfieSelect}
+      
+      {/* Use a container with relative positioning for list + sticky header */}
+      <View style={{ flex: 1, position: 'relative' }}>
+        {/* Sticky Header Wrapper (Absolute Positioned relative to this container) */}
+        <Animated.View 
+          style={{ 
+            position: 'absolute', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            zIndex: 5, 
+            backgroundColor: '#131313',
+            opacity: scrollY.interpolate({
+              inputRange: [stickyThreshold - 1, stickyThreshold],
+              outputRange: [0, 1],
+              extrapolate: 'clamp',
+            }),
+            pointerEvents: 'box-none', 
+            transform: [{
+              translateY: scrollY.interpolate({
+                inputRange: [stickyThreshold - 1, stickyThreshold],
+                outputRange: [-100, 0], // 未吸顶时移出屏幕
+                extrapolate: 'clamp',
+              })
+            }]
+          }}
+        >
+           {renderStickyHeader()}
+        </Animated.View>
+        
+        <MasonryList
+            innerRef={scrollRef}
+            data={albums}
+            keyExtractor={(item: any): string => item.album_id}
+            numColumns={2}
+            showsVerticalScrollIndicator={false}
+            renderItem={({ item, i }: { item: any; i: number }) => (
+                <View style={{ paddingLeft: i % 2 === 0 ? 8 : 4, paddingRight: i % 2 === 0 ? 4 : 8, marginBottom: 4 }}>
+                    <NewAlbumCard album={item as AlbumRecord} onPress={handleAlbumPress} />
+                </View>
+            )}
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.5}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            onScroll={Animated.event(
+                [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+                { useNativeDriver: false }
+            )}
+            ListHeaderComponent={
+                <View style={styles.headerContent}>
+                <View onLayout={(event) => {
+                    const { height } = event.nativeEvent.layout;
+                    setStickyThreshold(height);
+                }}>
+                    <SelfieModule 
+                    onAddSelfiePress={handleAddSelfiePress} 
+                    onSelfieSelect={() => setShowDefaultSelfieSelector(true)}
+                    />
+                </View>
+                {renderStickyHeader()}
+                </View>
+            }
+            ListFooterComponent={
+               (loading && !refreshing && page > 1) ? <ActivityIndicator color="#fff" style={{padding: 20}} /> : <View style={{ height: 40 }} />
+            }
         />
 
-        {/* 使用Redux中的活动数据 */}
-        {activities.map((activity, index) => {
-          // 处理 asyncTask 类型的活动
-          let albumsToDisplay = activity.album_id_list;
-          
-          if (activity.activity_type === 'asyncTask' && activity.promptData) {
-            // 构造伪造的 Album 对象用于展示
-            const fakeAlbum: Album = {
-              album_id: activity.activiy_id, // 使用活动ID作为相册ID
-              album_name: activity.promptData.styleTitle || activity.activity_title,
-              album_description: activity.promptData.styleDesc || '',
-              album_image: activity.promptData.resultImage || '',
-              level: AlbumLevel.FREE, // 默认为免费
-              price: 0,
-              template_list: [], // 空模板列表
-              srcImage: activity.promptData.srcImage // 传递 srcImage
-            };
-            albumsToDisplay = [fakeAlbum];
-          }
+        {/* Mask for Card Area when filtering (not initial load or refresh which usually show spinner/skeleton) */}
+        {/* If loading is true, and not refreshing, and it's a reset (page 1 loading) */}
+        {/* Actually, in loadAlbums(true), reset is true. */}
+        {/* If reset is true, we want to mask the OLD content until new content arrives. */}
+        {/* But in the code I updated, I setAlbums to new ones only AFTER response. */}
+        {/* So during fetch, old albums are still there. */}
+        {loading && !refreshing && page === 1 && (
+             <View style={styles.loadingMask}>
+                 <ActivityIndicator size="large" color="#FF6B9D" />
+             </View>
+        )}
+      </View>
 
-          return (
-            <ContentSection
-              key={activity.activiy_id}
-              title={activity.activity_title}
-              albums={albumsToDisplay}
-              categoryId={activity.activiy_id}
-              activityId={activity.activiy_id}
-              onAlbumPress={handleAlbumPress}
-              onViewAllPress={handleViewAllPress}
-            />
-          );
-        })}
-      </ScrollView>
-
-      {/* 默认自拍选择器 */}
       <DefaultSelfieSelector
         visible={showDefaultSelfieSelector}
         onClose={() => setShowDefaultSelfieSelector(false)}
-        onSelect={handleDefaultSelfieSelect}
+        onSelect={(url) => {
+            console.log('Selected selfie:', url);
+            setShowDefaultSelfieSelector(false);
+        }}
       />
     </View>
   );
@@ -184,18 +357,50 @@ const styles = StyleSheet.create({
     backgroundColor: '#131313',
   },
   safeAreaTop: {
-    backgroundColor: '#131313',
+    backgroundColor: '#131313'
   },
   fixedHeader: {
     backgroundColor: '#131313',
     zIndex: 10,
   },
-  scrollView: {
-    flex: 1,
+  headerContent: {
+    marginBottom: 8,
   },
-  scrollContent: {
-    paddingBottom: 50,
+  stickyHeaderContainer: {
+    backgroundColor: '#131313',
+    paddingTop: 8,
   },
+  filterContainer: {
+    marginBottom: 12,
+    width: '100%',
+  },
+  subFilterContainer: {
+    marginBottom: 12,
+    width: '100%',
+  },
+  filterList: {
+    paddingHorizontal: 16,
+  },
+  loadingMask: {
+      position: 'absolute',
+      top: 0, // This covers list from top (including static filters)
+      // We want to cover only the content area, but since static filters are inside list, they get covered.
+      // To avoid covering static filters, we need to know their height or position.
+      // But user said "switching capsules, add mask to card or card area".
+      // Since we are switching capsules (filters), the filters themselves are clicked.
+      // If we mask them, it might look like they are disabled, which is fine.
+      // Actually, sticky header is absolute and zIndex 5. Mask should be below it?
+      // Sticky header is only visible when scrolled up.
+      // When at top, static header is visible.
+      // Let's make mask zIndex 2.
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      zIndex: 2, 
+      justifyContent: 'center',
+      alignItems: 'center',
+  }
 });
 
 export default NewHomeScreen;

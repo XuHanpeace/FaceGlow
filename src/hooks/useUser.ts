@@ -21,23 +21,30 @@ export const useUser = () => {
   useEffect(() => {
     const loadUserData = async () => {
       const currentUserId = authService.getCurrentUserId();
+      
+      // 如果正在加载或已经有错误（避免无限重试），则跳过
+      if (userLoading) return;
+      
       // 如果有用户ID且没有用户资料，则加载数据
-      // 或者如果用户资料为 null（可能被 resetUser 清除了），也应该检查是否需要重新加载
       if (currentUserId && !userProfile) {
+        // 如果已经报错且没有手动清除错误，避免自动重试
+        if (userError) {
+             console.log('[useUser] 上次加载失败，跳过自动重试:', userError);
+             return;
+        }
+
         try {
           await dispatch(fetchUserProfile({ userId: currentUserId })).unwrap();
         } catch (error) {
           console.error('[useUser] 获取用户数据失败:', error);
         }
       } else if (!currentUserId && userProfile) {
-        // 如果没有用户ID但有用户资料，说明可能是 logout 或 resetUser，应该清空
-        // 但这里不直接修改 Redux，而是等待外部调用 resetUser
         console.log('[useUser] 检测到用户已登出，等待状态更新');
       }
     };
 
     loadUserData();
-  }, [dispatch, userProfile]);
+  }, [dispatch, userProfile, userLoading, userError]);
 
   // 初始化默认自拍逻辑
   useEffect(() => {

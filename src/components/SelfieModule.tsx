@@ -75,7 +75,7 @@ const SelfieModule: React.FC<SelfieModuleProps> = ({ onAddSelfiePress, onSelfieS
 
 const styles = StyleSheet.create({
   selfieModule: {
-    marginHorizontal: 20,
+    marginHorizontal: 10,
     marginBottom: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 20,

@@ -92,7 +92,18 @@ const activitySlice = createSlice({
     // 设置活动数据
     setActivities: (state, action: PayloadAction<Activity[]>) => {
       state.activities = action.payload;
+      state.allAlbums = computeAllAlbums(action.payload);
       state.error = null;
+    },
+    // 直接设置所有相册 (用于新版首页 Flat List 模式)
+    setAllAlbums: (state, action: PayloadAction<any[]>) => {
+      // 这里接收 AlbumRecord[]，需要转换为 AlbumWithActivityId[]
+      // 假设 AlbumRecord 结构兼容或需要简单映射
+      state.allAlbums = action.payload.map(album => ({
+          ...album,
+          // 如果 album 没有 activityId，使用 album_id 或其他标识
+          activityId: album.activityId || album.function_type || 'default_activity' 
+      }));
     },
     // 清空活动数据
     clearActivities: (state) => {
@@ -140,7 +151,7 @@ const activitySlice = createSlice({
 });
 
 // 导出actions
-export const { setActivities, clearActivities, setLoading, setError } = activitySlice.actions;
+export const { setActivities, setAllAlbums, clearActivities, setLoading, setError } = activitySlice.actions;
 
 // 导出reducer
 export default activitySlice.reducer;
@@ -150,5 +161,3 @@ export const selectActivities = (state: { activity: ActivityState }) => state.ac
 export const selectAllAlbums = (state: { activity: ActivityState }) => state.activity.allAlbums;
 export const selectActivitiesLoading = (state: { activity: ActivityState }) => state.activity.isLoading;
 export const selectActivitiesError = (state: { activity: ActivityState }) => state.activity.error;
-
-// 导出默认数据供其他模块使用

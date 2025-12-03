@@ -195,7 +195,7 @@ const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress, onDelete, ca
 
 const styles = StyleSheet.create({
   workItem: {
-    marginBottom: 20,
+    marginBottom: 0, // Remove bottom margin to let grid gap handle spacing
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 12,
     overflow: 'hidden',

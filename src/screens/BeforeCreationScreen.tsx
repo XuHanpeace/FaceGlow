@@ -92,7 +92,11 @@ const TemplateSlide = React.memo(({
         </View>
 
         <GradientButton
-          title="创作同款"
+          title={
+             (template.price && template.price > 0) ? `${template.price} 💎 立即创作` : 
+             (album.price && album.price > 0) ? `${album.price} 💎 立即创作` : 
+             "立即创作"
+          }
           onPress={() => onUseStyle(template)}
           variant="primary"
           size="large"

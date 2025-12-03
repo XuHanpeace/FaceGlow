@@ -10,6 +10,7 @@ import {
   Alert,
   Dimensions,
   Image,
+  SafeAreaView,
 } from 'react-native';
 import FastImage from 'react-native-fast-image';
 import { useNavigation } from '@react-navigation/native';
@@ -47,8 +48,8 @@ interface SelfieItem {
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_GAP = 12; // 卡片之间的固定间隔
-const CONTAINER_PADDING = 20; // 容器左右padding
+const CARD_GAP = 8; // 卡片之间的固定间隔
+const CONTAINER_PADDING = 10; // 容器左右padding
 const CARD_WIDTH = (SCREEN_WIDTH - CONTAINER_PADDING * 2 - CARD_GAP) / 2; // 计算卡片宽度
 
 const NewProfileScreen: React.FC = () => {
@@ -376,11 +377,12 @@ const NewProfileScreen: React.FC = () => {
       <StatusBar barStyle="light-content" backgroundColor="#000" />
       
       {/* 头部导航 */}
+      <SafeAreaView style={{ backgroundColor: '#131313'}}/>
       <View style={styles.header}>
-        <View style={styles.placeholder} />
-        <Text style={styles.headerTitle}>简介</Text>
-        <BackButton iconType="close" onPress={handleBackPress} absolute={false} />
-      </View>
+          <View style={styles.placeholder} />
+          <Text style={styles.headerTitle}>简介</Text>
+          <BackButton iconType="close" onPress={handleBackPress} absolute={false} />
+        </View>
 
       <ScrollView 
         style={styles.scrollView} 
@@ -723,9 +725,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
   },
   backButton: {
     width: 32,
@@ -758,7 +759,7 @@ const styles = StyleSheet.create({
   userInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     marginBottom: 20,
   },
   avatarContainer: {
@@ -806,7 +807,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    marginHorizontal: 20,
+    marginHorizontal: 10,
     marginBottom: 20,
     padding: 16,
     borderRadius: 16,
@@ -832,7 +833,7 @@ const styles = StyleSheet.create({
   },
   tabContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     marginBottom: 20,
   },
   tab: {
@@ -855,7 +856,7 @@ const styles = StyleSheet.create({
   },
   contentArea: {
     flex: 1,
-    paddingHorizontal: 20
+    paddingHorizontal: 10
   },
   emptyState: {
     flex: 1,
@@ -891,7 +892,8 @@ const styles = StyleSheet.create({
   worksGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: CARD_GAP,
+    columnGap: CARD_GAP,
+    rowGap: 16,
   },
   selfiesContainer: {
     flex: 1,
@@ -900,7 +902,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 15,
+    gap: 8,
   },
   selfieItem: {
     alignItems: 'center',
@@ -1189,7 +1191,7 @@ const styles = StyleSheet.create({
   },
   aboutUsContainer: {
     paddingVertical: 20,
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     paddingBottom: 30,
     alignItems: 'center',
     marginTop: 10,
