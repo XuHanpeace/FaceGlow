@@ -153,8 +153,10 @@ const CreationResultScreen: React.FC = () => {
       }
       
       // 调用真实的换脸云函数
+      // 优先使用 template 的 projectId，如果没有则使用 activityId 作为兜底
+      const projectId = currentTemplate?.projectId || activityId;
       const result = await callFaceFusionCloudFunction({
-        projectId:  activityId,
+        projectId: projectId,
         modelId: templateId,
         imageUrl: selfieUrl,
       });

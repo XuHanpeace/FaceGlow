@@ -56,11 +56,12 @@ const CustomToast: React.FC<CustomToastProps> = ({ type = 'info', text1, text2, 
   const displayMessage = text2 || text1 || '';
 
   return (
-    <View style={styles.containerWrapper}>
+    <View style={styles.containerWrapper} pointerEvents="box-none">
       <TouchableOpacity
         activeOpacity={0.9}
         onPress={hide}
         style={styles.container}
+        pointerEvents="auto"
       >
         <LinearGradient
           colors={config.gradient}

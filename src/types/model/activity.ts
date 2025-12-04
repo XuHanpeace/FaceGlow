@@ -48,6 +48,8 @@ export interface Template {
   template_description: string;
   /** 模板价格（金币） */
   price: number;
+  /** 人脸融合的活动ID，调用 /fusion 接口时使用 */
+  projectId?: string;
 }
 
 /**

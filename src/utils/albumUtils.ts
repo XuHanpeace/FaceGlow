@@ -26,6 +26,7 @@ export function convertAlbumRecordToAlbum(record: AlbumRecord, activityId?: stri
       template_name: template.template_name,
       template_description: template.template_description,
       price: template.price,
+      projectId: template.projectId,
     })) || [],
     // 保留 activityId 用于兼容
     activityId: activityId,
@@ -56,4 +57,5 @@ export function generateAlbumListFromRecords(
 ): Album[] {
   return records.map(record => convertAlbumRecordToAlbum(record, activityId));
 }
+
 

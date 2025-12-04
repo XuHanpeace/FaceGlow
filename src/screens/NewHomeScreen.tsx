@@ -47,13 +47,17 @@ const NewHomeScreen: React.FC = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [showDefaultSelfieSelector, setShowDefaultSelfieSelector] = useState(false);
+  
+  // 缓存机制：根据筛选条件缓存数据
+  const cacheRef = useRef<Map<string, { albums: AlbumRecord[]; page: number; hasMore: boolean }>>(new Map());
 
   const [stickyThreshold, setStickyThreshold] = useState(180);
 
   // Config State
   const [functionTypes, setFunctionTypes] = useState<CategoryConfigRecord[]>([]);
   const [themeStyles, setThemeStyles] = useState<CategoryConfigRecord[]>([]);
-  const [activityTags, setActivityTags] = useState<CategoryConfigRecord[]>([]);
+  // 预留：活动标签筛选（当前未使用）
+  const [_activityTags, setActivityTags] = useState<CategoryConfigRecord[]>([]);
 
   // Filter State
   const [selectedFunctionType, setSelectedFunctionType] = useState<string>('all');
@@ -93,13 +97,36 @@ const NewHomeScreen: React.FC = () => {
 
   const availableThemes = getAvailableThemeStyles();
 
+  // 生成缓存 key
+  const getCacheKey = (funcType: string, themeStyle: string) => {
+    return `${funcType}_${themeStyle}`;
+  };
+
   // Load Albums
   const loadAlbums = async (reset = false) => {
     if (loading && !reset) return;
     
-    // 移除整个列表的 fadeAnim，只在 reset 时设置 loading 状态，以显示 Mask
-    setLoading(true);
     const currentPage = reset ? 1 : page;
+    const cacheKey = getCacheKey(selectedFunctionType, selectedThemeStyle);
+
+    // 如果是重置且缓存中有数据，先展示缓存数据
+    if (reset) {
+      const cached = cacheRef.current.get(cacheKey);
+      if (cached && cached.albums.length > 0) {
+        console.log('📦 使用缓存数据:', cacheKey, cached.albums.length);
+        setAlbums(cached.albums);
+        setPage(cached.page);
+        setHasMore(cached.hasMore);
+        dispatch(setAllAlbums(cached.albums));
+        // 不设置 loading，让用户看到缓存数据
+      } else {
+        // 没有缓存，显示 loading
+        setLoading(true);
+      }
+    } else {
+      // 加载更多时显示 loading
+      setLoading(true);
+    }
 
     try {
       const params: any = {
@@ -120,46 +147,41 @@ const NewHomeScreen: React.FC = () => {
       
       if (response.code === 200) {
         const newAlbums = response.data.albums;
-        if (reset) {
-          setAlbums(newAlbums);
-          setPage(2);
-        } else {
-          setAlbums(prev => [...prev, ...newAlbums]);
-          setPage(prev => prev + 1);
-        }
-        setHasMore(response.data.has_more);
+        let updatedAlbums: AlbumRecord[];
         
-        // Update Redux for BeforeCreationScreen
-        // Dispatch full list if reset, otherwise we might need to append (Redux simplified to setAll)
-        // For simplicity, if paginating, we might want to append in Redux too, but setAllAlbums replaces.
-        // Ideally we should accumulate in Redux too, but here we just dispatch what we have locally
-        // Or better: if reset, dispatch new list; if load more, append.
-        // But setAllAlbums replaces. So we should dispatch the updated `albums` state.
-        // Since setState is async, we use the variable.
         if (reset) {
-            dispatch(setAllAlbums(newAlbums));
+          updatedAlbums = newAlbums;
+          setAlbums(updatedAlbums);
+          setPage(2);
+          setHasMore(response.data.has_more);
+          
+          // 更新缓存
+          cacheRef.current.set(cacheKey, {
+            albums: updatedAlbums,
+            page: 2,
+            hasMore: response.data.has_more
+          });
+          
+          dispatch(setAllAlbums(updatedAlbums));
         } else {
-            // This relies on current albums + newAlbums. 
-            // Since we don't have prev state here easily without func update, 
-            // we can just dispatch setAllAlbums with [...albums, ...newAlbums] if we had access,
-            // but `albums` is closure stale.
-            // However, BeforeCreationScreen mainly needs the *clicked* album and maybe neighbors.
-            // Dispatching the latest batch might be enough if we click one of them, 
-            // but to support full vertical scroll we need all.
-            // Let's dispatch the full accumulated list after setAlbums updates? 
-            // Or just dispatch combined here.
-            // We can't easily access 'prev' albums here.
-            // Let's assume for now we dispatch what we got.
-            // Actually, simpler: dispatch(setAllAlbums(reset ? newAlbums : [...albums, ...newAlbums]))
-            // But `albums` is from closure.
-            // It's fine.
-             setAlbums(prev => {
-                 const updated = reset ? newAlbums : [...prev, ...newAlbums];
-                 dispatch(setAllAlbums(updated));
-                 return updated;
-             });
-             // Wait, setAlbums(newAlbums) above was already called if reset.
-             // Let's refine:
+          setAlbums(prev => {
+            updatedAlbums = [...prev, ...newAlbums];
+            setPage(prevPage => prevPage + 1);
+            setHasMore(response.data.has_more);
+            
+            // 更新缓存
+            const cached = cacheRef.current.get(cacheKey);
+            if (cached) {
+              cacheRef.current.set(cacheKey, {
+                albums: updatedAlbums,
+                page: cached.page + 1,
+                hasMore: response.data.has_more
+              });
+            }
+            
+            dispatch(setAllAlbums(updatedAlbums));
+            return updatedAlbums;
+          });
         }
       }
     } catch (error) {

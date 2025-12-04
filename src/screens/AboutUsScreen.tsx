@@ -137,6 +137,21 @@ const AboutUsScreen: React.FC = () => {
           App v{appVersion} (Bundle v{jsVersion})
         </Text>
 
+        {/* 检查更新按钮 - 弱化展示 */}
+        <View style={styles.checkUpdateContainer}>
+          <TouchableOpacity 
+            style={styles.checkUpdateButton} 
+            onPress={handleCheckUpdate}
+            disabled={checking}
+          >
+            {checking ? (
+              <ActivityIndicator size="small" color="rgba(255, 255, 255, 0.4)" />
+            ) : (
+              <Text style={styles.checkUpdateButtonText}>检查更新</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
         {/* App 服务描述 */}
         <View style={styles.serviceSection}>
           <Text style={styles.serviceText}>
@@ -148,7 +163,7 @@ const AboutUsScreen: React.FC = () => {
       {/* 底部版权信息 - 固定在底部 */}
       <View style={styles.footer}>
         <Text style={styles.copyrightText}>© 2025 FaceGlow 版权所有</Text>
-        <Text style={styles.recordText}>备案号：待备案</Text>
+        <Text style={styles.recordText}>沪ICP备2025152989号-1A</Text>
         
         {/* 法律链接 */}
         <View style={styles.legalLinksContainer}>
@@ -168,19 +183,6 @@ const AboutUsScreen: React.FC = () => {
             <Text style={styles.legalLinkText}>订阅协议</Text>
           </TouchableOpacity>
         </View>
-
-        {/* 检查更新按钮 - 弱化展示 */}
-        <TouchableOpacity 
-          style={styles.checkUpdateButton} 
-          onPress={handleCheckUpdate}
-          disabled={checking}
-        >
-          {checking ? (
-            <ActivityIndicator size="small" color="rgba(255, 255, 255, 0.4)" />
-          ) : (
-            <Text style={styles.checkUpdateButtonText}>检查更新</Text>
-          )}
-        </TouchableOpacity>
       </View>
     </View>
   );
@@ -243,7 +245,13 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.6)',
     fontSize: 14,
     textAlign: 'center',
+    marginBottom: 12,
+  },
+  checkUpdateContainer: {
+    alignItems: 'center',
     marginBottom: 40,
+    minHeight: 20,
+    justifyContent: 'center',
   },
   serviceSection: {
     marginBottom: 40,
@@ -274,15 +282,18 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   checkUpdateButton: {
-    paddingVertical: 8,
+    paddingVertical: 0,
     paddingHorizontal: 16,
     alignSelf: 'center',
-    marginTop: 8,
+    minHeight: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   checkUpdateButtonText: {
     color: 'rgba(255, 255, 255, 0.4)',
     fontSize: 11,
     textDecorationLine: 'underline',
+    lineHeight: 20,
   },
   legalLinksContainer: {
     flexDirection: 'row',

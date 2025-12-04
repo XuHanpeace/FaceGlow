@@ -125,10 +125,11 @@ const NewProfileScreen: React.FC = () => {
       // 普通用户
       return {
         primary: 'rgba(255, 255, 255, 0.3)', // 暗淡的白色
+        textColor: 'rgba(255, 255, 255, 0.3)',
         gradient: ['rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.03)'],
         border: 'rgba(255, 255, 255, 0.15)',
         iconBg: 'rgba(255, 255, 255, 0.08)',
-        name: '普通用户',
+        name: '普通会员',
         icon: 'user' // 普通用户用用户图标
       };
     }
@@ -551,7 +552,7 @@ const NewProfileScreen: React.FC = () => {
                 >
                   <View style={styles.normalCardContent}>
                     <View>
-                      <Text style={styles.normalTitle}>普通用户</Text>
+                      <Text style={styles.normalTitle}>普通会员</Text>
                       <Text style={styles.normalSubtitle}>升级解锁全部高级功能</Text>
                     </View>
                     <View style={styles.upgradeButtonSmall}>

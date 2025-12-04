@@ -102,7 +102,8 @@ function App(): JSX.Element {
           <AsyncTaskFloatBar />
           <AsyncTaskPanel />
         </ModalProvider>
-         <ToastProvider
+         <View style={styles.toastContainer} pointerEvents="box-none">
+          <ToastProvider
             config={{
               success: (props) => <CustomToast {...props} type="success" />,
               error: (props) => <CustomToast {...props} type="error" />,
@@ -112,6 +113,7 @@ function App(): JSX.Element {
             position="top"
             theme="dark"
             />
+         </View>
       </Provider>
     </UpdateProvider>
   );
@@ -121,6 +123,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
+  },
+  toastContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 9999,
   },
 });
 

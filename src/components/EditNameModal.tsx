@@ -16,6 +16,7 @@ import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { updateProfile } from '../store/slices/userSlice';
 import { userDataService } from '../services/database/userDataService';
 import { showSuccessToast } from '../utils/toast';
+import { authService } from '../services/auth/authService';
 import GradientButton from './GradientButton';
 
 export interface EditNameModalRef {
@@ -69,7 +70,10 @@ export const EditNameModal = forwardRef<EditNameModalRef, EditNameModalProps>(({
       return;
     }
     
-    if (!user?.uid) {
+    // 优先使用 Redux 中的用户信息，如果没有则从 authService 获取
+    const userId = user?.uid || authService.getCurrentUserId();
+    
+    if (!userId) {
       Alert.alert('错误', '无法获取用户信息');
       return;
     }
@@ -77,7 +81,7 @@ export const EditNameModal = forwardRef<EditNameModalRef, EditNameModalProps>(({
     setIsUpdatingName(true);
     try {
       const result = await userDataService.updateUserData({
-        uid: user.uid,
+        uid: userId,
         name: trimmedName,
       });
       

@@ -35,21 +35,27 @@ export class AlbumService {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
+      const requestData = {
+        page: params.page || 1,
+        page_size: params.page_size || 20,
+        function_types: params.function_types,
+        theme_styles: params.theme_styles,
+        activity_tags: params.activity_tags,
+        sort_by: params.sort_by || 'default',
+      };
+
+      console.log('📤 请求 albumList:', requestData);
+
       const response = await axios.post(
         `${CLOUD_FUNCTION_BASE_URL}/getAlbumList`,
-        {
-          page: params.page || 1,
-          page_size: params.page_size || 20,
-          function_types: params.function_types,
-          theme_styles: params.theme_styles,
-          activity_tags: params.activity_tags,
-          sort_by: params.sort_by || 'default',
-        },
+        requestData,
         {
           timeout: CLOUDBASE_CONFIG.API.TIMEOUT,
           headers,
         }
       );
+
+      console.log('📥 响应 albumList:', response.data);
 
       if (response.data && response.data.code === 200) {
         return response.data;
@@ -84,6 +90,8 @@ export class AlbumService {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
+      console.log('📤 请求 category (getCategoryConfig)');
+
       const response = await axios.post(
         `${CLOUD_FUNCTION_BASE_URL}/getCategoryConfig`,
         {},
@@ -92,6 +100,8 @@ export class AlbumService {
           headers,
         }
       );
+
+      console.log('📥 响应 category:', response.data);
 
       if (response.data && response.data.code === 200) {
         return response.data;

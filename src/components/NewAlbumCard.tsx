@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, Dimensions } from 'react-native';
+import React, { useMemo, useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Image, Dimensions, Animated } from 'react-native';
 import { AlbumRecord, AlbumLevel } from '../types/model/album';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import LinearGradient from 'react-native-linear-gradient';
@@ -21,6 +21,18 @@ export const NewAlbumCard: React.FC<NewAlbumCardProps> = ({
   album,
   onPress,
 }) => {
+  // 渐隐渐显动画
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // 卡片出现时渐显
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
   // Determine cover image
   const coverImage = album.template_list?.[0]?.template_url || album.album_image;
 
@@ -126,12 +138,27 @@ export const NewAlbumCard: React.FC<NewAlbumCardProps> = ({
   };
 
   return (
-    <TouchableOpacity
-      style={[styles.container, { width: '100%' }]} // Use 100% width to fill Masonry column
-      onPress={() => onPress(album)}
-      activeOpacity={0.8}
+    <Animated.View
+      style={[
+        { width: '100%', opacity: fadeAnim },
+        {
+          transform: [
+            {
+              scale: fadeAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.95, 1],
+              }),
+            },
+          ],
+        },
+      ]}
     >
-      <View style={[styles.imageContainer, { height: cardHeight }]}>
+      <TouchableOpacity
+        style={[styles.container, { width: '100%' }]} // Use 100% width to fill Masonry column
+        onPress={() => onPress(album)}
+        activeOpacity={0.8}
+      >
+        <View style={[styles.imageContainer, { height: cardHeight }]}>
         <Image
           source={{ uri: coverImage }}
           style={styles.image}
@@ -175,7 +202,8 @@ export const NewAlbumCard: React.FC<NewAlbumCardProps> = ({
             </View>
         </View>
       </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </Animated.View>
   );
 };
 
