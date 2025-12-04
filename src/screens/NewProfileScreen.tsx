@@ -203,6 +203,10 @@ const NewProfileScreen: React.FC = () => {
   };
   
   const handleManageMembership = () => {
+    if (!isLoggedIn) {
+      navigation.navigate('NewAuth');
+      return;
+    }
     navigation.navigate('Subscription');
   };
 
@@ -433,27 +437,29 @@ const NewProfileScreen: React.FC = () => {
               )}
             </View>
             
-            {/* 会员徽章 - 所有用户都显示 */}
-            <TouchableOpacity 
-              style={[styles.badgeContainer, { borderColor: memberTheme.primary }]}
-              onPress={() => {
-                if (!membershipStatus) {
-                  // 普通用户点击跳转会员购买
-                  navigation.navigate('Subscription');
-                }
-              }}
-              activeOpacity={!membershipStatus ? 0.7 : 1}
-            >
-              <FontAwesome 
-                name={memberTheme.icon} 
-                size={10} 
-                color={memberTheme.primary} 
-                style={{marginRight: 4}} 
-              />
-              <Text style={[styles.badgeText, { color: memberTheme.textColor }]}>
-                {memberTheme.name}
-              </Text>
-            </TouchableOpacity>
+            {/* 会员徽章 - 仅登录用户显示 */}
+            {isLoggedIn && (
+              <TouchableOpacity 
+                style={[styles.badgeContainer, { borderColor: memberTheme.primary }]}
+                onPress={() => {
+                  if (!membershipStatus) {
+                    // 普通用户点击跳转会员购买
+                    navigation.navigate('Subscription');
+                  }
+                }}
+                activeOpacity={!membershipStatus ? 0.7 : 1}
+              >
+                <FontAwesome 
+                  name={memberTheme.icon} 
+                  size={10} 
+                  color={memberTheme.primary} 
+                  style={{marginRight: 4}} 
+                />
+                <Text style={[styles.badgeText, { color: memberTheme.textColor }]}>
+                  {memberTheme.name}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -565,7 +571,13 @@ const NewProfileScreen: React.FC = () => {
               {/* 美美币余额卡片 */}
               <TouchableOpacity
                 style={styles.balanceCard}
-                onPress={() => navigation.navigate('CoinPurchase')}
+                onPress={() => {
+                  if (!isLoggedIn) {
+                    navigation.navigate('NewAuth');
+                    return;
+                  }
+                  navigation.navigate('CoinPurchase');
+                }}
                 activeOpacity={0.8}
               >
                 <View style={styles.balanceContent}>

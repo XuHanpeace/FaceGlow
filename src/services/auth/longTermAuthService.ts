@@ -7,12 +7,14 @@ const storage = new MMKV();
 
 // 长期认证配置
 const LONG_TERM_AUTH_CONFIG = {
-  // 30天登录态保持
+  // 30天登录态保持（与 refresh token 有效期一致）
   MAX_IDLE_DAYS: 30,
   // 刷新token的提前时间（小时）
+  // Access Token 有效期 24 小时，提前 2 小时刷新，确保有足够时间处理刷新失败的情况
   REFRESH_AHEAD_HOURS: 2,
   // 检查间隔（分钟）
-  CHECK_INTERVAL_MINUTES: 30,
+  // Access Token 有效期 24 小时，每 60 分钟检查一次即可（之前是 30 分钟）
+  CHECK_INTERVAL_MINUTES: 60,
 } as const;
 
 // 存储键

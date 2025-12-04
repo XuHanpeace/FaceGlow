@@ -518,7 +518,8 @@ export class AuthService {
   }
 
   /**
-   * 检查令牌是否即将过期（30分钟内）
+   * 检查令牌是否即将过期
+   * Access Token 有效期 24 小时，在剩余时间少于 2 小时时认为即将过期
    * @returns boolean
    */
   isTokenExpiringSoon(): boolean {
@@ -529,19 +530,23 @@ export class AuthService {
     }
 
     const currentTime = Date.now();
-    const thirtyMinutes = 30 * 60 * 1000;
-    const isExpiringSoon = currentTime >= (expiresAt - thirtyMinutes);
+    // Access Token 有效期 24 小时，提前 2 小时刷新（剩余时间少于 2 小时时刷新）
+    const refreshAheadHours = 2;
+    const refreshAheadTime = refreshAheadHours * 60 * 60 * 1000;
+    const isExpiringSoon = currentTime >= (expiresAt - refreshAheadTime);
     
+    const remainingHours = (expiresAt - currentTime) / (1000 * 60 * 60);
     const remainingMinutes = Math.round((expiresAt - currentTime) / 60000);
     
     if (isExpiringSoon) {
       console.log('⚠️ Token即将过期:', {
+        remainingHours: remainingHours.toFixed(2),
         remainingMinutes,
         expiresAt: new Date(expiresAt).toISOString(),
         currentTime: new Date(currentTime).toISOString(),
       });
     } else {
-      console.log('✅ Token未即将过期，剩余时间:', `${remainingMinutes}分钟`);
+      console.log('✅ Token未即将过期，剩余时间:', `${remainingHours.toFixed(2)}小时 (${remainingMinutes}分钟)`);
     }
 
     return isExpiringSoon;

@@ -13,7 +13,7 @@ const LOGIN_PROMPT_STORAGE_KEYS = {
 
 // 配置常量
 const CONFIG = {
-  ANONYMOUS_BROWSE_THRESHOLD: 5 * 60 * 1000, // 5分钟（匿名浏览阈值）
+  ANONYMOUS_BROWSE_THRESHOLD: 2 * 60 * 1000, // 2分钟（匿名浏览阈值）
   DISMISS_COOLDOWN: 60 * 60 * 1000, // 1小时（防打扰冷却时间）
 } as const;
 
