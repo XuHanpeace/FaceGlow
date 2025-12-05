@@ -221,11 +221,31 @@ export class AuthService {
         data: credentials,
       };
     } catch (error: any) {
+      // 检查是否是用户不存在的错误
+      const errorCode = error.error_code;
+      const errorType = error.error;
+      const errorMessage = error.message || error.error_description || '登录失败';
+      
+      // 判断用户不存在的条件：
+      // 1. error_code 为 4043 (invalid_username_or_password)
+      // 2. error 为 "invalid_username_or_password" 或包含 "user not found" 相关
+      // 3. error_message 包含用户不存在相关文本
+      const isUserNotFound = 
+        errorCode === 4043 ||
+        errorType === 'invalid_username_or_password' ||
+        errorType === 'user_not_found' ||
+        errorMessage.toLowerCase().includes('user not found') ||
+        errorMessage.includes('用户不存在') ||
+        errorMessage.includes('用户未找到') ||
+        errorMessage.includes('invalid_grant');
+      
       return {
         success: false,
         error: {
-          code: 'LOGIN_ERROR',
-          message: error.message || '登录失败',
+          code: isUserNotFound ? 'USER_NOT_FOUND' : 'LOGIN_ERROR',
+          message: errorMessage,
+          error_code: errorCode,
+          error_type: errorType,
         },
       };
     }

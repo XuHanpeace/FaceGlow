@@ -71,8 +71,10 @@ echo "📝 描述: $DESCRIPTION"
 echo "🔗 绑定到原生版本: $PACKAGE_VERSION_ARG"
 
 # 使用 Pushy CLI 打包、上传、发布、绑定（一次性完成）
-npx react-native-update-cli bundle \
+# 使用 --rncli 参数强制使用原生 React Native CLI 而不是 expo CLI
+pushy bundle \
   --platform ios \
+  --rncli \
   --name "$NAME" \
   --description "$DESCRIPTION" \
   --metaInfo "$META_INFO" \

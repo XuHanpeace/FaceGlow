@@ -178,8 +178,19 @@ export class CloudBaseAuthService {
         throw error;
       }
       
+      // 增强错误信息，保留错误代码和错误类型
       if (error.response?.data) {
-        throw new Error(error.response.data.error_description || error.response.data.error || '登录失败');
+        const errorData = error.response.data;
+        const errorMessage = errorData.error_description || errorData.error || '登录失败';
+        const errorCode = errorData.error_code;
+        const errorType = errorData.error;
+        
+        // 创建一个增强的错误对象，包含错误代码和类型
+        const enhancedError: any = new Error(errorMessage);
+        enhancedError.error_code = errorCode;
+        enhancedError.error = errorType;
+        enhancedError.error_description = errorMessage;
+        throw enhancedError;
       }
       throw new Error(error.message || '网络请求失败');
     }

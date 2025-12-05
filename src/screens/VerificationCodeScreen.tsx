@@ -130,17 +130,41 @@ const VerificationCodeScreen: React.FC = () => {
       
       // 登录失败，检查是否是用户不存在
       const errorMessage = loginResult.error?.message || '';
+      const errorCode = loginResult.error?.code;
+      const cloudBaseErrorCode = loginResult.error?.error_code;
+      const cloudBaseErrorType = loginResult.error?.error_type;
+      
+      // 判断用户不存在的条件：
+      // 1. error_code 为 'USER_NOT_FOUND'（authService 已识别）
+      // 2. CloudBase error_code 为 4043 (invalid_username_or_password)
+      // 3. CloudBase error_type 为 'invalid_username_or_password' 或相关
+      // 4. 错误消息包含用户不存在相关文本
       const isUserNotFound = 
+        errorCode === 'USER_NOT_FOUND' ||
+        cloudBaseErrorCode === 4043 ||
+        cloudBaseErrorType === 'invalid_username_or_password' ||
+        cloudBaseErrorType === 'user_not_found' ||
+        errorMessage.toLowerCase().includes('user not found') ||
         errorMessage.includes('用户不存在') ||
         errorMessage.includes('用户未找到') ||
-        errorMessage.includes('user not found') ||
         errorMessage.includes('invalid_grant') ||
         errorMessage.includes('用户不存在或密码错误');
       
       if (isUserNotFound) {
         // 用户不存在，自动尝试注册
-        console.log('用户不存在，自动尝试注册...');
-        const autoUsername = `user_${phoneNumber}`;
+        console.log('用户不存在，自动尝试注册...', {
+          errorCode,
+          cloudBaseErrorCode,
+          cloudBaseErrorType,
+          errorMessage
+        });
+        
+        // 生成用户名：移除手机号中的特殊字符，使用 phone 前缀
+        // 用户名格式要求：必须以小写字母开头，长度6-25位，只能包含小写字母、数字、下划线和连字符
+        const cleanPhone = phoneNumber.replace(/[^\d]/g, '');
+        // phone 前缀（5个字符）+ 最多20位数字，确保总长度不超过25位
+        const phoneSuffix = cleanPhone.slice(-20); // 取后20位
+        const autoUsername = `phone${phoneSuffix}`;
         
         const registerResult = await authService.registerWithPhone(
           phoneNumber,

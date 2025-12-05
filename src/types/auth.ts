@@ -60,6 +60,8 @@ export interface AuthResponse {
   error?: {
     code: string;
     message: string;
+    error_code?: number;  // CloudBase 错误代码
+    error_type?: string;  // CloudBase 错误类型
   };
 }
 
