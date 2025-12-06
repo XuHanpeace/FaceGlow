@@ -223,25 +223,25 @@ const NewHomeScreen: React.FC = () => {
     const handleShowRewardModal = async (data: { rewardAmount: number }) => {
       const rewardAmount = data.rewardAmount;
       console.log('🎁 [NewHome] 收到显示奖励弹窗事件', { rewardAmount });
-      
-      // 刷新用户数据
+          
+          // 刷新用户数据
       const currentUserId = authService.getCurrentUserId();
       if (currentUserId) {
         await dispatch(fetchUserProfile({ userId: currentUserId }));
       }
-      
-      // 等待页面渲染完成，然后串行执行：展示弹窗 -> 播放coins动画
-      setTimeout(() => {
-        // 1. 展示弹窗
-        coinRewardModalRef.current?.show(rewardAmount);
+          
+          // 等待页面渲染完成，然后串行执行：展示弹窗 -> 播放coins动画
+          setTimeout(() => {
+            // 1. 展示弹窗
+            coinRewardModalRef.current?.show(rewardAmount);
         console.log('✅ [NewHome] 展示奖励弹窗');
-        
-        // 2. 等待弹窗显示动画完成（约300ms），然后播放coins动画
-        setTimeout(() => {
-          homeHeaderRef.current?.playCoinIconAnimation();
+            
+            // 2. 等待弹窗显示动画完成（约300ms），然后播放coins动画
+            setTimeout(() => {
+              homeHeaderRef.current?.playCoinIconAnimation();
           console.log('✅ [NewHome] 播放coins动画');
-        }, 400);
-      }, 100);
+            }, 400);
+          }, 100);
     };
 
     // 订阅事件

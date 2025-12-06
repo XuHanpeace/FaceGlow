@@ -31,16 +31,14 @@ import _updateConfig from './update.json';
 const { appKey } = _updateConfig[Platform.OS as keyof typeof _updateConfig] || {};
 
 // 初始化 Pushy Client
-// 测试环境：不检测新版本，也不弹窗（通过传入 null 禁用）
+// 开发环境：初始化但不响应版本更新（checkStrategy 和 updateStrategy 设为 null）
 // 正式环境：静默更新（启动时和进入前台时都检查，但静默下载和应用）
-const pushyClient = __DEV__ 
-  ? null // 测试环境不初始化 Pushy，禁用版本检测
-  : new Pushy({
-      appKey: appKey, // 如果 appKey 不存在，传 undefined 而不是空字符串
-      checkStrategy: "both", // 启动时和进入前台时都检查
-      updateStrategy: "silentAndLater", // 正式环境静默下载和应用
-      debug: false, // 正式环境关闭 debug
-    });
+const pushyClient = new Pushy({
+  appKey: appKey, // 如果 appKey 不存在，传 undefined 而不是空字符串
+  checkStrategy: __DEV__ ? null : "both", // 开发环境不检查，正式环境启动时和进入前台时都检查
+  updateStrategy: __DEV__ ? null : "silentAndLater", // 开发环境不更新，正式环境静默下载和应用
+  debug: __DEV__, // 开发环境开启 debug，正式环境关闭
+});
 
 declare global {
   namespace ReactNavigation {
@@ -100,54 +98,49 @@ function App(): JSX.Element {
     };
   }, []);
   
-  // 测试环境不包装 UpdateProvider，正式环境才启用版本更新
   const AppContent = (
-      <Provider store={store}>
-        <ModalProvider>
-          <StatusBar barStyle="light-content" translucent={true} backgroundColor="transparent" />
-          <View style={styles.container}>
-            <NavigationContainer 
-              ref={navigationRef}
-              onStateChange={(state) => {
-                // 获取当前路由名称
-                const currentRoute = state?.routes[state.index];
-                if (currentRoute?.name) {
-                  // 上报页面访问（使用规范命名：将驼峰命名转为下划线命名）
-                  const pageName = currentRoute.name.replace(/([A-Z])/g, '_$1').toLowerCase().replace(/^_/, '');
-                  aegisService.reportPageView(pageName);
-                }
-              }}
-            >
-              <StackNavigator />
-            </NavigationContainer>
-          </View>
-         
-          <LoginPromptManager />
-          <AsyncTaskFloatBar />
-          <AsyncTaskPanel />
-        </ModalProvider>
-         <View style={styles.toastContainer} pointerEvents="box-none">
-          <ToastProvider
-            useModal={false}
-            config={{
-              success: (props) => <CustomToast {...props} type="success" />,
-              error: (props) => <CustomToast {...props} type="error" />,
-              info: (props) => <CustomToast {...props} type="info" />,
-              warn: (props) => <CustomToast {...props} type="warn" />,
+    <Provider store={store}>
+      <ModalProvider>
+        <StatusBar barStyle="light-content" translucent={true} backgroundColor="transparent" />
+        <View style={styles.container}>
+          <NavigationContainer 
+            ref={navigationRef}
+            onStateChange={(state) => {
+              // 获取当前路由名称
+              const currentRoute = state?.routes[state.index];
+              if (currentRoute?.name) {
+                // 上报页面访问（使用规范命名：将驼峰命名转为下划线命名）
+                const pageName = currentRoute.name.replace(/([A-Z])/g, '_$1').toLowerCase().replace(/^_/, '');
+                aegisService.reportPageView(pageName);
+              }
             }}
-            position="bottom"
-            theme="dark"
-            />
-         </View>
-      </Provider>
+          >
+            <StackNavigator />
+          </NavigationContainer>
+        </View>
+       
+        <LoginPromptManager />
+        <AsyncTaskFloatBar />
+        <AsyncTaskPanel />
+      </ModalProvider>
+       <View style={styles.toastContainer} pointerEvents="box-none">
+        <ToastProvider
+          useModal={false}
+          config={{
+            success: (props) => <CustomToast {...props} type="success" />,
+            error: (props) => <CustomToast {...props} type="error" />,
+            info: (props) => <CustomToast {...props} type="info" />,
+            warn: (props) => <CustomToast {...props} type="warn" />,
+          }}
+          position="bottom"
+          theme="dark"
+          />
+       </View>
+    </Provider>
   );
 
-  // 测试环境：不启用版本更新功能
-  // 正式环境：启用静默更新
-  if (__DEV__ || !pushyClient) {
-    return AppContent;
-  }
-
+  // 始终渲染 UpdateProvider，但在开发环境中传入 null 以禁用功能
+  // 这样可以避免 useUpdate hook 报错
   return (
     <UpdateProvider client={pushyClient}>
       {AppContent}

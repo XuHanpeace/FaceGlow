@@ -15,3 +15,4 @@
 13. **Module Imports**: Ensure module import paths are correct when generating code. (New)
 14. **Method Verification**: Verify method existence in imported services before calling them. Read definition files first. (New)
 15. **Check Imports**: Before using a component or module (especially React Native components like Image, View, Text), ALWAYS verify it is imported. (New)
+16. **iOS Release Process**: For major iOS releases, follow this order: (1) Bump version using `node scripts/bump-version.js`, (2) Git commit and tag, (3) Pod install, (4) Build iOS Archive (optional, can be done manually in Xcode), (5) Package and upload JS bundle using `npm run pushy:hot-update -- --packageVersion <version>`, (6) Manually export IPA from Xcode Archive, (7) Upload IPA to Pushy using `npm run pushy:upload-ipa <ipa-path>`. The JS bundle upload may show binding error if native version doesn't exist yet - this is normal and will be resolved after IPA upload. (New)

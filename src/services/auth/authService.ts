@@ -600,11 +600,11 @@ export class AuthService {
       if (!this.hasValidAuth()) {
         console.log('❌ [Token刷新] Token已过期或无效，开始刷新...');
         return await this.refreshAccessToken();
-      } else {
+        } else {
         console.log('✅ [Token刷新] Token有效，无需刷新');
         return this._getCurrentAuthResponse();
+        }
       }
-    }
 
     // 自动策略（默认）：如果即将过期，则刷新
     if (this.isTokenExpiringSoon()) {
@@ -621,32 +621,32 @@ export class AuthService {
    * @returns AuthResponse
    */
   private _getCurrentAuthResponse(): AuthResponse {
-    const token = this.getCurrentAccessToken();
-    const uid = this.getCurrentUserId();
-    const expiresAt = storage.getNumber(STORAGE_KEYS.EXPIRES_AT);
-    
-    if (token && uid && expiresAt) {
-      return {
-        success: true,
-        data: {
-          uid,
-          accessToken: token,
-          refreshToken: storage.getString(STORAGE_KEYS.REFRESH_TOKEN) || '',
-          expiresIn: Math.round((expiresAt - Date.now()) / 1000),
-          expiresAt,
+      const token = this.getCurrentAccessToken();
+      const uid = this.getCurrentUserId();
+      const expiresAt = storage.getNumber(STORAGE_KEYS.EXPIRES_AT);
+      
+      if (token && uid && expiresAt) {
+        return {
+          success: true,
+          data: {
+            uid,
+            accessToken: token,
+            refreshToken: storage.getString(STORAGE_KEYS.REFRESH_TOKEN) || '',
+            expiresIn: Math.round((expiresAt - Date.now()) / 1000),
+            expiresAt,
           isAnonymous: this.isAnonymous(),
-        },
-      };
-    } else {
-      return {
-        success: false,
-        error: {
-          code: 'INVALID_TOKEN_DATA',
-          message: 'Token数据不完整',
-        },
-      };
+          },
+        };
+      } else {
+        return {
+          success: false,
+          error: {
+            code: 'INVALID_TOKEN_DATA',
+            message: 'Token数据不完整',
+          },
+        };
+      }
     }
-  }
 
   /**
    * 自动刷新令牌（如果即将过期）

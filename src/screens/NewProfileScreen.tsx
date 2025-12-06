@@ -42,12 +42,6 @@ type NewProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamLi
 
 type TabType = 'works' | 'account' | 'selfies';
 
-interface SelfieItem {
-  id: string;
-  imageUrl: string;
-  createdAt: string;
-}
-
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_GAP = 8; // 卡片之间的固定间隔
 const CONTAINER_PADDING = 10; // 容器左右padding
@@ -223,7 +217,7 @@ const NewProfileScreen: React.FC = () => {
   };
 
   const handleDeleteSelfie = async (selfieUrl: string) => {
-    if (!user?.uid || !userProfile) {
+    if (!userProfile?.uid) {
       Alert.alert('错误', '无法获取用户信息');
       return;
     }
@@ -380,8 +374,8 @@ const NewProfileScreen: React.FC = () => {
     try {
       const result = await userWorkService.deleteWork(work._id);
       if (result.success) {
-        showSuccessToast('删除成功');
-        loadUserWorks(user?.uid || '');
+        showSuccessToast('删除成功'); 
+        loadUserWorks(userProfile?.uid || '');
       } else {
         Alert.alert('删除失败', result.error?.message || '请稍后重试');
       }

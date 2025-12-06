@@ -41,7 +41,7 @@ const SelfieGuideScreen: React.FC = () => {
   
   // 从路由参数获取是否为新用户
   const isNewUser = (route.params as { isNewUser?: boolean })?.isNewUser ?? false;
-  
+
   // 使用本地资源图片展示过程
   const selfieImage = require('../assets/selfie.png');
   const tempImages = [

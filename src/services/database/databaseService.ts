@@ -99,8 +99,8 @@ export class DatabaseService {
         if (error.response) {
           // 处理401错误：直接显示登录提示弹窗
           if (error.response.status === 401) {
-            const { loginPromptService } = require('../loginPromptService');
-            loginPromptService.showManually('authLost');
+              const { loginPromptService } = require('../loginPromptService');
+              loginPromptService.showManually('authLost');
           }
           
           // 服务器响应了错误状态码
