@@ -41,6 +41,7 @@ export const startAsyncTask = createAsyncThunk(
       uid: string;
       templateId: string; // 即使是自由生成，可能也有一个虚拟模板ID
       promptData?: any;
+      price?: number; // 模板价格（美美币），0表示免费
     },
     { dispatch, rejectWithValue }
   ) => {
@@ -52,12 +53,18 @@ export const startAsyncTask = createAsyncThunk(
         params: {
           n: 1,
           size: "720*1280" // 9:16 比例
-        }
+        },
+        user_id: payload.uid,
+        price: payload.price || 0,
       };
 
       const apiResponse = await asyncTaskService.callBailian(bailianParams);
 
       if (!apiResponse.success || !apiResponse.taskId) {
+        // 处理余额不足错误
+        if (apiResponse.errorCode === 'INSUFFICIENT_BALANCE') {
+          throw new Error(`余额不足：需要${apiResponse.requiredAmount}美美币，当前余额${apiResponse.currentBalance}美美币`);
+        }
         throw new Error(apiResponse.error || '启动任务失败');
       }
 

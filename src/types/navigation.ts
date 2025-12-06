@@ -2,13 +2,16 @@ import { Album } from "./model/activity";
 import { UserWorkModel } from "./model/user_works";
 
 export type RootStackParamList = {
-  NewHome: undefined;
+  NewHome: {
+    showRewardModal?: boolean;
+    rewardAmount?: number;
+  } | undefined;
   BeforeCreation: {
     albumData: Album;
     activityId: string;
   };
   CreationResult: {
-    albumData?: Album;
+    albumData: Album;
     selfieUrl?: string;
     activityId?: string;
     isAsyncTask?: boolean;

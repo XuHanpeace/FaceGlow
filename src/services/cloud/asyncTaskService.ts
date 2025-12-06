@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { authService } from '../auth/authService';
+import { aegisService } from '../monitoring/aegisService';
 
 /**
  * 阿里云百炼异步任务参数
@@ -14,6 +15,10 @@ export interface BailianParams {
     negative_prompt?: string;
     watermark?: boolean;
   };
+  /** 用户ID（价格>0时必填） */
+  user_id?: string;
+  /** 模板价格（美美币），0表示免费 */
+  price?: number;
 }
 
 /**
@@ -63,7 +68,11 @@ class AsyncTaskService {
       }
 
       const response = await axios.post(`${this.baseUrl}/callBailian`, {
-        data: params
+        data: {
+          ...params,
+          user_id: params.user_id,
+          price: params.price || 0,
+        }
       }, {
         headers,
         timeout: 60000, // 60秒超时
@@ -73,9 +82,27 @@ class AsyncTaskService {
       return response.data;
     } catch (error: any) {
       console.error('❌ callBailian 调用失败:', error);
+      
+      // 上报接口错误到 Aegis
+      const apiUrl = `${this.baseUrl}/callBailian`;
+      const errorMessage = error.response?.data?.error || error.message || '调用云函数失败';
+      const statusCode = error.response?.status;
+      aegisService.reportApiError(apiUrl, errorMessage, statusCode);
+      
+      // 处理余额不足错误
+      if (error.response?.data?.errorCode === 'INSUFFICIENT_BALANCE') {
+        return {
+          success: false,
+          error: '余额不足',
+          errorCode: 'INSUFFICIENT_BALANCE',
+          currentBalance: error.response.data.currentBalance,
+          requiredAmount: error.response.data.requiredAmount,
+        };
+      }
+      
       return {
         success: false,
-        error: error.message || '调用云函数失败',
+        error: error.response?.data?.error || error.message || '调用云函数失败',
       };
     }
   }
@@ -102,6 +129,13 @@ class AsyncTaskService {
       return response.data;
     } catch (error: any) {
       console.error('❌ queryTask 调用失败:', error);
+      
+      // 上报接口错误到 Aegis
+      const apiUrl = `${this.baseUrl}/queryTask`;
+      const errorMessage = error.response?.data?.error || error.message || '查询任务失败';
+      const statusCode = error.response?.status;
+      aegisService.reportApiError(apiUrl, errorMessage, statusCode);
+      
       return {
         success: false,
         taskId,

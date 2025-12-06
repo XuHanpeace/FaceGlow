@@ -421,7 +421,7 @@ const NewProfileScreen: React.FC = () => {
           <View style={styles.avatarContainer}>
             <UserAvatar 
               size={64} 
-              onLongPress={() => {
+              onPress={() => {
                 avatarSelectorModalRef.current?.show();
               }}
               clickable={hasSelfies || !!userInfo.avatar}

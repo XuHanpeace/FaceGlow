@@ -6,7 +6,6 @@ import {
   StyleSheet,
   StatusBar,
   Alert,
-  ActivityIndicator,
   BackHandler,
   Platform,
   SafeAreaView,
@@ -24,6 +23,7 @@ import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import GradientButton from '../components/GradientButton';
 import { showSuccessToast, showInfoToast } from '../utils/toast';
 import Video from 'react-native-video';
+import LinearGradient from 'react-native-linear-gradient';
 
 type SubscriptionScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -226,6 +226,7 @@ const SubscriptionScreen: React.FC = () => {
 
   // 获取按钮显示的文案
   const getButtonText = () => {
+    if (isLoading) return '正在查询支付结果，请稍候...';
     if (!selectedPlan) return '立即开启';
     
     // 移除价格中的 /月 或 /年 后缀，只保留金额部分用于按钮显示
@@ -324,7 +325,15 @@ const SubscriptionScreen: React.FC = () => {
                       <View style={styles.planRight}>
                         {isYearly && plan.savePercent && (
                           <View style={styles.discountBadge}>
-                            <Text style={styles.discountText}>{plan.savePercent} OFF</Text>
+                            <LinearGradient
+                              colors={['#4CAF50', '#66BB6A']}
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 0 }}
+                              style={StyleSheet.absoluteFill}
+                            />
+                            <View style={styles.badgeContent}>
+                              <Text style={styles.discountText}>{plan.savePercent}</Text>
+                            </View>
                           </View>
                         )}
                         <Text style={styles.planPricePerMonth}>
@@ -363,7 +372,7 @@ const SubscriptionScreen: React.FC = () => {
                 title={getButtonText()}
                 onPress={handleSubscribe}
                 disabled={!selectedPlan || !agreeToTerms || isLoading}
-                loading={isLoading}
+                loading={false}
                 variant="primary"
                 style={styles.continueButton}
                 textStyle={{ fontWeight: 'bold', fontSize: 18 }}
@@ -513,15 +522,21 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   discountBadge: {
-    backgroundColor: '#FF4500',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: 12,
+    overflow: 'hidden',
+    minHeight: 20,
     marginBottom: 4,
+  },
+  badgeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   discountText: {
     color: '#fff',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: 'bold',
   },
   planPricePerMonth: {

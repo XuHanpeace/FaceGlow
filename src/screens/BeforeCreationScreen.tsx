@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -27,8 +27,8 @@ import { startAsyncTask } from '../store/slices/asyncTaskSlice';
 import { CrossFadeImage } from '../components/CrossFadeImage';
 import FastImage from 'react-native-fast-image';
 import { useUser, useUserBalance } from '../hooks/useUser';
-import { balanceService } from '../services/balanceService';
 import { AlbumRecord } from '../types/model/album';
+import { aegisService } from '../services/monitoring/aegisService';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -229,6 +229,17 @@ const BeforeCreationScreen: React.FC = () => {
   const [selectedSelfieUrl, setSelectedSelfieUrl] = useState<string | null>(null);
   const [activeAlbumIndex, setActiveAlbumIndex] = useState(initialIndex);
 
+  // 页面加载时上报埋点
+  useEffect(() => {
+    aegisService.reportPageView('before_creation');
+    aegisService.reportUserAction('enter_before_creation', {
+      album_id: albumData?.album_id || '',
+      album_title: albumData?.album_name || '', // 专辑标题
+      activity_id: activityId,
+      template_count: albumData?.template_list?.length || 0,
+    });
+  }, []);
+
 console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
 
   // 垂直滑动回调
@@ -246,6 +257,17 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
     };
     ReactNativeHapticFeedback.trigger("impactLight", options);
 
+    // 埋点：用户点击创作按钮（使用 fg_click_ 前缀，包含专辑标题）
+    const currentAlbum = albumsWithCurrent[activeAlbumIndex];
+    aegisService.reportClick('create_button', {
+      album_id: currentAlbum?.album_id || '',
+      album_title: currentAlbum?.album_name || '', // 专辑标题
+      template_id: currentTemplate?.template_id || '',
+      activity_id: currentAlbum?.activityId || activityId,
+      template_price: currentTemplate?.price || 0,
+      album_price: currentAlbum?.price || 0,
+    });
+
     try {
       // 检查是否是真实用户
       const authResult = await authService.requireRealUser();
@@ -257,64 +279,40 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
         return;
       }
 
-      // 检查是否选择了自拍
-      if (!selectedSelfieUrl) {
-        Alert.alert(
-          '😅 需要自拍照',
-          '小主，使用此风格需要先选择自拍照，是否前往上传？',
-          [
-            {
-              text: '取消',
-              style: 'cancel',
-            },
-            {
-              text: '✨ 去上传',
-              onPress: async () => {
-                // 再次确认真实用户（防止用户登出）
-                const uploadAuthResult = await authService.requireRealUser();
-                if (uploadAuthResult.success) {
-                  navigation.navigate('SelfieGuide');
-                } else {
-                  Alert.alert('提示', '请先登录');
-                }
-              },
-            },
-          ]
-        );
-        return;
-      }
 
       // 获取当前选中的 Album 和对应的 Activity ID
       const currentAlbum = albumsWithCurrent[activeAlbumIndex];
       const currentActivityId = currentAlbum.activityId || activityId;
+
+      // 检查是否选择了自拍，如果没有则直接跳转到上传页面
+      if (!selectedSelfieUrl) {
+        // 埋点：缺少自拍照，跳转到上传页面
+        aegisService.reportUserAction('navigate_to_selfie_upload', {
+          album_id: currentAlbum?.album_id || '',
+          album_title: currentAlbum?.album_name || '',
+          reason: 'no_selfie_selected',
+        });
+        
+        // 再次确认真实用户（防止用户登出）
+        const uploadAuthResult = await authService.requireRealUser();
+        if (uploadAuthResult.success) {
+          navigation.navigate('SelfieGuide');
+        } else {
+          // 如果用户未登录，先跳转到登录页面
+          navigation.navigate('NewAuth');
+        }
+        return;
+      }
+
       
       // 将 AlbumWithActivityId 转换为 AlbumRecord 进行类型检查
       // 注意：AlbumWithActivityId 可能不包含所有 AlbumRecord 字段，需要安全访问
       const albumRecord = currentAlbum as unknown as AlbumRecord;
       
-      // 3.1 检查用户余额是否充足
+      // 获取价格信息（用于传递给云函数）
       const albumPrice = currentAlbum.price || 0;
       const templatePrice = currentTemplate?.price || 0;
       const totalPrice = templatePrice > 0 ? templatePrice : albumPrice;
-      
-      if (totalPrice > 0 && user?.uid) {
-        const balanceCheck = await balanceService.checkBalance(user.uid, totalPrice);
-        
-        if (!balanceCheck.sufficient) {
-          Alert.alert(
-            '💎 余额不足',
-            `创作需要${totalPrice}美美币，当前余额${balanceCheck.currentBalance}美美币\n是否前往充值？`,
-            [
-              { text: '取消', style: 'cancel' },
-              { 
-                text: '去充值', 
-                onPress: () => navigation.navigate('CoinPurchase')
-              }
-            ]
-          );
-          return;
-        }
-      }
       
       // 3.2 检查用户权限（会员专享）
       const albumLevel = albumRecord.level || currentAlbum.level || '0';
@@ -385,6 +383,7 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
              activityImage: albumRecord.result_image || albumRecord.album_image,
              uid: uid,
              templateId: currentTemplate?.template_id || albumRecord.album_id, // 使用 template_id 或 album_id
+             price: totalPrice, // 传递价格给云函数
              promptData: {
                text: promptText,
                srcImage: albumRecord.src_image,
@@ -395,8 +394,36 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
         };
         console.log('[BeforeCreation] Dispatching startAsyncTask:', taskParams);
 
-        await dispatch(startAsyncTask(taskParams)).unwrap();
-        console.log('[BeforeCreation] AsyncTask started successfully');
+        try {
+          await dispatch(startAsyncTask(taskParams)).unwrap();
+          console.log('[BeforeCreation] AsyncTask started successfully');
+        } catch (error: any) {
+          // 处理余额不足错误
+          if (error.message && error.message.includes('余额不足')) {
+            Alert.alert(
+              '💎 余额不足',
+              error.message + '\n是否前往充值？',
+              [
+                { text: '取消', style: 'cancel' },
+                { 
+                  text: '去充值', 
+                  onPress: () => navigation.navigate('CoinPurchase')
+                }
+              ]
+            );
+            return;
+          }
+          throw error;
+        }
+
+        // 埋点：异步任务提交成功（使用 fg_action_ 前缀，包含专辑标题）
+        aegisService.reportUserAction('async_task_submitted', {
+          album_id: currentAlbum?.album_id || '',
+          album_title: currentAlbum?.album_name || '', // 专辑标题
+          template_id: currentTemplate?.template_id || albumRecord.album_id,
+          activity_id: currentActivityId,
+          task_type: 'image_to_image',
+        });
 
         Alert.alert('任务已提交', '创作任务已在后台运行，请留意悬浮条任务列表。', [
             { text: '好的', onPress: () => navigation.goBack() }
@@ -416,6 +443,15 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
           setIsFusionProcessing(false);
           return;
         }
+
+        // 埋点：跳转到换脸页面（使用 fg_action_ 前缀，包含专辑标题）
+        aegisService.reportUserAction('navigate_to_fusion', {
+          album_id: currentAlbum?.album_id || '',
+          album_title: currentAlbum?.album_name || '', // 专辑标题
+          template_id: currentTemplate?.template_id || '',
+          activity_id: currentActivityId,
+          task_type: 'face_fusion',
+        });
 
         // 跳转到CreationResult页面（换脸使用 templateId）
         navigation.navigate('CreationResult', {

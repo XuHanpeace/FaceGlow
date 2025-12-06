@@ -1,16 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   StatusBar,
-  Dimensions,
   Modal,
   Alert,
-  ActivityIndicator,
   Image,
-  Animated,
 } from 'react-native';
 import FastImage from 'react-native-fast-image';
 import { useNavigation } from '@react-navigation/native';
@@ -20,30 +17,29 @@ import * as ImagePicker from 'react-native-image-picker';
 import { PermissionsAndroid, Platform } from 'react-native';
 import { useAppDispatch } from '../store/hooks';
 import { uploadSelfie } from '../store/middleware/asyncMiddleware';
-import { useUser } from '../hooks/useUser';
+import { useUser, useUserSelfies } from '../hooks/useUser';
 import { cosService } from '../services/cos/COSService';
 import { userDataService } from '../services/database/userDataService';
 import { authService } from '../services/auth/authService';
+import { rewardService } from '../services/rewardService';
 import GradientButton from '../components/GradientButton';
 import BackButton from '../components/BackButton';
 import { FadeInOutImage } from '../components/FadeInOutImage';
-import LinearGradient from 'react-native-linear-gradient';
-import { themeColors } from '../config/theme';
 
 type SelfieGuideScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const SelfieGuideScreen: React.FC = () => {
   const navigation = useNavigation<SelfieGuideScreenNavigationProp>();
   const dispatch = useAppDispatch();
-  const { setDefaultSelfieUrl } = useUser();
+  const { setDefaultSelfieUrl, refreshUserData } = useUser();
+  const { hasSelfies, selfies } = useUserSelfies();
   const [showModal, setShowModal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<ImagePicker.Asset | null>(null);
-
-  const screenWidth = Dimensions.get('window').width;
-  const screenHeight = Dimensions.get('window').height;
+  
+  // 判断是否为新用户（自拍数为0）
+  const isNewUser = !hasSelfies || selfies.length === 0;
 
   // 使用本地资源图片展示过程
   const selfieImage = require('../assets/selfie.png');
@@ -234,14 +230,16 @@ const SelfieGuideScreen: React.FC = () => {
       setUploadProgress(80);
 
       // 3. 更新用户信息（如果有用户ID）
+      let wasNewUser = false;
       try {
         const currentUserId = authService.getCurrentUserId();
         if (currentUserId) {
           console.log('开始更新用户信息');
           
-          // 获取用户现有数据
+          // 获取用户现有数据，判断是否为新用户
           const userResponse = await userDataService.getUserByUid(currentUserId);
           const existingSelfieList = userResponse.data?.record?.selfie_list || [];
+          wasNewUser = existingSelfieList.length === 0;
           
           // 将新的自拍URL添加到列表中
           const updatedSelfieList = [...existingSelfieList, uploadResult.url];
@@ -256,6 +254,34 @@ const SelfieGuideScreen: React.FC = () => {
           // 设置新上传的自拍为默认自拍（倒序第一张）
           setDefaultSelfieUrl(uploadResult.url);
           console.log('设置新自拍为默认自拍:', uploadResult.url);
+          
+          // 如果是新用户，发放首次上传奖励
+          if (wasNewUser) {
+            console.log('🎁 新用户首次上传自拍，发放奖励');
+            const rewardResult = await rewardService.grantFirstSelfieReward(currentUserId);
+            if (rewardResult.success) {
+              // 刷新用户数据
+              await refreshUserData();
+              console.log('✅ 新用户奖励发放成功，新余额:', rewardResult.newBalance);
+              
+              // 关闭上传页面
+              setIsUploading(false);
+              setUploadProgress(0);
+              
+              // 等待页面关闭动画完成（React Navigation 默认动画时长约 300ms）
+              setTimeout(() => {
+                // 导航回主页并传递参数，告诉主页需要显示奖励弹窗
+                navigation.navigate('NewHome', {
+                  showRewardModal: true,
+                  rewardAmount: 10,
+                });
+              }, 350);
+              
+              return; // 提前返回，不执行后续逻辑
+            } else {
+              console.error('发放新用户奖励失败:', rewardResult.error);
+            }
+          }
         }
       } catch (error) {
         console.warn('更新用户信息失败:', error);
@@ -264,10 +290,7 @@ const SelfieGuideScreen: React.FC = () => {
 
       setUploadProgress(100);
       
-      // 设置上传成功的图片URL
-      setUploadedImageUrl(uploadResult.url);
-      
-      // 上传完成后延迟返回主页
+      // 非新用户：上传完成后延迟返回主页
       setTimeout(() => {
         setIsUploading(false);
         setUploadProgress(0);
@@ -367,6 +390,24 @@ const SelfieGuideScreen: React.FC = () => {
 
       {/* 底部按钮 */}
       <View style={styles.bottomContainer}>
+        {/* 新用户促销文案 */}
+        {isNewUser && !selectedImage && (
+          <View style={styles.promoContainer}>
+            <View style={styles.promoText}>
+              <Text style={styles.promoTextMain}>首次创作AI头像，立得</Text>
+              <View style={styles.coinContainer}>
+                <Image
+                  source={require('../assets/mm-coins.png')}
+                  style={styles.promoCoinIcon}
+                  resizeMode="contain"
+                />
+                <Text style={styles.coinAmount}>10</Text>
+              </View>
+              <Text style={styles.promoTextMain}>美美币奖励～</Text>
+            </View>
+          </View>
+        )}
+        
         {selectedImage ? (
           <GradientButton
             title={isUploading ? `上传中 ${uploadProgress}%` : '上传自拍'}
@@ -392,6 +433,7 @@ const SelfieGuideScreen: React.FC = () => {
           />
         )}
       </View>
+
 
       {/* 选择图片来源弹窗 */}
       <Modal
@@ -619,6 +661,37 @@ const styles = StyleSheet.create({
   },
   uploadButton: {
     width: '100%',
+  },
+  promoContainer: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginBottom: 8,
+  },
+  promoText: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+  },
+  promoTextMain: {
+    color: '#fff',
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '500',
+  },
+  coinContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  promoCoinIcon: {
+    width: 16,
+    height: 16,
+  },
+  coinAmount: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: 'bold',
+    lineHeight: 14,
   },
   modalOverlay: {
     flex: 1,

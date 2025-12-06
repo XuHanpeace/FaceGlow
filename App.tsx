@@ -19,6 +19,7 @@ import { appLifecycleManager } from './src/services/auth/appLifecycleManager';
 import { revenueCatService } from './src/services/revenueCat/revenueCatService';
 import { authService } from './src/services/auth/authService';
 import { loginPromptService } from './src/services/loginPromptService';
+import { aegisService } from './src/services/monitoring/aegisService';
 import LoginPromptManager from './src/components/LoginPromptManager';
 import AsyncTaskFloatBar from './src/components/AsyncTaskFloatBar';
 import AsyncTaskPanel from './src/components/AsyncTaskPanel';
@@ -61,6 +62,17 @@ function App(): JSX.Element {
         loginPromptService.initialize();
         console.log('✅ 登录提示服务初始化完成');
 
+        // 初始化 Aegis 监控
+        try {
+          const currentUserId = authService.getCurrentUserId();
+          console.log('🚀 初始化 Aegis 监控...');
+          aegisService.initialize(currentUserId || undefined);
+          console.log('✅ Aegis 监控初始化完成');
+        } catch (error) {
+          console.error('❌ Aegis 监控初始化失败:', error);
+          // Aegis 初始化失败不影响其他功能
+        }
+
         // 初始化 RevenueCat SDK
         try {
           // 获取当前用户 ID（如果有）
@@ -93,7 +105,18 @@ function App(): JSX.Element {
         <ModalProvider>
           <StatusBar barStyle="light-content" translucent={true} backgroundColor="transparent" />
           <View style={styles.container}>
-            <NavigationContainer ref={navigationRef}>
+            <NavigationContainer 
+              ref={navigationRef}
+              onStateChange={(state) => {
+                // 获取当前路由名称
+                const currentRoute = state?.routes[state.index];
+                if (currentRoute?.name) {
+                  // 上报页面访问（使用规范命名：将驼峰命名转为下划线命名）
+                  const pageName = currentRoute.name.replace(/([A-Z])/g, '_$1').toLowerCase().replace(/^_/, '');
+                  aegisService.reportPageView(pageName);
+                }
+              }}
+            >
               <StackNavigator />
             </NavigationContainer>
           </View>

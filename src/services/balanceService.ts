@@ -123,16 +123,11 @@ class BalanceService {
       });
 
       if (!updateResult.success) {
-        // 如果更新用户余额失败，将交易记录标记为失败
-        await transactionService.updateTransactionStatus(transactionId, 'failed');
         return {
           success: false,
           error: '更新用户余额失败',
         };
       }
-
-      // 更新交易状态为已完成
-      await transactionService.updateTransactionStatus(transactionId, 'completed');
 
       console.log('余额扣除成功:', { userId, amount, newBalance });
 

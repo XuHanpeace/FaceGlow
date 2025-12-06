@@ -7,35 +7,42 @@ import {
   ActivityIndicator,
   Dimensions,
   Animated,
-  ScrollView, // Add ScrollView import
+  ScrollView,
 } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
+import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import MasonryList from '@react-native-seoul/masonry-list';
 
 import { RootStackParamList } from '../types/navigation';
-import HomeHeader from '../components/HomeHeader';
+import HomeHeader, { HomeHeaderRef } from '../components/HomeHeader';
 import SelfieModule from '../components/SelfieModule';
 import DefaultSelfieSelector from '../components/DefaultSelfieSelector';
 import { useUser } from '../hooks/useUser';
 import { authService } from '../services/auth/authService';
 import { albumService } from '../services/database/albumService';
+import { userDataService } from '../services/database/userDataService';
+import { CoinRewardModal, CoinRewardModalRef } from '../components/CoinRewardModal';
 import { AlbumRecord } from '../types/model/album';
 import { CategoryConfigRecord, CategoryType } from '../types/model/config';
 import { NewAlbumCard } from '../components/NewAlbumCard';
 import { FilterSection } from '../components/FilterSection';
 import { useAppDispatch } from '../store/hooks';
 import { setAllAlbums } from '../store/slices/activitySlice';
+import { aegisService } from '../services/monitoring/aegisService';
 
 type NewHomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 const { width: screenWidth } = Dimensions.get('window');
 
 const NewHomeScreen: React.FC = () => {
   const navigation = useNavigation<NewHomeScreenNavigationProp>();
+  const route = useRoute<NativeStackScreenProps<RootStackParamList, 'NewHome'>['route']>();
   const dispatch = useAppDispatch();
-  const { refreshUserData } = useUser();
+  const { refreshUserData, userInfo } = useUser();
   
   const scrollRef = useRef<ScrollView>(undefined);
+  const homeHeaderRef = useRef<HomeHeaderRef>(null);
+  const previousBalanceRef = useRef<number>(0);
+  const coinRewardModalRef = useRef<CoinRewardModalRef>(null);
   
   // 滚动距离动画值
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -202,15 +209,92 @@ const NewHomeScreen: React.FC = () => {
     loadAlbums(true);
   }, [selectedFunctionType, selectedThemeStyle]);
 
-  // Focus Effect
+  // 初始化时记录余额
+  useEffect(() => {
+    if (userInfo.balance !== undefined) {
+      previousBalanceRef.current = userInfo.balance;
+    }
+  }, []);
+
+  // Focus Effect - 页面获得焦点时刷新数据并检查余额变化
   useFocusEffect(
     React.useCallback(() => {
-      refreshUserData();
-    }, [refreshUserData])
+      const loadData = async () => {
+        // 检查路由参数，看是否需要显示奖励弹窗
+        const params = route.params;
+        if (params?.showRewardModal && params?.rewardAmount !== undefined) {
+          const rewardAmount = params.rewardAmount;
+          console.log('🎁 检测到需要显示奖励弹窗', { rewardAmount });
+          
+          // 清除路由参数，避免重复触发
+          navigation.setParams({ showRewardModal: undefined, rewardAmount: undefined });
+          
+          // 刷新用户数据
+          await refreshUserData();
+          
+          // 等待页面渲染完成，然后串行执行：展示弹窗 -> 播放coins动画
+          setTimeout(() => {
+            // 1. 展示弹窗
+            coinRewardModalRef.current?.show(rewardAmount);
+            console.log('✅ 展示奖励弹窗');
+            
+            // 2. 等待弹窗显示动画完成（约300ms），然后播放coins动画
+            setTimeout(() => {
+              homeHeaderRef.current?.playCoinIconAnimation();
+              console.log('✅ 播放coins动画');
+            }, 400);
+          }, 100);
+          
+          return; // 提前返回，不执行后续余额检查逻辑
+        }
+        
+        // 保存当前余额
+        const oldBalance = previousBalanceRef.current || 0;
+        
+        // 刷新用户数据
+        await refreshUserData();
+        
+        // 等待数据更新后检查余额变化
+        setTimeout(() => {
+          // 从最新的 userInfo 中获取余额（需要重新获取，因为 refreshUserData 是异步的）
+          // 这里我们需要重新获取一次用户数据来确保拿到最新值
+          const checkBalanceChange = async () => {
+            const currentUserId = authService.getCurrentUserId();
+            if (currentUserId) {
+              try {
+                const userResult = await userDataService.getUserByUid(currentUserId);
+                const newBalance = userResult.data?.record?.balance || 0;
+                
+                if (newBalance > oldBalance && oldBalance >= 0) {
+                  // 余额增加了，播放手指动画
+                  console.log('💰 余额增加，播放手指动画', { oldBalance, newBalance });
+                  homeHeaderRef.current?.playCoinIconAnimation();
+                }
+                previousBalanceRef.current = newBalance;
+              } catch (error) {
+                console.error('检查余额变化失败:', error);
+              }
+            }
+          };
+          checkBalanceChange();
+        }, 800);
+      };
+      loadData();
+    }, [refreshUserData, route.params, navigation])
   );
 
   // Handlers
   const handleAlbumPress = (album: AlbumRecord) => {
+    // 埋点：用户点击相册（使用 fg_click_ 前缀，包含专辑标题）
+    aegisService.reportClick('album', {
+      album_id: album.album_id,
+      album_title: album.album_name || '', // 专辑标题，方便数据查看
+      album_name: album.album_name || '',
+      album_price: album.price || 0,
+      activity_tag_type: album.activity_tag_type || '',
+      function_type: album.function_type || '',
+    });
+    
     // Adapter for BeforeCreationScreen
     const legacyAlbumData: any = {
         album_id: album.album_id,
@@ -254,6 +338,7 @@ const NewHomeScreen: React.FC = () => {
     navigation.navigate('SelfieGuide');
   };
 
+
   const renderStickyHeader = () => (
     <View style={[styles.stickyHeaderContainer, { width: screenWidth }]}>
         <FilterSection 
@@ -277,6 +362,7 @@ const NewHomeScreen: React.FC = () => {
       
       <View style={styles.fixedHeader}>
         <HomeHeader
+          ref={homeHeaderRef}
           onProfilePress={() => navigation.navigate('NewProfile')}
         />
       </View>
@@ -368,6 +454,12 @@ const NewHomeScreen: React.FC = () => {
             console.log('Selected selfie:', url);
             setShowDefaultSelfieSelector(false);
         }}
+      />
+
+      {/* 美美币奖励弹窗 */}
+      <CoinRewardModal
+        ref={coinRewardModalRef}
+        onClose={() => {}}
       />
     </View>
   );

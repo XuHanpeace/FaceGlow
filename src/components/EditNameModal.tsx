@@ -141,17 +141,21 @@ export const EditNameModal = forwardRef<EditNameModalRef, EditNameModalProps>(({
                 >
                   <Text style={styles.modalButtonCancelText}>取消</Text>
                 </TouchableOpacity>
-                <GradientButton
-                  title={isUpdatingName ? '保存中...' : '保存'}
-                  onPress={handleSaveName}
-                  disabled={isUpdatingName}
-                  loading={isUpdatingName}
-                  variant="primary"
-                  size="medium"
-                  style={styles.gradientButton}
-                  fontSize={16}
-                  borderRadius={8}
-                />
+                <View style={styles.gradientButtonWrapper}>
+                  <GradientButton
+                    title={isUpdatingName ? '保存中...' : '保存'}
+                    onPress={handleSaveName}
+                    disabled={isUpdatingName}
+                    loading={isUpdatingName}
+                    variant="primary"
+                    size="medium"
+                    style={styles.gradientButton}
+                    fontSize={16}
+                    borderRadius={8}
+                    width={undefined}
+                    height={40}
+                  />
+                </View>
               </View>
             </View>
           </View>
@@ -207,15 +211,17 @@ const styles = StyleSheet.create({
   modalButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 12,
+    alignItems: 'center',
   },
   modalButton: {
     flex: 1,
+    height: 40,
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 12,
   },
   modalButtonCancel: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -225,8 +231,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
   },
-  gradientButton: {
+  gradientButtonWrapper: {
     flex: 1,
+    height: 40,
+  },
+  gradientButton: {
+    width: '100%',
+    height: '100%',
   },
 });
 

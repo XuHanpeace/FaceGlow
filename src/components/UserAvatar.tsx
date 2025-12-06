@@ -13,7 +13,9 @@ interface UserAvatarProps {
   imageStyle?: ImageStyle;
   /** 是否显示会员标签 (已废弃，仅用于兼容旧接口，现在只控制金边) */
   showMembership?: boolean;
-  /** 长按回调 */
+  /** 点击回调 */
+  onPress?: () => void;
+  /** 长按回调（已废弃，建议使用 onPress） */
   onLongPress?: () => void;
   /** 是否可点击（用于控制默认头像无自拍时不响应） */
   clickable?: boolean;
@@ -28,6 +30,7 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
   style,
   imageStyle,
   showMembership = true,
+  onPress,
   onLongPress,
   clickable = true,
 }) => {
@@ -105,13 +108,17 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
     </View>
   );
 
+  // 优先使用 onPress，如果没有则使用 onLongPress（向后兼容）
+  const handlePress = onPress || onLongPress;
+
   return (
     <View style={[styles.container, { width: size, height: size }, style]}>
-      {isClickable && onLongPress ? (
+      {isClickable && handlePress ? (
         <TouchableOpacity
+          onPress={onPress}
           onLongPress={onLongPress}
           activeOpacity={0.8}
-          delayLongPress={500}
+          delayLongPress={onPress ? undefined : 500}
         >
           {AvatarContent}
         </TouchableOpacity>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Platform,
   Dimensions,
   SafeAreaView,
+  FlatList,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -18,6 +19,7 @@ import { RootStackParamList } from '../types/navigation';
 import { NativeModules } from 'react-native';
 import { subscriptionDataService } from '../services/subscriptionDataService';
 import { useAuthState } from '../hooks/useAuthState';
+import { useUser } from '../hooks/useUser';
 import { coinPackages, CoinPackage } from '../config/revenueCatConfig';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import GradientButton from '../components/GradientButton';
@@ -60,17 +62,42 @@ const VIDEO_HEIGHT = SCREEN_WIDTH * (9 / 16);
 const CoinPurchaseScreen: React.FC = () => {
   const navigation = useNavigation<CoinPurchaseScreenNavigationProp>();
   const { user } = useAuthState();
+  const { refreshUserData } = useUser();
   const [selectedPackage, setSelectedPackage] = useState<CoinPackage | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [availableProducts, setAvailableProducts] = useState<any[]>([]);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
     // 初始化时获取可用产品
     fetchAvailableProducts();
-    // 默认选中第一个美美币产品
-    if (coinPackages.length > 0) {
+    // 默认选中 120美美币产品
+    const defaultPackage = coinPackages.find(pkg => pkg.id === 'coins120');
+    if (defaultPackage) {
+      setSelectedPackage(defaultPackage);
+      // 延迟滚动，确保FlatList已渲染
+      setTimeout(() => {
+        const index = coinPackages.findIndex(pkg => pkg.id === 'coins120');
+        if (index !== -1 && flatListRef.current) {
+          flatListRef.current.scrollToIndex({
+            index,
+            animated: false, // 初始加载不需要动画
+            viewPosition: 0.5, // 居中
+          });
+        }
+      }, 300);
+    } else if (coinPackages.length > 0) {
+      // 如果找不到120美美币，则选择第一个
       setSelectedPackage(coinPackages[0]);
+      setTimeout(() => {
+        if (flatListRef.current) {
+          flatListRef.current.scrollToIndex({
+            index: 0,
+            animated: false,
+            viewPosition: 0.5,
+          });
+        }
+      }, 300);
     }
   }, []);
 
@@ -89,9 +116,12 @@ const CoinPurchaseScreen: React.FC = () => {
   const fetchAvailableProducts = async () => {
     try {
       const products = await ApplePayModule.getAvailableProducts([
-        'com.digitech.faceglow.assets.coins1',
+        'com.digitech.faceglow.assets.coins.48',
+        'com.digitech.faceglow.assets.coins.120',
+        'com.digitech.faceglow.assets.coins.198',
+        'com.digitech.faceglow.assets.coins.498',
+        'com.digitech.faceglow.assets.coins1', // Backward compatibility
       ]);
-      setAvailableProducts(products);
       console.log('可用美美币产品:', products);
     } catch (error) {
       console.error('获取美美币产品失败:', error);
@@ -107,6 +137,18 @@ const CoinPurchaseScreen: React.FC = () => {
 
   const handlePackageSelect = (coinPackage: CoinPackage) => {
     setSelectedPackage(coinPackage);
+    
+    // 滚动到选中项，使其居中显示
+    const index = coinPackages.findIndex(pkg => pkg.id === coinPackage.id);
+    if (index !== -1 && flatListRef.current) {
+      setTimeout(() => {
+        flatListRef.current?.scrollToIndex({
+          index,
+          animated: true,
+          viewPosition: 0.5, // 0.5 表示居中
+        });
+      }, 100);
+    }
   };
 
   const handlePurchase = async () => {
@@ -136,6 +178,15 @@ const CoinPurchaseScreen: React.FC = () => {
 
           if (updateSuccess) {
             console.log('用户美美币数据已更新到数据库');
+            
+            // 刷新本地用户数据，确保余额及时更新
+            try {
+              await refreshUserData();
+              console.log('用户数据已刷新，余额已更新');
+            } catch (refreshError) {
+              console.error('刷新用户数据失败:', refreshError);
+              // 即使刷新失败，也不影响购买成功的提示
+            }
           } else {
             console.error('用户美美币数据更新失败');
           }
@@ -185,6 +236,7 @@ const CoinPurchaseScreen: React.FC = () => {
 
   // 获取按钮显示的文案
   const getButtonText = () => {
+    if (isLoading) return '正在查询支付结果，请稍候...';
     if (!selectedPackage) return '立即购买';
     return `充值 ${selectedPackage.coins} 美美币 ${selectedPackage.price}`;
   };
@@ -242,51 +294,106 @@ const CoinPurchaseScreen: React.FC = () => {
             </Text>
           </View>
 
-          {/* 美美币包列表 */}
+          {/* 美美币包列表 - 横向FlatList */}
           <View style={styles.packagesContainer}>
-            {coinPackages.map((coinPackage) => {
-              const isSelected = selectedPackage?.id === coinPackage.id;
-              
-              return (
-                <TouchableOpacity
-                  key={coinPackage.id}
-                  style={[
-                    styles.packageCard,
-                    isSelected && styles.packageCardSelected,
-                  ]}
-                  onPress={() => handlePackageSelect(coinPackage)}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.packageContent}>
-                    <View style={styles.packageLeft}>
+            <FlatList
+              ref={flatListRef}
+              data={coinPackages}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.flatListContent}
+              keyExtractor={(item) => item.id}
+              onScrollToIndexFailed={(info) => {
+                // 如果滚动失败，延迟重试
+                setTimeout(() => {
+                  flatListRef.current?.scrollToIndex({
+                    index: info.index,
+                    animated: true,
+                    viewPosition: 0.5,
+                  });
+                }, 100);
+              }}
+              renderItem={({ item: coinPackage }) => {
+                const isSelected = selectedPackage?.id === coinPackage.id;
+                
+                return (
+                  <TouchableOpacity
+                    style={[
+                      styles.packageCard,
+                      isSelected && styles.packageCardSelected,
+                    ]}
+                    onPress={() => handlePackageSelect(coinPackage)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.packageContent}>
+                      {/* 选中指示器 - 左上角 */}
                       <View style={styles.radioButton}>
                         {isSelected && <View style={styles.radioButtonInner} />}
                       </View>
-                      <View style={{marginLeft: 12}}>
-                        <View style={{flexDirection: 'row', alignItems: 'center', left: -4}}>
-                          <Image 
-                            source={require('../assets/mm-coins.png')} 
-                            style={styles.coinIconSmall}
-                            resizeMode="contain"
-                          />
-                          <Text style={styles.packageTitle}>{coinPackage.coins} 美美币</Text>
-                        </View>
-                        <Text style={styles.packageDescription}>解锁高级模版</Text>
+                      
+                      {/* 标签 - 右上角 */}
+                      <View style={styles.packageTop}>
+                        {coinPackage.isPopular && (
+                          <View style={styles.popularBadge}>
+                            <LinearGradient
+                              colors={['#FF5722', '#FF7043']}
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 0 }}
+                              style={StyleSheet.absoluteFill}
+                            />
+                            <View style={styles.badgeContent}>
+                              <Text style={styles.popularText}>热门</Text>
+                            </View>
+                          </View>
+                        )}
+                        {coinPackage.isBestValue && (
+                          <View style={styles.bestValueBadge}>
+                            <LinearGradient
+                              colors={['#4CAF50', '#66BB6A']}
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 0 }}
+                              style={StyleSheet.absoluteFill}
+                            />
+                            <View style={styles.badgeContent}>
+                              <Text style={styles.bestValueText}>节省{coinPackage.bonusPercent?.replace(/[^0-9]/g, '') || '10'}%</Text>
+                            </View>
+                          </View>
+                        )}
+                        {!coinPackage.isPopular && !coinPackage.isBestValue && (
+                          <View style={styles.placeholderBadge} />
+                        )}
                       </View>
+                      
+                      {/* 美美币图标和数量 */}
+                      <View style={styles.coinInfoContainer}>
+                        <Image 
+                          source={require('../assets/mm-coins.png')} 
+                          style={styles.coinIcon}
+                          resizeMode="contain"
+                        />
+                        <Text style={styles.coinAmount}>{coinPackage.coins}</Text>
+                        <Text style={styles.coinLabel}>美美币</Text>
+                      </View>
+                      
+                      {/* 价格区域 */}
+                      <View style={styles.priceContainer}>
+                        {coinPackage.originalPrice && (
+                          <Text style={styles.originalPrice}>{coinPackage.originalPrice}</Text>
+                        )}
+                        <Text style={styles.packagePrice}>{coinPackage.price}</Text>
+                      </View>
+                      
+                      {/* 描述 */}
+                      <Text style={styles.packageDescription} numberOfLines={1}>
+                        {coinPackage.description.length > 12 
+                          ? coinPackage.description.substring(0, 12) + '...' 
+                          : coinPackage.description}
+                      </Text>
                     </View>
-                    
-                    <View style={styles.packageRight}>
-                      {coinPackage.isPopular && (
-                        <View style={styles.popularBadge}>
-                          <Text style={styles.popularText}>热门</Text>
-                        </View>
-                      )}
-                      <Text style={styles.packagePrice}>{coinPackage.price}</Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
+                  </TouchableOpacity>
+                );
+              }}
+            />
           </View>
 
           {/* 协议勾选 */}
@@ -311,7 +418,7 @@ const CoinPurchaseScreen: React.FC = () => {
               title={getButtonText()}
               onPress={handlePurchase}
               disabled={!selectedPackage || !agreeToTerms || isLoading}
-              loading={isLoading}
+              loading={false}
               variant="primary"
               style={styles.purchaseButton}
               textStyle={{ fontWeight: 'bold', fontSize: 18 }}
@@ -398,11 +505,11 @@ const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
     justifyContent: 'flex-end',
-    paddingHorizontal: 20,
     paddingBottom: 20,
   },
   textSection: {
     marginBottom: 40,
+    paddingHorizontal: 20,
     alignItems: 'center', // 居中对齐，因为上面没有全屏背景
   },
   mainTitle: {
@@ -421,82 +528,155 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   packagesContainer: {
-    gap: 16,
     marginBottom: 24,
+    height: 220,
+    width: '100%',
+  },
+  flatListContent: {
+    paddingHorizontal: SCREEN_WIDTH / 2 - 70, // 使第一个和最后一个卡片能够居中
+    paddingVertical: 8,
+    gap: 12,
   },
   packageCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 16,
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.1)',
-    paddingVertical: 18,
-    paddingHorizontal: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    width: 140,
+    marginRight: 12,
+    position: 'relative',
   },
   packageCardSelected: {
     borderColor: '#fff',
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    shadowColor: '#fff',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
   packageContent: {
-    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    height: '100%',
   },
-  packageLeft: {
+  packageTop: {
+    width: '100%',
     flexDirection: 'row',
+    justifyContent: 'flex-end',
     alignItems: 'center',
-  },
-  radioButton: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  radioButtonInner: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#fff',
-  },
-  coinIconSmall: {
-    width: 20,
-    height: 20,
-    // marginRight: 8,
-  },
-  packageTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  packageDescription: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 13,
-    marginTop: 4,
-  },
-  packageRight: {
-    alignItems: 'flex-end',
+    marginBottom: 6,
+    minHeight: 20,
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    zIndex: 1,
   },
   popularBadge: {
-    backgroundColor: '#FF4500',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginBottom: 4,
+    borderRadius: 12,
+    overflow: 'hidden',
+    minHeight: 20,
   },
   popularText: {
     color: '#fff',
     fontSize: 10,
     fontWeight: 'bold',
   },
+  bestValueBadge: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    minHeight: 20,
+  },
+  bestValueText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  badgeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  placeholderBadge: {
+    height: 20,
+  },
+  coinInfoContainer: {
+    alignItems: 'center',
+    marginVertical: 8,
+    marginTop: 26,
+  },
+  coinIcon: {
+    width: 36,
+    height: 36,
+    marginBottom: 6,
+  },
+  coinAmount: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '900',
+    marginBottom: 2,
+  },
+  coinLabel: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  originalPrice: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 12,
+    textDecorationLine: 'line-through',
+    textDecorationStyle: 'solid',
+  },
   packagePrice: {
     color: '#fff',
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: 'bold',
+  },
+  bonusText: {
+    display: 'none',
+  },
+  packageDescription: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 11,
+    textAlign: 'center',
+    marginBottom: 8,
+    lineHeight: 14,
+  },
+  radioButton: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    zIndex: 2,
+  },
+  radioButtonInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#fff',
   },
   agreementContainer: {
-    paddingHorizontal: 0,
+    paddingHorizontal: 20,
     marginBottom: 10,
   },
   checkboxContainer: {
@@ -535,6 +715,7 @@ const styles = StyleSheet.create({
   },
   bottomContainer: {
     marginTop: 10,
+    paddingHorizontal: 20,
   },
   purchaseButton: {
     width: '100%',

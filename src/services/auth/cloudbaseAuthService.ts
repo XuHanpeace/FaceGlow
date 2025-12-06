@@ -3,6 +3,7 @@ import { MMKV } from 'react-native-mmkv';
 import { getCloudbaseConfig } from '../../config/cloudbase';
 import { CloudBaseAuthResponse, RegisterRequest, LoginRequest, AuthCredentials, STORAGE_KEYS } from '../../types/auth';
 import { userDataService } from '../database/userDataService';
+import { aegisService } from '../monitoring/aegisService';
 
 // 获取腾讯云开发配置
 const CLOUDBASE_CONFIG = getCloudbaseConfig();
@@ -76,8 +77,13 @@ export class CloudBaseAuthService {
 
       return response.data;
     } catch (error: any) {
+      // 埋点：注册API错误
+      const errorMessage = error.response?.data?.error_description || error.response?.data?.error || '注册失败';
+      const statusCode = error.response?.status;
+      aegisService.reportApiError('/auth/v1/signup', errorMessage, statusCode);
+      
       if (error.response?.data) {
-        throw new Error(error.response.data.error_description || error.response.data.error || '注册失败');
+        throw new Error(errorMessage);
       }
       throw new Error('网络请求失败');
     }
@@ -175,13 +181,22 @@ export class CloudBaseAuthService {
     } catch (error: any) {
       // 如果是账户已删除的错误，直接抛出
       if (error.message && error.message.includes('账户已被删除')) {
+        // 埋点：登录失败-账户已删除
+        aegisService.reportError('fg_error_login_failed', {
+          error_code: 'ACCOUNT_DELETED',
+          error_message: error.message,
+        });
         throw error;
       }
       
+      // 埋点：登录API错误
+      const errorData = error.response?.data;
+      const errorMessage = errorData?.error_description || errorData?.error || error.message || '登录失败';
+      const statusCode = error.response?.status;
+      aegisService.reportApiError('/auth/v1/signin', errorMessage, statusCode);
+      
       // 增强错误信息，保留错误代码和错误类型
       if (error.response?.data) {
-        const errorData = error.response.data;
-        const errorMessage = errorData.error_description || errorData.error || '登录失败';
         const errorCode = errorData.error_code;
         const errorType = errorData.error;
         

@@ -5,10 +5,13 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
+  Image,
 } from 'react-native';
 import FastImage from 'react-native-fast-image';
 import { useUserSelfies } from '../hooks/useUser';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import LinearGradient from 'react-native-linear-gradient';
+import { themeColors } from '../config/theme';
 
 interface SelfieModuleProps {
   onAddSelfiePress: () => void;
@@ -18,11 +21,19 @@ interface SelfieModuleProps {
 const SelfieModule: React.FC<SelfieModuleProps> = ({ onAddSelfiePress, onSelfieSelect }) => {
   const { selfies, defaultSelfieUrl, hasSelfies } = useUserSelfies();
 
+  // 判断是否为新用户（自拍数为0）
+  const isNewUser = !hasSelfies || selfies.length === 0;
+
   // 最多6个头像（useUserSelfies已经倒序了）
   const displaySelfies = selfies.slice(0, 6);
 
   const handleSelfiePress = () => {
-    // 点击自拍区域，调用回调函数
+    // 如果没有自拍，点击整个模块都拉起自拍页面
+    if (isNewUser) {
+      onAddSelfiePress();
+      return;
+    }
+    // 如果有自拍，点击自拍区域，调用回调函数
     if (onSelfieSelect) {
       onSelfieSelect();
     }
@@ -36,7 +47,28 @@ const SelfieModule: React.FC<SelfieModuleProps> = ({ onAddSelfiePress, onSelfieS
     >
       <View style={styles.titleContainer}>
         <Text style={styles.selfieTitle}>我的自拍</Text>
+        {/* 新用户促销标签 */}
+        {isNewUser && (
+          <View style={styles.promoBadge}>
+            <LinearGradient
+              colors={themeColors.primary.gradient}
+              start={themeColors.primary.start}
+              end={themeColors.primary.end}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.badgeContent}>
+              <Text style={styles.badgeText}>立即获得</Text>
+              <Image
+                source={require('../assets/mm-coins.png')}
+                style={styles.badgeCoinIcon}
+                resizeMode="contain"
+              />
+              <Text style={styles.badgeText}>10美美币</Text>
+            </View>
+          </View>
+        )}
       </View>
+      
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -89,6 +121,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+  },
+  promoBadge: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    minHeight: 20,
+  },
+  badgeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  badgeCoinIcon: {
+    width: 16,
+    height: 16,
   },
   selfieTitle: {
     color: '#fff',

@@ -4,32 +4,10 @@ import { verificationService } from './verificationService';
 import { AuthCredentials, RegisterRequest, LoginRequest, AuthResponse, CloudBaseAuthResponse, SendVerificationResponse, STORAGE_KEYS } from '../../types/auth';
 import { userDataService } from '../database/userDataService';
 import { longTermAuthService } from './longTermAuthService';
+import { aegisService } from '../monitoring/aegisService';
 
 // 创建MMKV存储实例
 const storage = new MMKV();
-
-/**
- * 生成随机字符串
- * @param length 字符串长度
- * @returns string
- */
-function generateRandomString(length: number): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
-
-/**
- * 生成匿名用户名
- * @returns string
- */
-function generateAnonymousUsername(): string {
-  const randomSuffix = generateRandomString(6);
-  return `Anonymous_${randomSuffix}`;
-}
 
 /**
  * 用户认证服务
@@ -44,22 +22,21 @@ export class AuthService {
   async sendPhoneVerification(phoneNumber: string): Promise<SendVerificationResponse> {
     try {
       const response = await verificationService.sendPhoneVerification(phoneNumber, 'NOT_USER');
+      
+      // 埋点：发送手机验证码成功
+      aegisService.reportUserAction('send_verification_success', {
+        type: 'phone',
+        phone_number: phoneNumber.replace(/\d(?=\d{4})/g, '*'), // 脱敏处理
+      });
+      
       return response;
     } catch (error: any) {
-      throw new Error(error.message || '发送验证码失败');
-    }
-  }
-
-  /**
-   * 发送邮箱验证码
-   * @param email 邮箱地址
-   * @returns Promise<SendVerificationResponse>
-   */
-  async sendEmailVerification(email: string): Promise<SendVerificationResponse> {
-    try {
-      const response = await verificationService.sendEmailVerification(email, 'NOT_USER');
-      return response;
-    } catch (error: any) {
+      // 埋点：发送手机验证码失败
+      aegisService.reportError(`fg_error_send_verification_failed: ${error.message}`, {
+        type: 'phone',
+        error_message: error.message || '发送验证码失败',
+      });
+      
       throw new Error(error.message || '发送验证码失败');
     }
   }
@@ -84,6 +61,12 @@ export class AuthService {
       // 验证用户名格式
       const usernameRegex = /^$|^[a-z][0-9a-z_-]{5,24}$/;
       if (!usernameRegex.test(username)) {
+        // 埋点：注册失败-用户名格式错误
+        aegisService.reportError('fg_error_register_failed', {
+          error_code: 'INVALID_USERNAME',
+          error_type: 'validation',
+        });
+        
         return {
           success: false,
           error: {
@@ -129,11 +112,24 @@ export class AuthService {
         // 不影响注册流程
       }
 
+      // 埋点：注册成功
+      aegisService.reportUserAction('register_success', {
+        register_type: 'phone',
+        username: username,
+      });
+      
       return {
         success: true,
         data: credentials,
       };
     } catch (error: any) {
+      // 埋点：注册失败
+      aegisService.reportError('fg_error_register_failed', {
+        register_type: 'phone',
+        error_code: error.code || 'REGISTER_ERROR',
+        error_message: error.message || '注册失败',
+      });
+      
       return {
         success: false,
         error: {
@@ -166,12 +162,24 @@ export class AuthService {
       // 更新长期认证的活跃时间
       longTermAuthService.updateLastActiveTime();
 
+      // 埋点：密码登录成功
+      aegisService.reportUserAction('login_success', {
+        login_type: 'password',
+        username: username,
+      });
 
       return {
         success: true,
         data: credentials,
       };
     } catch (error: any) {
+      // 埋点：密码登录失败
+      aegisService.reportError('fg_error_login_failed', {
+        login_type: 'password',
+        error_code: error.code || 'LOGIN_ERROR',
+        error_message: error.message || '登录失败',
+      });
+      
       return {
         success: false,
         error: {
@@ -216,6 +224,12 @@ export class AuthService {
       // 更新长期认证的活跃时间
       longTermAuthService.updateLastActiveTime();
 
+      // 埋点：手机号登录成功
+      aegisService.reportUserAction('login_success', {
+        login_type: 'phone',
+        phone_number: phoneNumber.replace(/\d(?=\d{4})/g, '*'), // 脱敏处理
+      });
+
       return {
         success: true,
         data: credentials,
@@ -226,23 +240,18 @@ export class AuthService {
       const errorType = error.error;
       const errorMessage = error.message || error.error_description || '登录失败';
       
-      // 判断用户不存在的条件：
-      // 1. error_code 为 4043 (invalid_username_or_password)
-      // 2. error 为 "invalid_username_or_password" 或包含 "user not found" 相关
-      // 3. error_message 包含用户不存在相关文本
-      const isUserNotFound = 
-        errorCode === 4043 ||
-        errorType === 'invalid_username_or_password' ||
-        errorType === 'user_not_found' ||
-        errorMessage.toLowerCase().includes('user not found') ||
-        errorMessage.includes('用户不存在') ||
-        errorMessage.includes('用户未找到') ||
-        errorMessage.includes('invalid_grant');
+      // 埋点：手机号登录失败
+      aegisService.reportError('fg_error_login_failed', {
+        login_type: 'phone',
+        error_code: errorCode || 'LOGIN_ERROR',
+        error_type: errorType,
+        error_message: errorMessage,
+      });
       
       return {
         success: false,
         error: {
-          code: isUserNotFound ? 'USER_NOT_FOUND' : 'LOGIN_ERROR',
+          code: 'LOGIN_ERROR',
           message: errorMessage,
           error_code: errorCode,
           error_type: errorType,
@@ -290,12 +299,22 @@ export class AuthService {
 
       console.log('✅ 匿名登录成功并保存');
 
+      // 埋点：匿名登录成功
+      aegisService.reportUserAction('anonymous_login_success', {});
+
       return {
         success: true,
         data: credentials,
       };
     } catch (error: any) {
       console.error('❌ 匿名登录失败:', error);
+      
+      // 埋点：匿名登录失败
+      aegisService.reportError('fg_error_anonymous_login_failed', {
+        error_code: error.code || 'ANONYMOUS_LOGIN_ERROR',
+        error_message: error.message || '匿名登录失败',
+      });
+      
       return {
         success: false,
         error: {

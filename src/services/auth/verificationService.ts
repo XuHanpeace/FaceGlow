@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { getCloudbaseConfig } from '../../config/cloudbase';
 import { SendVerificationRequest, SendVerificationResponse } from '../../types/auth';
+import { aegisService } from '../monitoring/aegisService';
 
 // 获取腾讯云开发配置
 const CLOUDBASE_CONFIG = getCloudbaseConfig();
@@ -49,38 +50,13 @@ export class VerificationService {
 
       return response.data;
     } catch (error: any) {
+      // 埋点：发送手机验证码API错误
+      const errorMessage = error.response?.data?.error_description || error.response?.data?.error || '发送验证码失败';
+      const statusCode = error.response?.status;
+      aegisService.reportApiError('/auth/v1/verification', errorMessage, statusCode);
+      
       if (error.response?.data) {
-        throw new Error(error.response.data.error_description || error.response.data.error || '发送验证码失败');
-      }
-      throw new Error('网络请求失败');
-    }
-  }
-
-  /**
-   * 发送邮箱验证码
-   * @param email 邮箱地址
-   * @param target 验证目标类型
-   * @returns Promise<SendVerificationResponse>
-   */
-  async sendEmailVerification(
-    email: string, 
-    target: 'ANY' | 'USER' | 'NOT_USER' = 'ANY'
-  ): Promise<SendVerificationResponse> {
-    try {
-      const requestData: SendVerificationRequest = {
-        email,
-        target,
-      };
-
-      const response: AxiosResponse<SendVerificationResponse> = await this.axiosInstance.post(
-        CLOUDBASE_CONFIG.AUTH_API.ENDPOINTS.SEND_VERIFICATION,
-        requestData
-      );
-
-      return response.data;
-    } catch (error: any) {
-      if (error.response?.data) {
-        throw new Error(error.response.data.error_description || error.response.data.error || '发送验证码失败');
+        throw new Error(errorMessage);
       }
       throw new Error('网络请求失败');
     }
@@ -106,13 +82,24 @@ export class VerificationService {
 
       // 根据腾讯云API文档，返回verification_token
       if (response.data && response.data.verification_token) {
+        // 埋点：验证码验证成功
+        aegisService.reportUserAction('verify_code_success', {});
         return response.data.verification_token;
       } else {
+        // 埋点：验证码验证失败-未返回token
+        aegisService.reportError('fg_error_verify_code_failed', {
+          error_message: '验证码验证成功但未返回verification_token',
+        });
         throw new Error('验证码验证成功但未返回verification_token');
       }
     } catch (error: any) {
+      // 埋点：验证码验证API错误
+      const errorMessage = error.response?.data?.error_description || error.response?.data?.error || '验证码验证失败';
+      const statusCode = error.response?.status;
+      aegisService.reportApiError('/auth/v1/verification/verify', errorMessage, statusCode);
+      
       if (error.response?.data) {
-        throw new Error(error.response.data.error_description || error.response.data.error || '验证码验证失败');
+        throw new Error(errorMessage);
       }
       throw new Error('网络请求失败');
     }

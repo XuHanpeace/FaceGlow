@@ -22,8 +22,8 @@ import { ImageComparison } from '../components/ImageComparison';
 import { FadeInOutImage } from '../components/FadeInOutImage';
 import { callFaceFusionCloudFunction } from '../services/tcb/tcb';
 import { userWorkService } from '../services/database/userWorkService';
-import { balanceService } from '../services/balanceService';
 import { useAuthState } from '../hooks/useAuthState';
+import { aegisService } from '../services/monitoring/aegisService';
 import { UserWorkModel, ResultData } from '../types/model/user_works';
 import { authService } from '../services/auth/authService';
 import { shareService } from '../services/shareService';
@@ -55,12 +55,11 @@ const CreationResultScreen: React.FC = () => {
   const { user } = useAuthState();
   
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
-    albumData.template_list[0]?.template_id || ''
+    albumData?.template_list?.[0]?.template_id || ''
   );
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false); // 新增保存状态，用于防抖
   const [fusionResults, setFusionResults] = useState<{ [templateId: string]: string }>({});
-  const [showComparison, setShowComparison] = useState(false);
   const [failedTemplates, setFailedTemplates] = useState<{ [templateId: string]: string }>({});
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareImageUrl, setShareImageUrl] = useState<string>('');
@@ -131,39 +130,50 @@ const CreationResultScreen: React.FC = () => {
       const currentTemplate = albumData.template_list.find(t => t.template_id === templateId);
       const templatePrice = currentTemplate?.price || 0;
       
-      // 检查用户余额是否充足
-      if (user?.uid && templatePrice > 0) {
-        const balanceCheck = await balanceService.checkBalance(user.uid, templatePrice);
-        
-        if (!balanceCheck.sufficient) {
-          setIsProcessing(false);
-          Alert.alert(
-            '💎 余额不足',
-            `换脸需要${templatePrice}美美币，当前余额${balanceCheck.currentBalance}美美币\n是否前往充值？`,
-            [
-              { text: '取消', style: 'cancel' },
-              { 
-                text: '去充值', 
-                onPress: () => navigation.navigate('CoinPurchase')
-              }
-            ]
-          );
-          return;
-        }
-      }
+      console.log(`💰 [CreationResult] 模板价格: ${templatePrice}, 用户ID: ${user?.uid}`);
       
       // 调用真实的换脸云函数
       // 优先使用 template 的 projectId，如果没有则使用 activityId 作为兜底
       const projectId = currentTemplate?.projectId || activityId;
       const result = await callFaceFusionCloudFunction({
-        projectId: projectId,
-        modelId: templateId,
-        imageUrl: selfieUrl,
+        projectId: projectId || '',
+        modelId: templateId || '',
+        imageUrl: selfieUrl || '',
+        user_id: user?.uid,
+        price: templatePrice,
       });
+      
+      console.log(`📥 [CreationResult] 云函数返回:`, JSON.stringify(result, null, 2));
+      
+      // 处理余额不足错误
+      const resultWithError = result as typeof result & { error?: string; currentBalance?: number; requiredAmount?: number };
+      if (result.code === -2 || resultWithError.error === 'INSUFFICIENT_BALANCE') {
+        setIsProcessing(false);
+        Alert.alert(
+          '💎 余额不足',
+          `换脸需要${templatePrice}美美币，当前余额${resultWithError.currentBalance || 0}美美币\n是否前往充值？`,
+          [
+            { text: '取消', style: 'cancel' },
+            { 
+              text: '去充值', 
+              onPress: () => navigation.navigate('CoinPurchase')
+            }
+          ]
+        );
+        return;
+      }
       
       if (result.code === 0 && result.data) {
         console.log(`✅ 模板 ${templateId} 换脸成功`);
         console.log(`🖼️ 换脸结果: ${result.data.FusedImage}`);
+        
+        // 埋点：换脸成功（使用 fg_action_ 前缀，包含专辑标题）
+        aegisService.reportUserAction('fusion_success', {
+          template_id: templateId,
+          activity_id: activityId,
+          album_id: albumData?.album_id || '',
+          album_title: albumData?.album_name || '', // 专辑标题
+        });
         
         // 触发成功震动
         const options = {
@@ -171,30 +181,6 @@ const CreationResultScreen: React.FC = () => {
           ignoreAndroidSystemSettings: false,
         };
         ReactNativeHapticFeedback.trigger("impactLight", options);
-
-        // 扣除用户美美币
-        if (user?.uid && templatePrice > 0) {
-          const deductResult = await balanceService.deductBalance({
-            userId: user.uid,
-            amount: templatePrice,
-            description: `AI换脸消费 - ${currentTemplate?.template_name || '模板'}`,
-            relatedId: `fusion_${templateId}_${Date.now()}`,
-            metadata: {
-              fusion: {
-                template_id: templateId,
-                activity_id: activityId,
-                result_url: result.data.FusedImage
-              }
-            }
-          });
-
-          if (!deductResult.success) {
-            console.error('扣除美美币失败:', deductResult.error);
-            // 即使扣除美美币失败，也显示换脸结果，但记录错误
-          } else {
-            console.log(`💰 已扣除${templatePrice}美美币，当前余额: ${deductResult.newBalance}`);
-          }
-        }
         
         setFusionResults(prev => ({
           ...prev,
@@ -209,6 +195,15 @@ const CreationResultScreen: React.FC = () => {
         });
       } else {
         console.log(`❌ 模板 ${templateId} 换脸失败:`, result.message);
+        
+        // 埋点：换脸失败（使用 fg_error_ 前缀，包含专辑标题）
+        aegisService.reportError(`fusion_failed: ${result.message}`, {
+          template_id: templateId,
+          activity_id: activityId,
+          album_id: albumData?.album_id || '',
+          album_title: albumData?.album_name || '', // 专辑标题
+          error_code: result.code?.toString() || '-1',
+        });
         
         // 融合失败时展开面板并显示Toast
         setIsPanelExpanded(true);
@@ -251,8 +246,17 @@ const CreationResultScreen: React.FC = () => {
 
   // 页面加载时处理第一张模板
   useEffect(() => {
-    if (albumData.template_list.length > 0) {
-      const firstTemplateId = albumData.template_list[0].template_id;
+    // 埋点：进入创作结果页面（使用 fg_pv_ 和 fg_action_ 前缀，包含专辑标题）
+    aegisService.reportPageView('creation_result');
+    aegisService.reportUserAction('enter_creation_result', {
+      album_id: albumData?.album_id || '',
+      album_title: albumData?.album_name || '', // 专辑标题
+      activity_id: activityId,
+      template_count: albumData?.template_list?.length || 0,
+    });
+    
+    if (albumData?.template_list?.length && albumData?.template_list?.length > 0) {
+      const firstTemplateId = albumData?.template_list?.[0]?.template_id || '';
       processTemplate(firstTemplateId);
     }
   }, []);
@@ -338,6 +342,14 @@ const CreationResultScreen: React.FC = () => {
       const result = await userWorkService.createWork(workData);
 
       if (result.success) {
+        // 埋点：作品保存成功（使用 fg_action_ 前缀，包含专辑标题）
+        aegisService.reportUserAction('work_saved', {
+          activity_id: activityId,
+          album_id: albumData?.album_id || '',
+          album_title: albumData?.album_name || '', // 专辑标题
+          result_count: resultData.length,
+        });
+        
         showSuccessToast(`太棒了！已保存 ${resultData.length} 个作品到云端，可以在个人中心查看哦～`);
         // 保存成功后返回上一页
         setTimeout(() => {
@@ -389,6 +401,17 @@ const CreationResultScreen: React.FC = () => {
 
   const handleTemplateSelect = (templateId: string) => {
     setSelectedTemplateId(templateId);
+    
+    // 埋点：用户选择模板（使用 fg_action_ 前缀，包含专辑标题）
+    const currentTemplate = albumData.template_list.find(t => t.template_id === templateId);
+    aegisService.reportUserAction('select_template', {
+      template_id: templateId,
+      template_name: currentTemplate?.template_name || '',
+      album_id: albumData?.album_id || '',
+      album_title: albumData?.album_name || '', // 专辑标题
+      activity_id: activityId,
+      has_result: fusionResults[templateId] ? 'yes' : 'no',
+    });
     
     // 如果该模板还没有换脸结果，则发起请求
     if (!fusionResults[templateId]) {
