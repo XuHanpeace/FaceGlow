@@ -1,6 +1,6 @@
 {
   "name": "faceglow",
-  "version": "1.3.3",
+  "version": "1.3.4",
   "private": true,
   "scripts": {
     "android": "react-native run-android",
@@ -15,7 +15,8 @@
     "pushy:login": "npx react-native-update-cli login",
     "pushy:upload-ipa": "bash scripts/pushy-upload-ipa.sh",
     "pushy:hot-update": "bash scripts/pushy-hot-update.sh",
-    "pushy:release": "bash scripts/pushy-release.sh"
+    "pushy:release": "bash scripts/pushy-release.sh",
+    "patch-release": "node scripts/patch-release.js"
   },
   "dependencies": {
     "@cloudbase/js-sdk": "1.7.2",
