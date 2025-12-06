@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Image, Dimensions, Animated }
 import { AlbumRecord, AlbumLevel } from '../types/model/album';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import LinearGradient from 'react-native-linear-gradient';
+import FastImage from 'react-native-fast-image';
 
 const { width: screenWidth } = Dimensions.get('window');
 // 2 column layout: Screen Width / 2 - Padding
@@ -159,10 +160,10 @@ export const NewAlbumCard: React.FC<NewAlbumCardProps> = ({
         activeOpacity={0.8}
       >
         <View style={[styles.imageContainer, { height: cardHeight }]}>
-        <Image
+        <FastImage
           source={{ uri: coverImage }}
           style={styles.image}
-          resizeMode="cover"
+          resizeMode={FastImage.resizeMode.cover}
         />
         
         {renderBadge()}
@@ -179,7 +180,7 @@ export const NewAlbumCard: React.FC<NewAlbumCardProps> = ({
         {/* Src Image for Image-to-Image albums */}
         {album.src_image && (
           <View style={styles.srcImageContainer}>
-            <Image source={{ uri: album.src_image }} style={styles.srcImage} />
+            <FastImage source={{ uri: album.src_image }} style={styles.srcImage} resizeMode={FastImage.resizeMode.contain} />
           </View>
         )}
       </View>

@@ -12,6 +12,7 @@ import {
   Dimensions,
   SafeAreaView,
   FlatList,
+  AppState,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -19,11 +20,13 @@ import { RootStackParamList } from '../types/navigation';
 import { NativeModules } from 'react-native';
 import { subscriptionDataService } from '../services/subscriptionDataService';
 import { useAuthState } from '../hooks/useAuthState';
-import { useUser } from '../hooks/useUser';
 import { coinPackages, CoinPackage } from '../config/revenueCatConfig';
+import { useAppDispatch } from '../store/hooks';
+import { fetchUserProfile } from '../store/middleware/asyncMiddleware';
+import { authService } from '../services/auth/authService';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import GradientButton from '../components/GradientButton';
-import { showSuccessToast } from '../utils/toast';
+import { showSuccessToast, showInfoToast } from '../utils/toast';
 import Video from 'react-native-video';
 import LinearGradient from 'react-native-linear-gradient';
 
@@ -62,11 +65,13 @@ const VIDEO_HEIGHT = SCREEN_WIDTH * (9 / 16);
 const CoinPurchaseScreen: React.FC = () => {
   const navigation = useNavigation<CoinPurchaseScreenNavigationProp>();
   const { user } = useAuthState();
-  const { refreshUserData } = useUser();
+  const dispatch = useAppDispatch();
   const [selectedPackage, setSelectedPackage] = useState<CoinPackage | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+  const videoRef = useRef<any>(null);
+  const appState = useRef(AppState.currentState);
 
   useEffect(() => {
     // 初始化时获取可用产品
@@ -105,6 +110,7 @@ const CoinPurchaseScreen: React.FC = () => {
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
       if (isLoading) {
+        showInfoToast('支付处理中，请稍候...');
         return true;
       }
       return false;
@@ -112,6 +118,26 @@ const CoinPurchaseScreen: React.FC = () => {
 
     return () => backHandler.remove();
   }, [isLoading]);
+
+  // 监听应用状态变化，当从后台回到前台时恢复视频播放
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === 'active'
+      ) {
+        // 从后台回到前台，恢复视频播放
+        if (videoRef.current) {
+          videoRef.current.resume();
+        }
+      }
+      appState.current = nextAppState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   const fetchAvailableProducts = async () => {
     try {
@@ -130,6 +156,7 @@ const CoinPurchaseScreen: React.FC = () => {
 
   const handleBackPress = () => {
     if (isLoading) {
+      showInfoToast('支付处理中，请稍候...');
       return;
     }
     navigation.goBack();
@@ -181,7 +208,10 @@ const CoinPurchaseScreen: React.FC = () => {
             
             // 刷新本地用户数据，确保余额及时更新
             try {
-              await refreshUserData();
+              const currentUserId = authService.getCurrentUserId();
+              if (currentUserId) {
+                await dispatch(fetchUserProfile({ userId: currentUserId }));
+              }
               console.log('用户数据已刷新，余额已更新');
             } catch (refreshError) {
               console.error('刷新用户数据失败:', refreshError);
@@ -238,7 +268,7 @@ const CoinPurchaseScreen: React.FC = () => {
   const getButtonText = () => {
     if (isLoading) return '正在查询支付结果，请稍候...';
     if (!selectedPackage) return '立即购买';
-    return `充值 ${selectedPackage.coins} 美美币 ${selectedPackage.price}`;
+    return `充值 ${selectedPackage.price} · 得 ${selectedPackage.coins} 美美币`;
   };
 
   return (
@@ -248,6 +278,7 @@ const CoinPurchaseScreen: React.FC = () => {
       {/* 顶部背景视频区域 */}
       <View style={styles.videoContainer}>
         <Video
+          ref={videoRef}
           source={require('../assets/v2.mp4')}
           style={styles.backgroundVideo}
           muted={true}
@@ -255,6 +286,7 @@ const CoinPurchaseScreen: React.FC = () => {
           resizeMode="cover"
           rate={1.0}
           ignoreSilentSwitch="obey"
+          paused={false}
         />
         {/* 视频底部渐变遮罩，实现过渡效果 */}
         <LinearGradient
@@ -418,7 +450,7 @@ const CoinPurchaseScreen: React.FC = () => {
               title={getButtonText()}
               onPress={handlePurchase}
               disabled={!selectedPackage || !agreeToTerms || isLoading}
-              loading={false}
+              loading={isLoading}
               variant="primary"
               style={styles.purchaseButton}
               textStyle={{ fontWeight: 'bold', fontSize: 18 }}

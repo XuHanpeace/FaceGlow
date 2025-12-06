@@ -1,6 +1,15 @@
 import { Platform, PermissionsAndroid, Alert } from 'react-native';
-import RNFS from 'react-native-fs';
 import { showSuccessToast } from '../utils/toast';
+
+// 安全导入 RNFetchBlob
+let RNFetchBlob: any;
+try {
+  RNFetchBlob = require('rn-fetch-blob').default;
+  console.log('✅ RNFetchBlob模块加载成功');
+} catch (error) {
+  console.error('❌ RNFetchBlob模块加载失败:', error);
+  RNFetchBlob = null;
+}
 
 // 安全导入CameraRoll，避免NativeEventEmitter错误
 let CameraRoll: any;
@@ -61,6 +70,108 @@ class ShareService {
   }
 
   /**
+   * 获取高质量PNG格式图片URL（移除所有压缩和处理参数，转换为PNG格式）
+   * @param imageUrl 原始图片URL
+   * @returns 高质量PNG格式图片URL
+   */
+  private getHighQualityImageUrl(imageUrl: string): string {
+    try {
+      // 如果URL没有参数，直接返回（已经是原始高质量图片）
+      if (!imageUrl.includes('?')) {
+        console.log('📥 [SaveImage] URL无参数，使用原始高质量URL');
+        return imageUrl;
+      }
+      
+      // 分离URL和参数
+      const [baseUrl, queryString] = imageUrl.split('?');
+      
+      // 检查是否是腾讯云COS URL（使用特殊格式的参数）
+      const isCosUrl = imageUrl.includes('myqcloud.com') || imageUrl.includes('cos.');
+      
+      if (isCosUrl) {
+        // 腾讯云COS的参数格式可能是：?imageMogr2/quality/80 或 ?imageView2/1/w/500
+        // 移除所有图片处理参数，然后添加PNG格式转换参数
+        
+        // 检查是否有图片处理参数（以 image 开头的参数）
+        const hasImageProcessing = queryString.includes('imageMogr2') || 
+                                   queryString.includes('imageView2') || 
+                                   queryString.includes('thumbnail') ||
+                                   queryString.includes('imageAve') ||
+                                   queryString.includes('imageInfo');
+        
+        if (hasImageProcessing) {
+          // 移除所有图片处理参数，添加PNG格式转换
+          // 使用 imageMogr2/format/png 转换为PNG格式，quality=100 保证高质量
+          console.log('📥 [SaveImage] 检测到COS图片处理参数，移除后转换为PNG格式');
+          
+          // 检查是否有其他非图片处理参数（如签名）
+          const params = new URLSearchParams(queryString);
+          const imageProcessingKeys: string[] = [];
+          const otherParams: string[] = [];
+          
+          params.forEach((value, key) => {
+            if (key.includes('image') || key.includes('thumbnail') || 
+                key.includes('quality') || key.includes('compress')) {
+              imageProcessingKeys.push(key);
+            } else {
+              // 保留非图片处理参数
+              otherParams.push(`${key}=${encodeURIComponent(value)}`);
+            }
+          });
+          
+          // 构建PNG格式URL
+          const pngParam = 'imageMogr2/format/png/rquality/100';
+          if (otherParams.length > 0) {
+            return `${baseUrl}?${pngParam}&${otherParams.join('&')}`;
+          } else {
+            return `${baseUrl}?${pngParam}`;
+          }
+        }
+        
+        // 如果没有图片处理参数，直接添加PNG格式转换
+        console.log('📥 [SaveImage] COS URL无图片处理参数，添加PNG格式转换');
+        const pngParam = 'imageMogr2/format/png/rquality/100';
+        if (queryString) {
+          // 保留原有参数（如签名），添加PNG转换参数
+          return `${baseUrl}?${pngParam}&${queryString}`;
+        } else {
+          return `${baseUrl}?${pngParam}`;
+        }
+      } else {
+        // 非COS URL，检查是否有压缩参数
+        const params = new URLSearchParams(queryString);
+        const compressionParams = ['w', 'width', 'h', 'height', 'q', 'quality', 'compress', 'format'];
+        let hasCompression = false;
+        
+        compressionParams.forEach(param => {
+          if (params.has(param)) {
+            params.delete(param);
+            hasCompression = true;
+          }
+        });
+        
+        if (hasCompression) {
+          const remainingParams = params.toString();
+          if (remainingParams) {
+            console.log('📥 [SaveImage] 已移除压缩参数，使用高质量URL');
+            return `${baseUrl}?${remainingParams}`;
+          } else {
+            console.log('📥 [SaveImage] 已移除所有压缩参数，使用原始URL');
+            return baseUrl;
+          }
+        }
+      }
+      
+      // 如果没有需要移除的参数，直接返回原URL
+      console.log('📥 [SaveImage] URL无压缩参数，使用原始URL');
+      return imageUrl;
+    } catch (error) {
+      console.warn('处理高质量URL失败，使用原URL:', error);
+      return imageUrl;
+    }
+  }
+
+  /**
    * 保存图片到相册
    * @param imageUrl 图片URL
    * @returns Promise<{ success: boolean; error?: string }>
@@ -68,7 +179,16 @@ class ShareService {
   async saveImageToAlbum(imageUrl: string): Promise<{ success: boolean; error?: string }> {
     try {
       console.log('📥 [SaveImage] 开始保存图片到相册');
-      console.log('📥 [SaveImage] 图片URL:', imageUrl);
+      console.log('📥 [SaveImage] 原始图片URL:', imageUrl);
+
+      // 检查RNFetchBlob是否可用
+      if (!RNFetchBlob) {
+        console.error('❌ [SaveImage] RNFetchBlob模块不可用');
+        return {
+          success: false,
+          error: 'RNFetchBlob模块初始化失败，请重启应用',
+        };
+      }
 
       // 检查CameraRoll是否可用
       if (!CameraRoll) {
@@ -92,46 +212,63 @@ class ShareService {
         };
       }
 
-      // 2. 下载图片到临时目录
-      console.log('📥 [SaveImage] 步骤2: 下载图片到临时目录');
-      const timestamp = Date.now();
-      const tempFilePath = `${RNFS.CachesDirectoryPath}/faceglow_${timestamp}.jpg`;
-      
-      console.log('📥 [SaveImage] 临时文件路径:', tempFilePath);
-      
-      const downloadResult = await RNFS.downloadFile({
-        fromUrl: imageUrl,
-        toFile: tempFilePath,
-        background: true, // iOS后台下载
-        discretionary: true,
-        cacheable: true,
-      }).promise;
+      // 2. 获取高质量图片URL
+      const highQualityUrl = this.getHighQualityImageUrl(imageUrl);
+      console.log('📥 [SaveImage] 高质量图片URL:', highQualityUrl);
 
-      console.log('📥 [SaveImage] 下载结果状态码:', downloadResult.statusCode);
+      // 3. 使用 rn-fetch-blob 下载图片到临时目录（PNG格式）
+      console.log('📥 [SaveImage] 步骤2: 下载图片到临时目录（PNG格式）');
+      const timestamp = Date.now();
+      // 使用 rn-fetch-blob 获取缓存目录
+      const cacheDir = RNFetchBlob.fs.dirs.CacheDir;
+      const tempFilePath = `${cacheDir}/faceglow_${timestamp}.png`;
       
-      if (downloadResult.statusCode !== 200) {
-        throw new Error(`下载失败，状态码: ${downloadResult.statusCode}`);
+      console.log('📥 [SaveImage] 临时文件路径（PNG）:', tempFilePath);
+      
+      const response = await RNFetchBlob.config({
+        path: tempFilePath,
+        addAndroidDownloads: {
+          useDownloadManager: false,
+          notification: false,
+        },
+      }).fetch('GET', highQualityUrl);
+
+      const statusCode = response.info().status;
+      console.log('📥 [SaveImage] 下载结果状态码:', statusCode);
+      
+      if (statusCode !== 200) {
+        // 清理失败的文件
+        try {
+          const exists = await RNFetchBlob.fs.exists(tempFilePath);
+          if (exists) {
+            await RNFetchBlob.fs.unlink(tempFilePath);
+          }
+        } catch (cleanupError) {
+          console.warn('清理失败文件时出错:', cleanupError);
+        }
+        throw new Error(`下载失败，状态码: ${statusCode}`);
       }
 
       console.log('✅ [SaveImage] 图片下载成功');
 
-      // 3. 保存到相册
+      // 4. 保存到相册
       console.log('💾 [SaveImage] 步骤3: 保存到相册...');
-      console.log('💾 [SaveImage] 文件路径:', `file://${tempFilePath}`);
+      console.log('💾 [SaveImage] 文件路径:', tempFilePath);
       
-      await CameraRoll.save(`file://${tempFilePath}`, {
+      // rn-fetch-blob 返回的路径已经是完整路径，不需要添加 file:// 前缀
+      await CameraRoll.save(tempFilePath, {
         type: 'photo',
         album: '美颜换换', // 可选：创建专属相册
       });
 
       console.log('✅ [SaveImage] 图片已保存到相册');
 
-      // 4. 清理临时文件（延迟删除，确保保存成功）
+      // 5. 清理临时文件（延迟删除，确保保存成功）
       setTimeout(async () => {
         try {
-          const fileExists = await RNFS.exists(tempFilePath);
+          const fileExists = await RNFetchBlob.fs.exists(tempFilePath);
           if (fileExists) {
-            await RNFS.unlink(tempFilePath);
+            await RNFetchBlob.fs.unlink(tempFilePath);
             console.log('🗑️ 临时文件已清理');
           }
         } catch (cleanupError) {
@@ -140,19 +277,21 @@ class ShareService {
       }, 2000);
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ [SaveImage] 保存图片失败');
       console.error('❌ [SaveImage] 错误详情:', error);
-      console.error('❌ [SaveImage] 错误消息:', error.message);
-      console.error('❌ [SaveImage] 错误堆栈:', error.stack);
+      
+      const errorObj = error as { message?: string; stack?: string };
+      console.error('❌ [SaveImage] 错误消息:', errorObj.message);
+      console.error('❌ [SaveImage] 错误堆栈:', errorObj.stack);
       
       let errorMessage = '保存图片失败';
       
-      if (error.message?.includes('Permission')) {
+      if (errorObj.message?.includes('Permission')) {
         errorMessage = '没有相册访问权限';
-      } else if (error.message?.includes('Network')) {
+      } else if (errorObj.message?.includes('Network') || errorObj.message?.includes('network')) {
         errorMessage = '网络错误，请检查网络连接';
-      } else if (error.message?.includes('Download')) {
+      } else if (errorObj.message?.includes('Download') || errorObj.message?.includes('download')) {
         errorMessage = '图片下载失败';
       }
       

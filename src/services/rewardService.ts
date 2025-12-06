@@ -38,16 +38,6 @@ class RewardService {
     try {
       console.log('🎁 开始为新用户发放首次上传自拍奖励');
 
-      // 检查是否为新用户
-      const isNew = await this.isNewUser(uid);
-      if (!isNew) {
-        console.log('用户不是新用户，跳过奖励');
-        return {
-          success: false,
-          error: '用户不是新用户',
-        };
-      }
-
       // 使用 subscriptionDataService 的方法来增加余额（它会创建交易记录）
       // 但我们这里需要自定义交易类型为奖励
       const currentUser = await userDataService.getUserByUid(uid);

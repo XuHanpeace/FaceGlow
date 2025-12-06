@@ -65,7 +65,9 @@ const SelfieSelector: React.FC<SelfieSelectorProps> = ({
         return;
       }
       
-      navigation.navigate('SelfieGuide');
+      // 判断是否为新用户（没有自拍）
+      const isNewUser = selfies.length === 0;
+      navigation.navigate('SelfieGuide', { isNewUser });
     } else {
       // 有自拍，显示选择面板
       setTempSelectedSelfie(currentSelectedSelfie);

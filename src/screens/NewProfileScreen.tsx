@@ -20,7 +20,8 @@ import { useTypedSelector, useAppDispatch } from '../store/hooks';
 import { clearAllSelfies } from '../store/slices/selfieSlice';
 import { resetUser } from '../store/slices/userSlice';
 import { fetchUserWorks } from '../store/slices/userWorksSlice'; // Added
-import { logoutUser } from '../store/middleware/asyncMiddleware';
+import { logoutUser, fetchUserProfile } from '../store/middleware/asyncMiddleware';
+import { authService } from '../services/auth/authService';
 import { useUser, useUserSelfies } from '../hooks/useUser';
 import UserAvatar from '../components/UserAvatar';
 import { userWorkService } from '../services/database/userWorkService';
@@ -66,7 +67,8 @@ const NewProfileScreen: React.FC = () => {
   const avatarSelectorModalRef = React.useRef<AvatarSelectorModalRef>(null);
   
   // 使用用户hooks获取数据
-  const { userInfo, isLoggedIn, userProfile, refreshUserData } = useUser();
+  const { userInfo, isLoggedIn, userProfile } = useUser();
+  const { logout } = useAuthState();
   const isAutoRenew = userInfo.subscriptionAutoRenew;
   
   // 获取当前会员状态
@@ -91,13 +93,12 @@ const NewProfileScreen: React.FC = () => {
   };
   
   const membershipStatus = getCurrentMembershipStatus();
-  const { selfies, hasSelfies, defaultSelfieUrl } = useUserSelfies();
+  const { selfies, hasSelfies } = useUserSelfies();
   
   // 用户作品状态 (Redux)
   const { works: userWorks, status: worksStatus } = useTypedSelector(state => state.userWorks);
   const worksLoading = worksStatus === 'loading';
 
-  const { user, logout } = useAuthState();
 
   // 根据会员类型获取主题色和图标
   const getMembershipTheme = (type: string | null) => {
@@ -137,6 +138,12 @@ const NewProfileScreen: React.FC = () => {
 
   const memberTheme = getMembershipTheme(membershipStatus?.type || null);
 
+  useEffect(() => {
+    console.log('🔍 [NewProfileScreen] userProfile:', userProfile);
+    loadUserWorks(userProfile?.uid || '');
+
+  }, []);
+
   // 从Redux获取其他数据
   const handleBackPress = () => {
     navigation.goBack();
@@ -144,7 +151,7 @@ const NewProfileScreen: React.FC = () => {
 
   // 处理头像选择
   const handleAvatarSelect = async (selfieUrl: string | null) => {
-    if (!user?.uid) {
+    if (!userProfile?.uid) {
       Alert.alert('错误', '无法获取用户信息');
       return;
     }
@@ -152,7 +159,7 @@ const NewProfileScreen: React.FC = () => {
     setIsUpdatingAvatar(true);
     try {
       const updateData: any = {
-        uid: user.uid,
+        uid: userProfile.uid,
         picture: selfieUrl || '',
         selfie_url: selfieUrl || '',
       };
@@ -165,7 +172,10 @@ const NewProfileScreen: React.FC = () => {
           selfie_url: selfieUrl || '',
         }));
         
-        await refreshUserData();
+        const currentUserId = authService.getCurrentUserId();
+        if (currentUserId) {
+          await dispatch(fetchUserProfile({ userId: currentUserId }));
+        }
         
         showSuccessToast(selfieUrl ? '头像更新成功' : '已切换为默认头像');
       } else {
@@ -190,15 +200,17 @@ const NewProfileScreen: React.FC = () => {
       navigation.navigate('NewAuth');
       return;
     }
+    // 判断是否为新用户（没有自拍）
+    const isNewUser = !hasSelfies || selfies.length === 0;
     // 跳转到自拍引导页
-    navigation.navigate('SelfieGuide');
+    navigation.navigate('SelfieGuide', { isNewUser });
   };
 
   const handleTabPress = (tab: TabType) => {
     setActiveTab(tab);
     // 切换到"我的作品"时，如果已有缓存数据，不重新加载
     if (tab === 'works' && userWorks.length === 0) {
-      loadUserWorks();
+      loadUserWorks(userProfile?.uid || '');
     }
   };
   
@@ -234,7 +246,7 @@ const NewProfileScreen: React.FC = () => {
               const updatedSelfieList = currentSelfieList.filter(url => url !== selfieUrl);
 
               const updateData: any = {
-                uid: user.uid,
+                uid: userProfile.uid,
                 selfie_list: updatedSelfieList,
               };
 
@@ -247,7 +259,10 @@ const NewProfileScreen: React.FC = () => {
               
               if (result.success) {
                 dispatch(updateProfile(updateData));
-                await refreshUserData();
+                const currentUserId = authService.getCurrentUserId();
+                if (currentUserId) {
+                  await dispatch(fetchUserProfile({ userId: currentUserId }));
+                }
                 showSuccessToast('删除成功');
                 
                 if (updatedSelfieList.length === 0) {
@@ -311,14 +326,14 @@ const NewProfileScreen: React.FC = () => {
   };
 
   const handleDeleteAccount = async () => {
-    if (!user?.uid) {
+    if (!userProfile?.uid) {
       Alert.alert('错误', '无法获取用户信息');
       return;
     }
 
     setIsDeleting(true);
     try {
-      const result = await userDataService.deleteAccount(user.uid);
+      const result = await userDataService.deleteAccount(userProfile.uid);
       if (result.success) {
         dispatch(resetUser()); 
         dispatch(clearAllSelfies()); 
@@ -366,7 +381,7 @@ const NewProfileScreen: React.FC = () => {
       const result = await userWorkService.deleteWork(work._id);
       if (result.success) {
         showSuccessToast('删除成功');
-        loadUserWorks();
+        loadUserWorks(user?.uid || '');
       } else {
         Alert.alert('删除失败', result.error?.message || '请稍后重试');
       }
@@ -376,26 +391,19 @@ const NewProfileScreen: React.FC = () => {
   };
 
   // 获取用户作品 (Redux)
-  const loadUserWorks = () => {
-    if (!user?.uid) {
-      console.log('❌ 用户未登录，无法获取作品');
-      return;
-    }
+  const loadUserWorks = (uid: string) => {
     console.log('🔄 开始获取用户作品(Redux)...');
-    dispatch(fetchUserWorks({ uid: user.uid }));
+    dispatch(fetchUserWorks({ uid }));
   };
-
-  useEffect(() => {
-    if (isLoggedIn && user?.uid && userProfile) {
-      loadUserWorks();
-    }
-  }, [isLoggedIn, user?.uid, userProfile]);
 
   // Focus Effect: 从其他页面返回时刷新用户数据（特别是从购买页/订阅页返回）
   useFocusEffect(
     React.useCallback(() => {
-      refreshUserData();
-    }, [refreshUserData])
+      const currentUserId = authService.getCurrentUserId();
+      if (currentUserId) {
+        dispatch(fetchUserProfile({ userId: currentUserId }));
+      }
+    }, [dispatch])
   );
 
   return (

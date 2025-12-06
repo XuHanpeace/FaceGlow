@@ -3,15 +3,9 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { themeColors, colors } from '../config/theme';
+import { ToastConfigParams } from 'toastify-react-native/utils/interfaces';
 
-interface CustomToastProps {
-  type?: 'success' | 'error' | 'info' | 'warn';
-  text1?: string;
-  text2?: string;
-  hide: () => void;
-}
-
-const CustomToast: React.FC<CustomToastProps> = ({ type = 'info', text1, text2, hide }) => {
+const CustomToast: React.FC<ToastConfigParams> = ({ type = 'info', text1, text2, hide }) => {
   // 根据类型选择颜色和图标
   const getToastConfig = () => {
     switch (type) {

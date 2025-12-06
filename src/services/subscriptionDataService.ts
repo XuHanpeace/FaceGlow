@@ -19,7 +19,6 @@ class SubscriptionDataService {
     subscriptionData: SubscriptionUpdateData
   ): Promise<boolean> {
     try {
-      console.log('开始更新用户订阅数据:', { uid, subscriptionData });
 
       // 计算过期时间戳
       const expirationTimestamp = subscriptionData.expirationDate.getTime();
@@ -35,11 +34,11 @@ class SubscriptionDataService {
         updated_at: Date.now(),
       };
 
-      console.log('更新数据:', updateData);
+      console.log('开始更新用户订阅数据:', { uid, subscriptionData, updateData });
 
       // 更新用户数据
       const result = await userDataService.updateUserData(updateData);
-        
+        debugger
       if (result.success) {
         console.log('用户订阅数据更新成功');
         

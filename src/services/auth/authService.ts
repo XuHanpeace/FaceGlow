@@ -14,6 +14,9 @@ const storage = new MMKV();
  * 使用腾讯云官方HTTP API
  */
 export class AuthService {
+  // Token刷新防重复机制
+  private isRefreshing = false;
+  private refreshPromise: Promise<AuthResponse> | null = null;
   /**
    * 发送手机验证码
    * @param phoneNumber 手机号
@@ -96,9 +99,6 @@ export class AuthService {
       // 保存认证信息到本地存储
       this.saveAuthCredentials(credentials);
 
-      // 更新长期认证的活跃时间
-      longTermAuthService.updateLastActiveTime();
-
       // 注册成功后，自动创建用户信息
       try {
         await userDataService.createUser({
@@ -159,9 +159,6 @@ export class AuthService {
       // 保存认证信息到本地存储
       this.saveAuthCredentials(credentials);
 
-      // 更新长期认证的活跃时间
-      longTermAuthService.updateLastActiveTime();
-
       // 埋点：密码登录成功
       aegisService.reportUserAction('login_success', {
         login_type: 'password',
@@ -220,9 +217,6 @@ export class AuthService {
 
       // 保存认证信息到本地存储
       this.saveAuthCredentials(credentials);
-
-      // 更新长期认证的活跃时间
-      longTermAuthService.updateLastActiveTime();
 
       // 埋点：手机号登录成功
       aegisService.reportUserAction('login_success', {
@@ -294,9 +288,6 @@ export class AuthService {
       // 保存认证信息到本地存储
       this.saveAuthCredentials(credentials);
 
-      // 更新长期认证的活跃时间
-      longTermAuthService.updateLastActiveTime();
-
       console.log('✅ 匿名登录成功并保存');
 
       // 埋点：匿名登录成功
@@ -326,10 +317,35 @@ export class AuthService {
   }
 
   /**
-   * 刷新访问令牌
+   * 刷新访问令牌（核心方法，带防重复刷新机制）
+   * @param forceRefresh 是否强制刷新（忽略防重复机制）
    * @returns Promise<AuthResponse>
    */
-  async refreshAccessToken(): Promise<AuthResponse> {
+  async refreshAccessToken(forceRefresh: boolean = false): Promise<AuthResponse> {
+    // 如果正在刷新且不是强制刷新，返回正在进行的刷新Promise
+    if (this.isRefreshing && !forceRefresh && this.refreshPromise) {
+      console.log('🔄 Token正在刷新中，返回现有刷新Promise');
+      return this.refreshPromise;
+    }
+
+    // 创建新的刷新Promise
+    this.refreshPromise = this._doRefreshAccessToken();
+    this.isRefreshing = true;
+
+    try {
+      const result = await this.refreshPromise;
+      return result;
+    } finally {
+      this.isRefreshing = false;
+      this.refreshPromise = null;
+    }
+  }
+
+  /**
+   * 执行实际的Token刷新逻辑（内部方法）
+   * @returns Promise<AuthResponse>
+   */
+  private async _doRefreshAccessToken(): Promise<AuthResponse> {
     try {
       console.log('🔄 开始刷新AccessToken...');
       
@@ -368,9 +384,6 @@ export class AuthService {
       // 更新本地存储
       this.saveAuthCredentials(credentials);
 
-      // 更新长期认证的活跃时间
-      longTermAuthService.updateLastActiveTime();
-
       console.log('🎉 AccessToken刷新成功!');
 
       return {
@@ -379,28 +392,6 @@ export class AuthService {
       };
     } catch (error: any) {
       console.log('❌ AccessToken刷新失败:', error.message);
-      
-      // 检查是否是token过期或token不匹配的错误（排除网络不通）
-      const errorMessage = error.message || '';
-      const isNetworkError = errorMessage.includes('网络') || 
-                            errorMessage.includes('network') ||
-                            errorMessage.includes('timeout') ||
-                            error.request; // axios的request属性表示网络请求失败
-      
-      const isTokenError = !isNetworkError && (
-        errorMessage.includes('过期') || 
-        errorMessage.includes('expired') || 
-        errorMessage.includes('invalid') ||
-        errorMessage.includes('not match') ||
-        errorMessage.includes('不匹配') ||
-        error.response?.status === 401
-      );
-      
-      if (isTokenError) {
-        // 触发登录提示弹窗
-        const { loginPromptService } = require('../loginPromptService');
-        loginPromptService.showManually('authLost');
-      }
       
       return {
         success: false,
@@ -425,10 +416,8 @@ export class AuthService {
       }
     } catch (error) {
       console.warn('Logout API call failed:', error);
-    } finally {
-      // 清除本地存储的认证信息
-      this.clearAuthCredentials();
     }
+    // 注意：不删除storage中的认证信息，因为新账号登录时会重写这些数据
   }
 
   /**
@@ -592,70 +581,90 @@ export class AuthService {
   }
 
   /**
-   * 自动刷新令牌（如果即将过期）
-   * @returns Promise<boolean>
+   * 统一Token刷新入口
+   * 根据策略自动判断是否需要刷新，并执行刷新
+   * @param strategy 刷新策略：'auto'（自动，即将过期时刷新）| 'force'（强制刷新）| 'check'（检查，过期时刷新）
+   * @returns Promise<AuthResponse>
    */
-  async autoRefreshTokenIfNeeded(): Promise<boolean> {
-    console.log('🔍 检查是否需要自动刷新Token...');
+  async refreshTokenIfNeeded(strategy: 'auto' | 'force' | 'check' = 'auto'): Promise<AuthResponse> {
+    console.log(`🔍 [Token刷新] 策略: ${strategy}`);
     
-    if (this.isTokenExpiringSoon()) {
-      console.log('🚀 Token即将过期，开始自动刷新...');
-      try {
-        const result = await this.refreshAccessToken();
-        if (result.success) {
-          console.log('✅ 自动刷新Token成功');
-          return true;
-        } else {
-          console.log('❌ 自动刷新Token失败:', result.error?.message);
-          return false;
-        }
-      } catch (error: any) {
-        console.error('❌ 自动刷新Token异常:', error.message);
-        return false;
+    // 强制刷新策略：直接刷新
+    if (strategy === 'force') {
+      console.log('🚀 [Token刷新] 强制刷新模式');
+      return await this.refreshAccessToken(true);
+    }
+
+    // 检查策略：如果已过期或无效，则刷新
+    if (strategy === 'check') {
+      if (!this.hasValidAuth()) {
+        console.log('❌ [Token刷新] Token已过期或无效，开始刷新...');
+        return await this.refreshAccessToken();
+      } else {
+        console.log('✅ [Token刷新] Token有效，无需刷新');
+        return this._getCurrentAuthResponse();
       }
+    }
+
+    // 自动策略（默认）：如果即将过期，则刷新
+    if (this.isTokenExpiringSoon()) {
+      console.log('🚀 [Token刷新] Token即将过期，开始自动刷新...');
+      return await this.refreshAccessToken();
     } else {
-      console.log('✅ Token未即将过期，无需刷新');
-      return true;
+      console.log('✅ [Token刷新] Token未即将过期，无需刷新');
+      return this._getCurrentAuthResponse();
     }
   }
 
   /**
+   * 获取当前认证态的响应（内部辅助方法）
+   * @returns AuthResponse
+   */
+  private _getCurrentAuthResponse(): AuthResponse {
+    const token = this.getCurrentAccessToken();
+    const uid = this.getCurrentUserId();
+    const expiresAt = storage.getNumber(STORAGE_KEYS.EXPIRES_AT);
+    
+    if (token && uid && expiresAt) {
+      return {
+        success: true,
+        data: {
+          uid,
+          accessToken: token,
+          refreshToken: storage.getString(STORAGE_KEYS.REFRESH_TOKEN) || '',
+          expiresIn: Math.round((expiresAt - Date.now()) / 1000),
+          expiresAt,
+          isAnonymous: this.isAnonymous(),
+        },
+      };
+    } else {
+      return {
+        success: false,
+        error: {
+          code: 'INVALID_TOKEN_DATA',
+          message: 'Token数据不完整',
+        },
+      };
+    }
+  }
+
+  /**
+   * 自动刷新令牌（如果即将过期）
+   * @deprecated 使用 refreshTokenIfNeeded('auto') 代替
+   * @returns Promise<boolean>
+   */
+  async autoRefreshTokenIfNeeded(): Promise<boolean> {
+    const result = await this.refreshTokenIfNeeded('auto');
+    return result.success;
+  }
+
+  /**
    * 手动检查并刷新token（如果过期）
+   * @deprecated 使用 refreshTokenIfNeeded('check') 代替
    * @returns Promise<AuthResponse>
    */
   async checkAndRefreshToken(): Promise<AuthResponse> {
-    console.log('🔍 手动检查Token状态...');
-    
-    if (!this.isLoggedIn()) {
-      console.log('❌ Token无效或已过期，尝试刷新...');
-      return await this.refreshAccessToken();
-    } else {
-      console.log('✅ Token有效，无需刷新');
-      const token = this.getCurrentAccessToken();
-      const uid = this.getCurrentUserId();
-      const expiresAt = storage.getNumber(STORAGE_KEYS.EXPIRES_AT);
-      
-      if (token && uid && expiresAt) {
-        return {
-          success: true,
-          data: {
-            uid,
-            accessToken: token,
-            refreshToken: storage.getString(STORAGE_KEYS.REFRESH_TOKEN) || '',
-            expiresIn: Math.round((expiresAt - Date.now()) / 1000),
-            expiresAt,
-          },
-        };
-      } else {
-        return {
-          success: false,
-          error: {
-            code: 'INVALID_TOKEN_DATA',
-            message: 'Token数据不完整',
-          },
-        };
-      }
-    }
+    return await this.refreshTokenIfNeeded('check');
   }
 
   /**
@@ -719,7 +728,7 @@ export class AuthService {
     const refreshToken = storage.getString(STORAGE_KEYS.REFRESH_TOKEN);
     if (refreshToken) {
       console.log('🔄 尝试刷新token...');
-      const refreshResult = await this.refreshAccessToken();
+      const refreshResult = await this.refreshTokenIfNeeded('check');
       if (refreshResult.success) {
         console.log('✅ Token刷新成功');
         return refreshResult;
@@ -799,13 +808,8 @@ export class AuthService {
     }
     
     // 尝试刷新token（如果即将过期）
-    if (this.isTokenExpiringSoon()) {
-      console.log('🔄 Token即将过期，尝试刷新...');
-      const refreshResult = await this.refreshAccessToken();
-      if (refreshResult.success) {
-        console.log('✅ Token刷新成功');
-        return refreshResult;
-      }
+    const refreshResult = await this.refreshTokenIfNeeded('auto');
+    if (!refreshResult.success) {
       console.log('⚠️ Token刷新失败');
       return {
         success: false,

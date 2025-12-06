@@ -188,7 +188,7 @@ class RevenueCatService {
     try {
       console.log('💳 开始购买订阅:', packageToPurchase.identifier);
       const { customerInfo } = await Purchases.purchasePackage(packageToPurchase);
-      console.log('✅ 购买成功');
+      console.log('✅ 购买成功', customerInfo);
       return customerInfo;
     } catch (error: unknown) {
       console.error('❌ 购买失败:', error);

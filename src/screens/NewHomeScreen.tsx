@@ -9,15 +9,16 @@ import {
   Animated,
   ScrollView,
 } from 'react-native';
-import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
-import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import MasonryList from '@react-native-seoul/masonry-list';
 
 import { RootStackParamList } from '../types/navigation';
 import HomeHeader, { HomeHeaderRef } from '../components/HomeHeader';
 import SelfieModule from '../components/SelfieModule';
 import DefaultSelfieSelector from '../components/DefaultSelfieSelector';
-import { useUser } from '../hooks/useUser';
+import { useUser, useUserSelfies } from '../hooks/useUser';
+import { fetchUserProfile } from '../store/middleware/asyncMiddleware';
 import { authService } from '../services/auth/authService';
 import { albumService } from '../services/database/albumService';
 import { userDataService } from '../services/database/userDataService';
@@ -29,15 +30,16 @@ import { FilterSection } from '../components/FilterSection';
 import { useAppDispatch } from '../store/hooks';
 import { setAllAlbums } from '../store/slices/activitySlice';
 import { aegisService } from '../services/monitoring/aegisService';
+import { eventService } from '../services/eventService';
 
 type NewHomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 const { width: screenWidth } = Dimensions.get('window');
 
 const NewHomeScreen: React.FC = () => {
   const navigation = useNavigation<NewHomeScreenNavigationProp>();
-  const route = useRoute<NativeStackScreenProps<RootStackParamList, 'NewHome'>['route']>();
   const dispatch = useAppDispatch();
-  const { refreshUserData, userInfo } = useUser();
+  const { userInfo } = useUser();
+  const { hasSelfies, selfies } = useUserSelfies();
   
   const scrollRef = useRef<ScrollView>(undefined);
   const homeHeaderRef = useRef<HomeHeaderRef>(null);
@@ -216,43 +218,53 @@ const NewHomeScreen: React.FC = () => {
     }
   }, []);
 
+  // 监听奖励弹窗事件
+  useEffect(() => {
+    const handleShowRewardModal = async (data: { rewardAmount: number }) => {
+      const rewardAmount = data.rewardAmount;
+      console.log('🎁 [NewHome] 收到显示奖励弹窗事件', { rewardAmount });
+      
+      // 刷新用户数据
+      const currentUserId = authService.getCurrentUserId();
+      if (currentUserId) {
+        await dispatch(fetchUserProfile({ userId: currentUserId }));
+      }
+      
+      // 等待页面渲染完成，然后串行执行：展示弹窗 -> 播放coins动画
+      setTimeout(() => {
+        // 1. 展示弹窗
+        coinRewardModalRef.current?.show(rewardAmount);
+        console.log('✅ [NewHome] 展示奖励弹窗');
+        
+        // 2. 等待弹窗显示动画完成（约300ms），然后播放coins动画
+        setTimeout(() => {
+          homeHeaderRef.current?.playCoinIconAnimation();
+          console.log('✅ [NewHome] 播放coins动画');
+        }, 400);
+      }, 100);
+    };
+
+    // 订阅事件
+    const unsubscribe = eventService.onShowRewardModal(handleShowRewardModal);
+    
+    // 清理函数
+    return () => {
+      unsubscribe();
+    };
+  }, [dispatch]);
+
   // Focus Effect - 页面获得焦点时刷新数据并检查余额变化
   useFocusEffect(
     React.useCallback(() => {
       const loadData = async () => {
-        // 检查路由参数，看是否需要显示奖励弹窗
-        const params = route.params;
-        if (params?.showRewardModal && params?.rewardAmount !== undefined) {
-          const rewardAmount = params.rewardAmount;
-          console.log('🎁 检测到需要显示奖励弹窗', { rewardAmount });
-          
-          // 清除路由参数，避免重复触发
-          navigation.setParams({ showRewardModal: undefined, rewardAmount: undefined });
-          
-          // 刷新用户数据
-          await refreshUserData();
-          
-          // 等待页面渲染完成，然后串行执行：展示弹窗 -> 播放coins动画
-          setTimeout(() => {
-            // 1. 展示弹窗
-            coinRewardModalRef.current?.show(rewardAmount);
-            console.log('✅ 展示奖励弹窗');
-            
-            // 2. 等待弹窗显示动画完成（约300ms），然后播放coins动画
-            setTimeout(() => {
-              homeHeaderRef.current?.playCoinIconAnimation();
-              console.log('✅ 播放coins动画');
-            }, 400);
-          }, 100);
-          
-          return; // 提前返回，不执行后续余额检查逻辑
-        }
-        
         // 保存当前余额
         const oldBalance = previousBalanceRef.current || 0;
         
         // 刷新用户数据
-        await refreshUserData();
+        const currentUserId = authService.getCurrentUserId();
+        if (currentUserId) {
+          await dispatch(fetchUserProfile({ userId: currentUserId }));
+        }
         
         // 等待数据更新后检查余额变化
         setTimeout(() => {
@@ -280,7 +292,7 @@ const NewHomeScreen: React.FC = () => {
         }, 800);
       };
       loadData();
-    }, [refreshUserData, route.params, navigation])
+    }, [dispatch])
   );
 
   // Handlers
@@ -335,7 +347,9 @@ const NewHomeScreen: React.FC = () => {
       }
       return;
     }
-    navigation.navigate('SelfieGuide');
+    // 判断是否为新用户（没有自拍）
+    const isNewUser = !hasSelfies || selfies.length === 0;
+    navigation.navigate('SelfieGuide', { isNewUser });
   };
 
 

@@ -22,7 +22,7 @@ const AlbumCard: React.FC<AlbumCardProps> = ({
   // 计算总点赞数（所有template的点赞数之和）
   const totalLikes = album.template_list.reduce((sum, template) => {
     // 这里可以根据需要设置每个template的点赞数，暂时使用随机数
-    return sum + Math.floor(Math.random() * 100);
+    return sum;
   }, 0);
 
   return (

@@ -30,6 +30,9 @@ export interface BailianResponse {
   message?: string;
   requestId?: string;
   error?: string;
+  errorCode?: string;
+  currentBalance?: number;
+  requiredAmount?: number;
 }
 
 /**

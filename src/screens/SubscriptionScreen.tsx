@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   BackHandler,
   Platform,
   SafeAreaView,
+  AppState,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -16,6 +17,8 @@ import { RootStackParamList } from '../types/navigation';
 import { subscriptionDataService } from '../services/subscriptionDataService';
 import { useAuthState } from '../hooks/useAuthState';
 import { useUser } from '../hooks/useUser';
+import { useAppDispatch } from '../store/hooks';
+import { fetchUserProfile } from '../store/middleware/asyncMiddleware';
 import { subscriptionPlans, SubscriptionPlan } from '../config/revenueCatConfig';
 import { useRevenueCat } from '../hooks/useRevenueCat';
 import { ENTITLEMENTS } from '../config/revenueCatConfig';
@@ -29,6 +32,7 @@ type SubscriptionScreenNavigationProp = NativeStackNavigationProp<RootStackParam
 
 const SubscriptionScreen: React.FC = () => {
   const navigation = useNavigation<SubscriptionScreenNavigationProp>();
+  const dispatch = useAppDispatch();
   const { user } = useAuthState();
   const { userProfile } = useUser();
   const {
@@ -42,6 +46,8 @@ const SubscriptionScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [availablePlans, setAvailablePlans] = useState<SubscriptionPlan[]>([]);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const videoRef = useRef<any>(null);
+  const appState = useRef(AppState.currentState);
   
   // 获取当前会员状态
   const getCurrentMembershipStatus = () => {
@@ -72,11 +78,34 @@ const SubscriptionScreen: React.FC = () => {
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (isLoading) return true;
+      if (isLoading) {
+        showInfoToast('订阅处理中，请稍候...');
+        return true;
+      }
       return false;
     });
     return () => backHandler.remove();
   }, [isLoading]);
+
+  // 监听应用状态变化，当从后台回到前台时恢复视频播放
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === 'active'
+      ) {
+        // 从后台回到前台，恢复视频播放
+        if (videoRef.current) {
+          videoRef.current.resume();
+        }
+      }
+      appState.current = nextAppState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   const loadAvailablePlans = async () => {
     try {
@@ -170,6 +199,12 @@ const SubscriptionScreen: React.FC = () => {
             willRenew: entitlement?.willRenew ?? true,
           }
         );
+        
+        // 刷新用户数据，确保前端会员状态更新
+        if (user.uid) {
+          await dispatch(fetchUserProfile({ userId: user.uid }));
+          console.log('✅ [SubscriptionScreen] 用户数据已刷新');
+        }
       }
 
       showSuccessToast(`恭喜您成功订阅${selectedPlan.title}！`);
@@ -244,6 +279,7 @@ const SubscriptionScreen: React.FC = () => {
       
       {/* 背景视频 */}
       <Video
+        ref={videoRef}
         source={require('../assets/v3.mp4')}
         style={styles.backgroundVideo}
         muted={true}
@@ -251,6 +287,7 @@ const SubscriptionScreen: React.FC = () => {
         resizeMode="cover"
         rate={1.0}
         ignoreSilentSwitch="obey"
+        paused={false}
       />
 
       {/* 遮罩层 */}
@@ -372,7 +409,7 @@ const SubscriptionScreen: React.FC = () => {
                 title={getButtonText()}
                 onPress={handleSubscribe}
                 disabled={!selectedPlan || !agreeToTerms || isLoading}
-                loading={false}
+                loading={isLoading}
                 variant="primary"
                 style={styles.continueButton}
                 textStyle={{ fontWeight: 'bold', fontSize: 18 }}

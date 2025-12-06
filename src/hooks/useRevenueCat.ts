@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback } from 'react';
-import { AppState, AppStateStatus } from 'react-native';
 import { CustomerInfo } from 'react-native-purchases';
 import { revenueCatService, SubscriptionStatus } from '../services/revenueCat/revenueCatService';
 

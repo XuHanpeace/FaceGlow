@@ -1,6 +1,5 @@
 import { MMKV } from 'react-native-mmkv';
 import { authService } from './auth/authService';
-import { STORAGE_KEYS } from '../types/auth';
 
 // 创建MMKV存储实例
 const storage = new MMKV();
@@ -8,12 +7,10 @@ const storage = new MMKV();
 // 登录提示服务专用的存储键名
 const LOGIN_PROMPT_STORAGE_KEYS = {
   LOGIN_PROMPT_DISMISSED_AT: 'loginPromptDismissedAt', // 用户关闭弹窗的时间戳
-  ANONYMOUS_BROWSE_START_TIME: 'anonymousBrowseStartTime', // 匿名浏览开始时间
 } as const;
 
 // 配置常量
 const CONFIG = {
-  ANONYMOUS_BROWSE_THRESHOLD: 2 * 60 * 1000, // 2分钟（匿名浏览阈值）
   DISMISS_COOLDOWN: 60 * 60 * 1000, // 1小时（防打扰冷却时间）
 } as const;
 
@@ -24,8 +21,6 @@ const CONFIG = {
 class LoginPromptService {
   private dismissCallback: (() => void) | null = null;
   private showCallback: ((reason: 'anonymous' | 'authLost') => void) | null = null;
-  private anonymousBrowseTimer: NodeJS.Timeout | null = null;
-  private wasLoggedIn: boolean = false;
 
   /**
    * 设置显示回调
@@ -79,18 +74,7 @@ class LoginPromptService {
       return false;
     }
 
-    // 检查匿名浏览时长
-    const browseStartTime = storage.getNumber(LOGIN_PROMPT_STORAGE_KEYS.ANONYMOUS_BROWSE_START_TIME);
-    if (!browseStartTime) {
-      // 记录开始时间
-      storage.set(LOGIN_PROMPT_STORAGE_KEYS.ANONYMOUS_BROWSE_START_TIME, Date.now());
-      return false;
-    }
-
-    const now = Date.now();
-    const elapsed = now - browseStartTime;
-    
-    return elapsed >= CONFIG.ANONYMOUS_BROWSE_THRESHOLD;
+    return true;
   }
 
   /**
@@ -127,8 +111,6 @@ class LoginPromptService {
   showForAuthLost(): void {
     if (this.shouldShowForAuthLost() && this.showCallback) {
       this.showCallback('authLost');
-      // 清除匿名浏览开始时间，因为已经提示过了
-      storage.delete(LOGIN_PROMPT_STORAGE_KEYS.ANONYMOUS_BROWSE_START_TIME);
     }
   }
 
@@ -142,64 +124,17 @@ class LoginPromptService {
   }
 
   /**
-   * 启动匿名浏览计时
+   * 检查匿名登录并显示登录引导（APP回到前台时调用）
    */
-  startAnonymousBrowseTimer(): void {
-    // 清除之前的计时器
-    if (this.anonymousBrowseTimer) {
-      clearInterval(this.anonymousBrowseTimer);
-    }
-
-    // 如果用户已登录，不启动计时
-    if (!authService.isAnonymous()) {
-      return;
-    }
-
-    // 记录开始时间
-    storage.set(LOGIN_PROMPT_STORAGE_KEYS.ANONYMOUS_BROWSE_START_TIME, Date.now());
-
-    // 设置定时检查
-    this.anonymousBrowseTimer = setInterval(() => {
-      this.showForAnonymous();
-    }, 60000); // 每分钟检查一次
-  }
-
-  /**
-   * 停止匿名浏览计时
-   */
-  stopAnonymousBrowseTimer(): void {
-    if (this.anonymousBrowseTimer) {
-      clearInterval(this.anonymousBrowseTimer);
-      this.anonymousBrowseTimer = null;
-    }
-  }
-
-  /**
-   * 检查登录状态变化
-   */
-  checkAuthStateChange(): void {
-    const isCurrentlyLoggedIn = !authService.isAnonymous() && authService.hasValidAuth();
+  checkAnonymousOnForeground(): void {
+    console.log('🔍 [LoginPrompt] APP回到前台，检查匿名登录状态...');
     
-    // 如果从已登录变为未登录，触发登录态丢失提示
-    if (this.wasLoggedIn && !isCurrentlyLoggedIn) {
-      console.log('🔔 检测到登录态丢失，显示登录提示');
-      // 清除冷却期，让登录态丢失提示可以立即显示
-      storage.delete(LOGIN_PROMPT_STORAGE_KEYS.LOGIN_PROMPT_DISMISSED_AT);
-      this.showForAuthLost();
-    }
-
-    // 更新状态
-    this.wasLoggedIn = isCurrentlyLoggedIn;
-
-    // 如果用户登录了，清除匿名浏览计时和冷却期
-    if (isCurrentlyLoggedIn) {
-      this.stopAnonymousBrowseTimer();
-      storage.delete(LOGIN_PROMPT_STORAGE_KEYS.ANONYMOUS_BROWSE_START_TIME);
-      // 清除冷却期，因为用户已经登录了
-      storage.delete(LOGIN_PROMPT_STORAGE_KEYS.LOGIN_PROMPT_DISMISSED_AT);
+    // 如果用户是匿名登录，直接显示登录引导
+    if (authService.isAnonymous()) {
+      console.log('🎭 [LoginPrompt] 检测到匿名登录，显示登录引导');
+      this.showForAnonymous();
     } else {
-      // 如果用户未登录，启动匿名浏览计时
-      this.startAnonymousBrowseTimer();
+      console.log('✅ [LoginPrompt] 用户已登录，无需显示登录引导');
     }
   }
 
@@ -207,25 +142,13 @@ class LoginPromptService {
    * 初始化服务
    */
   initialize(): void {
-    // 初始化登录状态
-    this.wasLoggedIn = !authService.isAnonymous() && authService.hasValidAuth();
-    
-    // 如果用户未登录，启动匿名浏览计时
-    if (authService.isAnonymous()) {
-      this.startAnonymousBrowseTimer();
-    }
-
-    // 定期检查登录状态变化（每30秒检查一次）
-    setInterval(() => {
-      this.checkAuthStateChange();
-    }, 30000);
+    console.log('✅ [LoginPrompt] 登录提示服务初始化完成');
   }
 
   /**
    * 清理资源
    */
   cleanup(): void {
-    this.stopAnonymousBrowseTimer();
     this.showCallback = null;
     this.dismissCallback = null;
   }

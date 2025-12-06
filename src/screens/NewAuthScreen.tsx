@@ -19,6 +19,11 @@ import { useAuthState } from '../hooks/useAuthState';
 import { authService, verificationService } from '../services/auth';
 import GradientButton from '../components/GradientButton';
 import BackButton from '../components/BackButton';
+import { MMKV } from 'react-native-mmkv';
+
+// 创建MMKV存储实例
+const storage = new MMKV();
+const LAST_PHONE_NUMBER_KEY = 'last_phone_number';
 
 type NewAuthScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type NewAuthScreenRouteProp = NativeStackScreenProps<RootStackParamList, 'NewAuth'>['route'];
@@ -45,8 +50,17 @@ const NewAuthScreen: React.FC = () => {
   
   const [authMode, setAuthMode] = useState<AuthMode>(getInitialAuthMode());
   
+  // 从存储中恢复上一次的手机号
+  const getLastPhoneNumber = () => {
+    try {
+      return storage.getString(LAST_PHONE_NUMBER_KEY) || '';
+    } catch {
+      return '';
+    }
+  };
+  
   // 表单数据
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState(getLastPhoneNumber());
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   
@@ -97,6 +111,13 @@ const NewAuthScreen: React.FC = () => {
     setIsLoading(true);
     try {
       const result = await verificationService.sendPhoneVerification(phoneNumber);
+      
+      // 保存手机号到本地存储
+      try {
+        storage.set(LAST_PHONE_NUMBER_KEY, phoneNumber);
+      } catch (error) {
+        console.error('保存手机号失败:', error);
+      }
       
       // 导航到验证码输入页面（统一使用 phone-verify 模式，系统会自动判断登录或注册）
       navigation.navigate('VerificationCode', {
@@ -160,8 +181,19 @@ const NewAuthScreen: React.FC = () => {
   };
 
   const formatPhoneNumber = (text: string) => {
-    const cleaned = text.replace(/\D/g, '');
-    return cleaned.slice(0, 11);
+    // 先 trim() 去除首尾空格，然后移除所有非数字字符（包括中间的空格）
+    const formatted = text.trim().replace(/\D/g, '');
+    
+    // 保存到本地存储
+    if (formatted.length === 11) {
+      try {
+        storage.set(LAST_PHONE_NUMBER_KEY, formatted);
+      } catch (error) {
+        console.error('保存手机号失败:', error);
+      }
+    }
+    
+    return formatted;
   };
 
   // 打开用户协议
@@ -227,8 +259,12 @@ const NewAuthScreen: React.FC = () => {
                     value={phoneNumber}
                     onChangeText={(text) => setPhoneNumber(formatPhoneNumber(text))}
                     keyboardType="phone-pad"
-                    maxLength={11}
+                    maxLength={13}
                     autoFocus
+                    textContentType="telephoneNumber"
+                    autoComplete="tel"
+                    autoCorrect={false}
+                    autoCapitalize="none"
                   />
                 </View>
 

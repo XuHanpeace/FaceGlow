@@ -98,7 +98,20 @@ const GradientButton: React.FC<GradientButtonProps> = ({
         ]}
       >
         {loading ? (
-          <ActivityIndicator color="#fff" size="small" />
+          <View style={styles.content}>
+            <ActivityIndicator color="#fff" size="small" />
+            <Text
+              style={[
+                styles.text,
+                {
+                  fontSize: buttonFontSize,
+                },
+                textStyle,
+              ]}
+            >
+              {title}
+            </Text>
+          </View>
         ) : (
           <View style={styles.content}>
             {icon && <View style={styles.iconContainer}>{icon}</View>}

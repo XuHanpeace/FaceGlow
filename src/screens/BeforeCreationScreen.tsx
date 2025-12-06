@@ -26,7 +26,7 @@ import SelfieSelector from '../components/SelfieSelector';
 import { startAsyncTask } from '../store/slices/asyncTaskSlice';
 import { CrossFadeImage } from '../components/CrossFadeImage';
 import FastImage from 'react-native-fast-image';
-import { useUser, useUserBalance } from '../hooks/useUser';
+import { useUser, useUserBalance, useUserSelfies } from '../hooks/useUser';
 import { AlbumRecord } from '../types/model/album';
 import { aegisService } from '../services/monitoring/aegisService';
 
@@ -199,6 +199,7 @@ const BeforeCreationScreen: React.FC = () => {
   // 用户信息和余额
   const { userInfo, isVip } = useUser();
   const { balance } = useUserBalance();
+  const { hasSelfies, selfies } = useUserSelfies();
   // 确保当前 albumData 在列表中，如果不在（比如来自非 redux 数据源），则添加
   const albumsWithCurrent = useMemo<AlbumWithActivityId[]>(() => {
     // 如果 allAlbums 为空，说明数据还没加载，先返回当前 albumData
@@ -296,7 +297,9 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
         // 再次确认真实用户（防止用户登出）
         const uploadAuthResult = await authService.requireRealUser();
         if (uploadAuthResult.success) {
-          navigation.navigate('SelfieGuide');
+          // 判断是否为新用户（没有自拍）
+          const isNewUser = !hasSelfies || selfies.length === 0;
+          navigation.navigate('SelfieGuide', { isNewUser });
         } else {
           // 如果用户未登录，先跳转到登录页面
           navigation.navigate('NewAuth');
@@ -395,8 +398,8 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
         console.log('[BeforeCreation] Dispatching startAsyncTask:', taskParams);
 
         try {
-          await dispatch(startAsyncTask(taskParams)).unwrap();
-          console.log('[BeforeCreation] AsyncTask started successfully');
+        await dispatch(startAsyncTask(taskParams)).unwrap();
+        console.log('[BeforeCreation] AsyncTask started successfully');
         } catch (error: any) {
           // 处理余额不足错误
           if (error.message && error.message.includes('余额不足')) {

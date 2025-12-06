@@ -11,7 +11,6 @@ import {
   Alert,
   ActivityIndicator,
   Animated,
-  LayoutAnimation,
   Platform,
   UIManager,
 } from 'react-native';
@@ -19,7 +18,6 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { ImageComparison } from '../components/ImageComparison';
-import { FadeInOutImage } from '../components/FadeInOutImage';
 import { callFaceFusionCloudFunction } from '../services/tcb/tcb';
 import { userWorkService } from '../services/database/userWorkService';
 import { useAuthState } from '../hooks/useAuthState';

@@ -24,7 +24,9 @@ export type RootStackParamList = {
     activityName: string;
   };
   NewProfile: undefined;
-  SelfieGuide: undefined;
+  SelfieGuide: {
+    isNewUser?: boolean;
+  } | undefined;
   NewAuth: {
     initialMode?: 'phone-verify' | 'register';
   } | undefined;

@@ -31,15 +31,16 @@ import _updateConfig from './update.json';
 const { appKey } = _updateConfig[Platform.OS as keyof typeof _updateConfig] || {};
 
 // 初始化 Pushy Client
-// 注意：如果 appKey 不存在，Pushy 会降级为普通模式，不会影响 APP 正常运行
-const pushyClient = new Pushy({
-  appKey: appKey, // 如果 appKey 不存在，传 undefined 而不是空字符串
-  checkStrategy: "both", // 启动时和进入前台时都检查
-  updateStrategy: __DEV__ ? "alwaysAlert" : "silentAndLater", // 开发环境弹窗提示，生产环境静默下载
-  // 开发环境开启 debug 模式，可以看到检查更新的日志，但不会真正应用更新
-  // 只有在 Release 包中才会真正下载并应用更新
-  debug: __DEV__,
-});
+// 测试环境：不检测新版本，也不弹窗（通过传入 null 禁用）
+// 正式环境：静默更新（启动时和进入前台时都检查，但静默下载和应用）
+const pushyClient = __DEV__ 
+  ? null // 测试环境不初始化 Pushy，禁用版本检测
+  : new Pushy({
+      appKey: appKey, // 如果 appKey 不存在，传 undefined 而不是空字符串
+      checkStrategy: "both", // 启动时和进入前台时都检查
+      updateStrategy: "silentAndLater", // 正式环境静默下载和应用
+      debug: false, // 正式环境关闭 debug
+    });
 
 declare global {
   namespace ReactNavigation {
@@ -99,8 +100,8 @@ function App(): JSX.Element {
     };
   }, []);
   
-  return (
-    <UpdateProvider client={pushyClient}>
+  // 测试环境不包装 UpdateProvider，正式环境才启用版本更新
+  const AppContent = (
       <Provider store={store}>
         <ModalProvider>
           <StatusBar barStyle="light-content" translucent={true} backgroundColor="transparent" />
@@ -127,17 +128,29 @@ function App(): JSX.Element {
         </ModalProvider>
          <View style={styles.toastContainer} pointerEvents="box-none">
           <ToastProvider
+            useModal={false}
             config={{
               success: (props) => <CustomToast {...props} type="success" />,
               error: (props) => <CustomToast {...props} type="error" />,
               info: (props) => <CustomToast {...props} type="info" />,
               warn: (props) => <CustomToast {...props} type="warn" />,
             }}
-            position="top"
+            position="bottom"
             theme="dark"
             />
          </View>
       </Provider>
+  );
+
+  // 测试环境：不启用版本更新功能
+  // 正式环境：启用静默更新
+  if (__DEV__ || !pushyClient) {
+    return AppContent;
+  }
+
+  return (
+    <UpdateProvider client={pushyClient}>
+      {AppContent}
     </UpdateProvider>
   );
 }

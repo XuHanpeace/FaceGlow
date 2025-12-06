@@ -3,6 +3,7 @@ import { longTermAuthService } from './longTermAuthService';
 import { revenueCatService } from '../revenueCat/revenueCatService';
 import { authService } from './authService';
 import { subscriptionDataService } from '../subscriptionDataService';
+import { loginPromptService } from '../loginPromptService';
 
 /**
  * 应用生命周期管理器
@@ -61,6 +62,9 @@ export class AppLifecycleManager {
       
       // 更新长期认证状态
       await longTermAuthService.onAppForeground();
+
+      // 检查匿名登录并显示登录引导
+      loginPromptService.checkAnonymousOnForeground();
 
       // 同步订阅状态（RevenueCat）
       try {

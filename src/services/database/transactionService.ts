@@ -52,18 +52,18 @@ class TransactionService {
           : responseData.body;
         
         if (body.code === 0 && body.data) {
-          return {
-            success: true,
+        return {
+          success: true,
             data: body.data as Transaction,
-          };
-        } else {
-          return {
-            success: false,
+        };
+      } else {
+        return {
+          success: false,
             error: body.message || '创建交易记录失败',
-          };
-        }
-      }
-      
+      };
+    }
+  }
+
       // 如果直接返回数据
       if (responseData.code === 0 && responseData.data) {
         return {

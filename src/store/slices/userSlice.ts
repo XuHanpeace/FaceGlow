@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { fetchUserProfile, updateUserBalance } from '../middleware/asyncMiddleware';
+import { fetchUserProfile, updateUserBalance, logoutUser } from '../middleware/asyncMiddleware';
 import { User } from '../../types/model/user';
 
 export interface UserState {
@@ -127,6 +127,14 @@ const userSlice = createSlice({
       .addCase(updateUserBalance.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || '更新余额失败';
+      })
+      // 处理登出操作，确保清除用户数据
+      .addCase(logoutUser.fulfilled, (state) => {
+        // 当登出成功时，清除所有用户数据
+        state.profile = null;
+        state.default_selfie_url = null;
+        state.loading = false;
+        state.error = null;
       });
   },
 });

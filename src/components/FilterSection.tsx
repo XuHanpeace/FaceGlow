@@ -145,7 +145,7 @@ export const FilterSection: React.FC<FilterSectionProps> = ({
     sort_order: 0,
     created_at: 0,
     updated_at: 0,
-    extra_config: { description: 'Browse all available styles' }
+    extra_config: { description: '' }
   };
   
   const mainTabs = [allFunctionType, ...functionTypes];
@@ -184,7 +184,7 @@ export const FilterSection: React.FC<FilterSectionProps> = ({
   }, [selectedFunctionType, layouts]);
 
   const selectedItem = mainTabs.find(t => t.category_code === selectedFunctionType);
-  const description = selectedItem?.extra_config?.description || selectedItem?.category_label;
+  const description = selectedItem?.extra_config?.description;
 
   // --- Sub Tabs Logic ---
   const allThemeStyle: CategoryConfigRecord = {

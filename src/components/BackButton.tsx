@@ -45,9 +45,14 @@ const BackButton: React.FC<BackButtonProps> = ({
   
   const iconName = iconType === 'close' ? 'times' : 'chevron-left';
   
+  // 关闭按钮使用订阅页面的样式：32x32, backgroundColor: rgba(255,255,255,0.2), icon size: 20
+  // 返回按钮保持原有样式：40x40, backgroundColor: rgba(255,255,255,0.15), icon size: 18
+  const iconSize = iconType === 'close' ? 20 : 18;
+  const containerBaseStyle = iconType === 'close' ? styles.closeContainer : styles.container;
+  
   const containerStyle = absolute
     ? [
-        styles.container,
+        containerBaseStyle,
         styles.absoluteContainer,
         {
           top: insets.top + 8,
@@ -56,7 +61,7 @@ const BackButton: React.FC<BackButtonProps> = ({
         style, // 允许通过 style 覆盖位置
       ]
     : [
-        styles.container,
+        containerBaseStyle,
         styles.relativeContainer,
         style,
       ];
@@ -71,7 +76,7 @@ const BackButton: React.FC<BackButtonProps> = ({
     >
       <FontAwesome
         name={iconName}
-        size={18}
+        size={iconSize}
         color="#FFFFFF"
         style={styles.icon}
       />
@@ -85,6 +90,14 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },

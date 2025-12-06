@@ -1,12 +1,11 @@
-import { useEffect, useCallback, useMemo, useRef } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTypedSelector, useAppDispatch } from '../store/hooks';
-import { fetchUserProfile } from '../store/middleware/asyncMiddleware';
-import { authService } from '../services/auth/authService';
 import { setDefaultSelfie } from '../store/slices/userSlice';
 
 /**
  * 用户信息Hook
- * 提供用户数据的获取、状态管理和常用方法
+ * 纯粹的数据监听hook，只负责从Redux获取用户状态并转换为易用的格式
+ * 刷新用户数据请直接使用: dispatch(fetchUserProfile({ userId }))
  */
 export const useUser = () => {
   const dispatch = useAppDispatch();
@@ -16,66 +15,6 @@ export const useUser = () => {
   const userLoading = useTypedSelector((state) => state.user.loading);
   const userError = useTypedSelector((state) => state.user.error);
   const defaultSelfieUrl = useTypedSelector((state) => state.user.default_selfie_url);
-
-  // 使用 ref 跟踪上次尝试加载的 userId，避免重复请求
-  const lastAttemptedUserIdRef = useRef<string | null>(null);
-  const hasAttemptedLoadRef = useRef(false);
-
-  // 自动获取用户数据
-  useEffect(() => {
-    const loadUserData = async () => {
-      const currentUserId = authService.getCurrentUserId();
-      
-      // 如果没有用户ID，清除跟踪状态并返回
-      if (!currentUserId) {
-        // 如果之前有用户资料但现在没有用户ID，说明用户已登出
-        if (userProfile) {
-          console.log('[useUser] 检测到用户已登出，等待状态更新');
-        }
-        lastAttemptedUserIdRef.current = null;
-        hasAttemptedLoadRef.current = false;
-        return;
-      }
-
-      // 如果正在加载，跳过
-      if (userLoading) {
-        return;
-      }
-
-      // 如果已经有用户资料且匹配当前用户ID，不需要重新加载
-      if (userProfile && userProfile.uid === currentUserId) {
-        lastAttemptedUserIdRef.current = currentUserId;
-        hasAttemptedLoadRef.current = true;
-        return;
-      }
-
-      // 如果用户ID改变，重置跟踪状态
-      if (lastAttemptedUserIdRef.current !== currentUserId) {
-        lastAttemptedUserIdRef.current = currentUserId;
-        hasAttemptedLoadRef.current = false;
-      }
-
-      // 如果已经尝试过加载且失败，不再自动重试（需要手动调用 refreshUserData）
-      if (hasAttemptedLoadRef.current && userError) {
-        console.log('[useUser] 上次加载失败，跳过自动重试。请手动调用 refreshUserData()');
-        return;
-      }
-
-      // 如果有用户ID且没有用户资料，则加载数据
-      if (!userProfile) {
-        hasAttemptedLoadRef.current = true;
-        try {
-          await dispatch(fetchUserProfile({ userId: currentUserId })).unwrap();
-          // 加载成功后，错误会被清除，hasAttemptedLoadRef 保持为 true 表示已尝试过
-        } catch (error) {
-          console.error('[useUser] 获取用户数据失败:', error);
-          // 失败后，hasAttemptedLoadRef 保持为 true，下次不会自动重试
-        }
-      }
-    };
-
-    loadUserData();
-  }, [dispatch, userProfile, userLoading, userError]);
 
   // 初始化默认自拍逻辑
   useEffect(() => {
@@ -87,31 +26,6 @@ export const useUser = () => {
       }
     }
   }, [userProfile, defaultSelfieUrl, dispatch]);
-
-  // 手动刷新用户数据
-  const refreshUserData = useCallback(async () => {
-    const currentUserId = authService.getCurrentUserId();
-    if (currentUserId) {
-      try {
-        console.log('🔄 开始刷新用户数据...');
-        // 重置尝试状态，允许重新加载
-        hasAttemptedLoadRef.current = false;
-        lastAttemptedUserIdRef.current = currentUserId;
-        const result = await dispatch(fetchUserProfile({ userId: currentUserId })).unwrap();
-        hasAttemptedLoadRef.current = true;
-        return result;
-      } catch (error) {
-        console.error('[useUser] 刷新用户数据失败:', error);
-        hasAttemptedLoadRef.current = true; // 即使失败也标记为已尝试，避免自动重试
-        throw error;
-      }
-    }
-  }, [dispatch]);
-
-  // 设置默认自拍
-  const setDefaultSelfieUrl = useCallback((selfieUrl: string) => {
-    dispatch(setDefaultSelfie(selfieUrl));
-  }, [dispatch]);
 
   // 用户信息计算属性（使用 useMemo 确保正确响应 userProfile 变化）
   const userInfo = useMemo(() => {
@@ -177,17 +91,6 @@ export const useUser = () => {
   const isVip = useMemo(() => userInfo.isPremium, [userInfo.isPremium]);
   const hasWorks = useMemo(() => userInfo.workList.length > 0, [userInfo.workList]);
 
-  // 格式化方法
-  const formatBalance = (balance?: number) => {
-    const amount = balance || userInfo.balance;
-    return amount; // 转换为元，保留2位小数
-  };
-
-  const formatDate = (timestamp?: number) => {
-    const time = timestamp || userInfo.createdAt;
-    if (!time) return '';
-    return new Date(time).toLocaleDateString('zh-CN');
-  };
 
   return {
     // 原始数据
@@ -206,10 +109,18 @@ export const useUser = () => {
     hasWorks,
     
     // 方法
-    refreshUserData,
-    setDefaultSelfieUrl,
-    formatBalance,
-    formatDate,
+    setDefaultSelfieUrl: (selfieUrl: string | null) => {
+      dispatch(setDefaultSelfie(selfieUrl));
+    },
+    formatBalance: (balance?: number) => {
+      const amount = balance || userInfo.balance;
+      return amount;
+    },
+    formatDate: (timestamp?: number) => {
+      const time = timestamp || userInfo.createdAt;
+      if (!time) return '';
+      return new Date(time).toLocaleDateString('zh-CN');
+    },
   };
 };
 
@@ -218,22 +129,15 @@ export const useUser = () => {
  * 专门处理用户头像相关的逻辑
  */
 export const useUserAvatar = () => {
-  const { userInfo, hasAvatar, refreshUserData } = useUser();
+  const { userInfo, hasAvatar } = useUser();
 
   const avatarSource = hasAvatar 
     ? { uri: userInfo.avatar }
     : ''; // 需要添加默认头像
 
-  const updateAvatar = async (newAvatarUrl: string) => {
-    // 这里可以调用更新头像的API
-    // 然后刷新用户数据
-    await refreshUserData();
-  };
-
   return {
     avatarSource,
     hasAvatar,
-    updateAvatar,
   };
 };
 
@@ -242,7 +146,7 @@ export const useUserAvatar = () => {
  * 专门处理用户自拍相关的逻辑
  */
 export const useUserSelfies = () => {
-  const { userInfo, hasSelfies, refreshUserData, setDefaultSelfieUrl, userProfile } = useUser();
+  const { userInfo, hasSelfies, setDefaultSelfieUrl, userProfile } = useUser();
   const defaultSelfieUrl = useTypedSelector((state) => state.user.default_selfie_url);
 
   // 处理自拍照显示顺序：默认自拍永远在第一位，其余按倒序排列
@@ -269,24 +173,10 @@ export const useUserSelfies = () => {
     source: { uri: url },
   }));
 
-  const addSelfie = async (newSelfieUrl: string) => {
-    // 这里可以调用添加自拍的API
-    // 然后刷新用户数据
-    await refreshUserData();
-  };
-
-  const removeSelfie = async (selfieUrl: string) => {
-    // 这里可以调用删除自拍的API
-    // 然后刷新用户数据
-    await refreshUserData();
-  };
-
   return {
     selfies,
     hasSelfies,
     defaultSelfieUrl,
-    addSelfie,
-    removeSelfie,
     setDefaultSelfieUrl,
   };
 };
@@ -296,29 +186,15 @@ export const useUserSelfies = () => {
  * 专门处理用户余额相关的逻辑
  */
 export const useUserBalance = () => {
-  const { userInfo, formatBalance, refreshUserData } = useUser();
+  const { userInfo, formatBalance } = useUser();
 
   const balance = userInfo.balance;
   const balanceFormatted = formatBalance();
   const balanceYuan = balance;
 
-  const deductBalance = async (amount: number) => {
-    // 这里可以调用扣除余额的API
-    // 然后刷新用户数据
-    await refreshUserData();
-  };
-
-  const addBalance = async (amount: number) => {
-    // 这里可以调用增加余额的API
-    // 然后刷新用户数据
-    await refreshUserData();
-  };
-
   return {
     balance,
     balanceFormatted,
     balanceYuan,
-    deductBalance,
-    addBalance,
   };
 };

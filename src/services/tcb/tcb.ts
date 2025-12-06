@@ -48,7 +48,7 @@ export const callFaceFusionCloudFunction = async (params: FusionParams): Promise
 
     // 使用axios调用本地CloudBase云函数
     const baseUrl = 'https://startup-2gn33jt0ca955730-1257391807.ap-shanghai.app.tcloudbase.com';
-      const response: AxiosResponse<any> = await axios.post(
+    const response: AxiosResponse<any> = await axios.post(
       `${baseUrl}/fusion`,
       {
         data: {

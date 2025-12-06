@@ -106,6 +106,7 @@ export class UserDataService {
             subscription_type: true,
             subscription_product_id: true,
             subscription_auto_renew: true,
+            uid: true,
             status: true,
             accountStatus: true,
             preferences: true,
