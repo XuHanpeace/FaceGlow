@@ -1,2 +1,2 @@
-export const appVersion = '1.3.2';
-export const jsVersion = '1.3.2'; // 改回旧版本，用于测试 Release 包的热更新
+export const appVersion = '2.0.0';
+export const jsVersion = '2.0.0';
