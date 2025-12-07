@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="23504" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="01J-lp-oVM">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="23727" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="01J-lp-oVM">
     <device id="retina4_7" orientation="portrait" appearance="light"/>
     <dependencies>
         <deployment identifier="iOS"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="23506"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="23721"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
@@ -16,19 +16,47 @@
                         <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <!-- 开屏背景图片 -->
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFill" translatesAutoresizingMaskIntoConstraints="NO" image="LaunchBackground" id="bg-image">
-                                <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="AppLogo" translatesAutoresizingMaskIntoConstraints="NO" id="app-logo">
+                                <rect key="frame" x="120.5" y="287.5" width="48" height="48"/>
+                                <constraints>
+                                    <constraint firstAttribute="height" constant="48" id="logo-height"/>
+                                    <constraint firstAttribute="width" constant="48" id="logo-width"/>
+                                </constraints>
                             </imageView>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="美颜换换" textAlignment="left" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="app-name">
+                                <rect key="frame" x="176.5" y="291.5" width="107" height="33.5"/>
+                                <fontDescription key="fontDescription" name="HelveticaNeue-Bold" family="Helvetica Neue" pointSize="28"/>
+                                <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="自拍秒变写真，美就现在" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="slogan-cn">
+                                <rect key="frame" x="50" y="397" width="275" height="20"/>
+                                <fontDescription key="fontDescription" name="HelveticaNeue-Light" family="Helvetica Neue" pointSize="16"/>
+                                <color key="textColor" white="1" alpha="0.80000000000000004" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="From Selfie to Glamour, Glow Up Now!" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="slogan-en">
+                                <rect key="frame" x="50" y="427" width="275" height="17"/>
+                                <fontDescription key="fontDescription" name="HelveticaNeue-Light" family="Helvetica Neue" pointSize="14"/>
+                                <color key="textColor" white="1" alpha="0.69999999999999996" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                <nil key="highlightedColor"/>
+                            </label>
                         </subviews>
                         <viewLayoutGuide key="safeArea" id="Bcu-3y-fUS"/>
-                        <color key="backgroundColor" red="0.07450980392156863" green="0.07450980392156863" blue="0.07450980392156863" alpha="1" colorSpace="calibratedRGB"/>
+                        <color key="backgroundColor" red="0.074509803921568626" green="0.074509803921568626" blue="0.074509803921568626" alpha="1" colorSpace="calibratedRGB"/>
                         <constraints>
-                            <!-- 背景图片铺满 -->
-                            <constraint firstItem="bg-image" firstAttribute="top" secondItem="Ze5-6b-2t3" secondAttribute="top" id="bg-top"/>
-                            <constraint firstItem="bg-image" firstAttribute="leading" secondItem="Ze5-6b-2t3" secondAttribute="leading" id="bg-leading"/>
-                            <constraint firstAttribute="trailing" secondItem="bg-image" secondAttribute="trailing" id="bg-trailing"/>
-                            <constraint firstAttribute="bottom" secondItem="bg-image" secondAttribute="bottom" id="bg-bottom"/>
+                            <constraint firstItem="app-logo" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" constant="-80" id="logo-centerY"/>
+                            <constraint firstItem="app-name" firstAttribute="leading" secondItem="app-logo" secondAttribute="trailing" constant="12" id="name-leading"/>
+                            <constraint firstItem="app-name" firstAttribute="centerY" secondItem="app-logo" secondAttribute="centerY" id="name-centerY"/>
+                            <constraint firstItem="app-logo" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" constant="-59.5" id="logo-centerX"/>
+                            <constraint firstItem="slogan-cn" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="slogan-cn-centerX"/>
+                            <constraint firstItem="slogan-cn" firstAttribute="leading" secondItem="Ze5-6b-2t3" secondAttribute="leading" constant="50" id="slogan-cn-leading"/>
+                            <constraint firstAttribute="trailing" secondItem="slogan-cn" secondAttribute="trailing" constant="50" id="slogan-cn-trailing"/>
+                            <constraint firstItem="slogan-en" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="slogan-en-centerX"/>
+                            <constraint firstItem="slogan-en" firstAttribute="leading" secondItem="Ze5-6b-2t3" secondAttribute="leading" constant="50" id="slogan-en-leading"/>
+                            <constraint firstItem="slogan-en" firstAttribute="top" secondItem="slogan-cn" secondAttribute="bottom" constant="10" id="slogan-en-top"/>
+                            <constraint firstAttribute="trailing" secondItem="slogan-en" secondAttribute="trailing" constant="50" id="slogan-en-trailing"/>
+                            <constraint firstItem="Bcu-3y-fUS" firstAttribute="bottom" secondItem="slogan-en" secondAttribute="bottom" constant="30" id="slogan-en-bottom"/>
                         </constraints>
                     </view>
                 </viewController>
@@ -38,6 +66,6 @@
         </scene>
     </scenes>
     <resources>
-        <image name="LaunchBackground" width="1290" height="2796"/>
+        <image name="AppLogo" width="512" height="512"/>
     </resources>
 </document>

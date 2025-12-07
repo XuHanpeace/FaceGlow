@@ -139,7 +139,7 @@ export const FilterSection: React.FC<FilterSectionProps> = ({
   const allFunctionType: CategoryConfigRecord = {
     category_id: 'all',
     category_code: 'all',
-    category_label: 'All',
+    category_label: '全部',
     category_type: 'function_type',
     is_active: true,
     sort_order: 0,
