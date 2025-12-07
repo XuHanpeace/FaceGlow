@@ -45,12 +45,12 @@ const SelfieGuideScreen: React.FC = () => {
   // 使用本地资源图片展示过程
   const selfieImage = require('../assets/selfie.png');
   const tempImages = [
-    require('../assets/temp1.png'),
-    require('../assets/temp2.png'),
+    { uri: 'https://myhh2-1257391807.cos.ap-nanjing.myqcloud.com/static/temp1.png' },
+    { uri: 'https://myhh2-1257391807.cos.ap-nanjing.myqcloud.com/static/temp2.png' },
   ];
   const aiResultImages = [
-    require('../assets/ai-result1.png'),
-    require('../assets/ai-result2.png'),
+    { uri: 'https://myhh2-1257391807.cos.ap-nanjing.myqcloud.com/static/ai-result1.png' },
+    { uri: 'https://myhh2-1257391807.cos.ap-nanjing.myqcloud.com/static/ai-result2.png' },
   ];
 
   const handleClosePress = () => {

@@ -16,6 +16,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { themeColors } from '../config/theme';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import MasonryList from '@react-native-seoul/masonry-list';
+import FastImage from 'react-native-fast-image';
 
 import { RootStackParamList } from '../types/navigation';
 import HomeHeader, { HomeHeaderRef } from '../components/HomeHeader';
@@ -79,6 +80,27 @@ const NewHomeScreen: React.FC = () => {
   // Load Config on Mount
   useEffect(() => {
     loadConfig();
+  }, []);
+
+  // Preload images from COS
+  useEffect(() => {
+    const preloadImages = async () => {
+      try {
+        const imagesToPreload = [
+          { uri: 'https://myhh2-1257391807.cos.ap-nanjing.myqcloud.com/static/ai-result1.png' },
+          { uri: 'https://myhh2-1257391807.cos.ap-nanjing.myqcloud.com/static/ai-result2.png' },
+          { uri: 'https://myhh2-1257391807.cos.ap-nanjing.myqcloud.com/static/temp1.png' },
+          { uri: 'https://myhh2-1257391807.cos.ap-nanjing.myqcloud.com/static/temp2.png' },
+        ];
+        
+        await FastImage.preload(imagesToPreload);
+        console.log('✅ 图片预加载完成');
+      } catch (error) {
+        console.warn('图片预加载失败:', error);
+      }
+    };
+    
+    preloadImages();
   }, []);
 
   const loadConfig = async () => {

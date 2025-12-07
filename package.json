@@ -13,8 +13,8 @@
     "format": "prettier --write .",
     "publish": "node scripts/prepare-testflight.js",
     "pushy:login": "npx react-native-update-cli login",
-    "pushy:upload-ipa": "bash scripts/pushy-upload-ipa.sh",
-    "pushy:hot-update": "bash scripts/pushy-hot-update.sh",
+    "publish:ipa": "bash scripts/pushy-upload-ipa.sh",
+    "publish:rn": "bash scripts/pushy-hot-update.sh",
     "pushy:release": "bash scripts/pushy-release.sh",
     "patch-release": "node scripts/patch-release.js"
   },
