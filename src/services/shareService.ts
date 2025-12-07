@@ -212,12 +212,8 @@ class ShareService {
         };
       }
 
-      // 2. 获取高质量图片URL
-      const highQualityUrl = this.getHighQualityImageUrl(imageUrl);
-      console.log('📥 [SaveImage] 高质量图片URL:', highQualityUrl);
-
       // 3. 使用 rn-fetch-blob 下载图片到临时目录（PNG格式）
-      console.log('📥 [SaveImage] 步骤2: 下载图片到临时目录（PNG格式）');
+      console.log('📥 [SaveImage] 步骤2: 下载图片到临时目录（PNG格式）', imageUrl);
       const timestamp = Date.now();
       // 使用 rn-fetch-blob 获取缓存目录
       const cacheDir = RNFetchBlob.fs.dirs.CacheDir;
@@ -231,7 +227,7 @@ class ShareService {
           useDownloadManager: false,
           notification: false,
         },
-      }).fetch('GET', highQualityUrl);
+      }).fetch('GET', imageUrl);
 
       const statusCode = response.info().status;
       console.log('📥 [SaveImage] 下载结果状态码:', statusCode);

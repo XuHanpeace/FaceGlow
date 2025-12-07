@@ -1,5 +1,5 @@
 import { useRef, useImperativeHandle, forwardRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
@@ -59,32 +59,34 @@ const HomeHeader = forwardRef<HomeHeaderRef, HomeHeaderProps>((props, ref) => {
 
   return (
     <View style={styles.container}>
-      {/* 左侧余额区域 */}
-      <View style={styles.balanceContainer}>
-        <TouchableOpacity 
-          style={styles.balanceInfo}
-          onPress={() => navigation.navigate('CoinPurchase')}
-        >
-          <View style={styles.balanceValue}>
-            <View style={styles.balanceIconContainer}>
-              <Animated.Image 
-                source={require('../assets/mm-coins.png')} 
-                style={[
-                  styles.balanceIcon,
-                  {
-                    transform: [{ rotateY: coinIconRotation }],
-                  },
-                ]}
-                resizeMode="contain"
-              />
-            </View>
-            <Text style={styles.balanceNumber}>{balanceFormatted}</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
+      {/* 左侧品牌文本（带渐变效果） */}
+      <Text style={styles.brandText}>美颜换换</Text>
 
-      {/* 右侧按钮区域 */}
+      {/* 右侧头像按钮 */}
       <View style={styles.rightContainer}>
+         {/* 中间金币区域（在头像左边） */}
+        <View style={styles.balanceContainer}>
+          <TouchableOpacity 
+            style={styles.balanceInfo}
+            onPress={() => navigation.navigate('CoinPurchase')}
+          >
+            <View style={styles.balanceValue}>
+              <View style={styles.balanceIconContainer}>
+                <Animated.Image 
+                  source={require('../assets/mm-coins.png')} 
+                  style={[
+                    styles.balanceIcon,
+                    {
+                      transform: [{ rotateY: coinIconRotation }],
+                    },
+                  ]}
+                  resizeMode="contain"
+                />
+              </View>
+              <Text style={styles.balanceNumber}>{balanceFormatted}</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
         <TouchableOpacity style={styles.profileButton} onPress={handleProfilePress}>
           <UserAvatar size={36} />
         </TouchableOpacity>
@@ -101,9 +103,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 15,
   },
+  brandContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  brandText: {
+    fontSize: 26,
+    color: '#fff',
+    fontWeight: '700',
+    fontFamily: Platform.select({
+      ios: 'Helvetica Neue-Bold', // iOS 使用苹方字体（更现代的中文字体）
+      android: 'sans-serif-condensed', // Android 使用紧凑型无衬线字体（更优雅）
+    }),
+    letterSpacing: 1, // 增加字间距，让文字更优雅
+  },
+  gradientText: {
+    justifyContent: 'center',
+  },
   balanceContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginRight: 12,
   },
   freeBadge: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',

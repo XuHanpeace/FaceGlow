@@ -180,6 +180,7 @@ const AlbumSlide = React.memo(({
         initialNumToRender={2}
         windowSize={3}
         removeClippedSubviews={true}
+        nestedScrollEnabled={true}
       />
     </View>
   );
@@ -244,11 +245,11 @@ const BeforeCreationScreen: React.FC = () => {
 console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
 
   // 垂直滑动回调
-  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+  const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (viewableItems.length > 0 && viewableItems[0].index !== null) {
       setActiveAlbumIndex(viewableItems[0].index);
     }
-  }).current;
+  }, []);
 
   const handleUseStylePress = useCallback(async (currentTemplate: Template) => {
     // 触发触觉反馈
@@ -512,6 +513,7 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
       <BackButton iconType="arrow" onPress={handleBackPress} />
 
       <FlatList
+        style={{ flex: 1 }}
         data={albumsWithCurrent}
         renderItem={renderAlbumItem}
         keyExtractor={(item) => item.album_id}
@@ -532,6 +534,7 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
         maxToRenderPerBatch={2}
         windowSize={3}
         removeClippedSubviews={true}
+        nestedScrollEnabled={true}
       />
     </View>
   );

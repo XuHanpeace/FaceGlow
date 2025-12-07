@@ -3,6 +3,7 @@ import { asyncTaskService, BailianParams } from '../../services/cloud/asyncTaskS
 import { userWorkService } from '../../services/database/userWorkService';
 import { TaskStatus, UserWorkModel } from '../../types/model/user_works';
 import { fetchUserWorks } from './userWorksSlice';
+import { imageUploadService } from '../../services/imageUploadService';
 
 // 任务信息接口
 export interface AsyncTask {
@@ -177,28 +178,67 @@ export const pollAsyncTask = createAsyncThunk(
               taskStatus: newStatus
             };
 
-            // 如果成功，更新 result_data
-            if (newStatus === TaskStatus.SUCCESS && resultImage) {
-                const resultData = work.record?.result_data || []; // 类型保护 work.record 为 UserWorkModel
-                if (resultData.length > 0) {
-                    // 创建新数组，更新第一个元素的 result_image
-                    const newResultData = [...resultData];
-                    newResultData[0] = { ...newResultData[0], result_image: resultImage };
-                    updateData.result_data = newResultData;
-                }
-            }
-
-            // 同步更新 ext_data (保留 selfie_url)
+            // 解析 ext_data
             let extDataObj = {};
             try {
                 extDataObj = JSON.parse(work.record?.ext_data || '{}');
             } catch (e) {}
 
-            updateData.ext_data = JSON.stringify({
-                ...extDataObj,
-                task_status: newStatus,
-                task_id: task.taskId
-            });
+            // 如果成功，先上传图片到COS，再更新 result_data
+            if (newStatus === TaskStatus.SUCCESS && resultImage) {
+                console.log('[Redux] 任务成功，开始上传图片到COS:', resultImage);
+                
+                // 上传图片到COS（传入 album_id 用于文件命名）
+                const albumId = work.record?.album_id || work.record?.activity_id || undefined;
+                const uploadResult = await imageUploadService.uploadImageToCOS(resultImage, 'user_works', albumId);
+                
+                if (!uploadResult.success || !uploadResult.cosUrl) {
+                    console.error('[Redux] 图片上传到COS失败:', uploadResult.error);
+                    // 即使上传失败，也保存临时URL，避免数据丢失
+                    // 但记录错误信息到 ext_data
+                    const resultData = work.record?.result_data || [];
+                    if (resultData.length > 0) {
+                        const newResultData = [...resultData];
+                        newResultData[0] = { ...newResultData[0], result_image: resultImage };
+                        updateData.result_data = newResultData;
+                    }
+                    
+                    // 记录上传失败信息
+                    updateData.ext_data = JSON.stringify({
+                        ...extDataObj,
+                        task_status: newStatus,
+                        task_id: task.taskId,
+                        cos_upload_failed: true,
+                        cos_upload_error: uploadResult.error,
+                        result_image_temp_url: resultImage, // 保留临时URL作为备份
+                    });
+                } else {
+                    console.log('[Redux] 图片上传到COS成功:', uploadResult.cosUrl);
+                    
+                    // 使用COS URL更新 result_data
+                    const resultData = work.record?.result_data || [];
+                    if (resultData.length > 0) {
+                        const newResultData = [...resultData];
+                        newResultData[0] = { ...newResultData[0], result_image: uploadResult.cosUrl };
+                        updateData.result_data = newResultData;
+                    }
+                    
+                    // 更新 ext_data，记录COS URL
+                    updateData.ext_data = JSON.stringify({
+                        ...extDataObj,
+                        task_status: newStatus,
+                        task_id: task.taskId,
+                        result_image_cos_url: uploadResult.cosUrl,
+                    });
+                }
+            } else {
+                // 非成功状态，只更新状态信息
+                updateData.ext_data = JSON.stringify({
+                    ...extDataObj,
+                    task_status: newStatus,
+                    task_id: task.taskId
+                });
+            }
 
             // 2. 使用 _id 更新作品
             console.log('[Redux] 正在更新DB workId:', workId, '更新数据:', updateData); // LOG: Update UserWork

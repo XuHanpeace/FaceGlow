@@ -34,6 +34,12 @@ export const themeColors = {
     start: { x: 0, y: 0 },
     end: { x: 1, y: 0 },
   },
+  // App 图标渐变色（粉红到紫色，对角线）
+  appIcon: {
+    gradient: ['#FF6C9F', '#AE55F3'], // rgb(255 108 159) -> rgb(174 85 243)
+    start: { x: 0, y: 0 }, // 左上角
+    end: { x: 1, y: 1 }, // 右下角
+  },
 };
 
 // 纯色主题色（用于边框、文本等）

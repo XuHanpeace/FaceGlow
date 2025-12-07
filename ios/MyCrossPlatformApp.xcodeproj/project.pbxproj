@@ -13,6 +13,8 @@
 		245563D7274B02A878A37B53 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		365D68962E5B05C800CF6564 /* NativeCOS.m in Sources */ = {isa = PBXBuildFile; fileRef = 365D68952E5B05C800CF6564 /* NativeCOS.m */; };
 		365F1FB72D1710BA00177D30 /* NativeNavigation.m in Sources */ = {isa = PBXBuildFile; fileRef = 365F1FB62D1710BA00177D30 /* NativeNavigation.m */; };
+		3C6BBF222EE51A2F00341FD8 /* v3.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 3C6BBF212EE51A2F00341FD8 /* v3.mp4 */; };
+		3C6BBF232EE51A2F00341FD8 /* v2.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 3C6BBF202EE51A2F00341FD8 /* v2.mp4 */; };
 		3CB74E8F2E707E1800AB5C28 /* ApplePayModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 3CB74E8E2E707E1800AB5C28 /* ApplePayModule.m */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		C11295B267451C3619CCC004 /* libPods-MyCrossPlatformApp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B24654D864AB3E54102D98DF /* libPods-MyCrossPlatformApp.a */; };
@@ -34,6 +36,8 @@
 		365D68972E5B05DC00CF6564 /* NativeCOS.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MyCrossPlatformApp/NativeCOS.h; sourceTree = "<group>"; };
 		365F1FB52D1710BA00177D30 /* NativeNavigation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NativeNavigation.h; sourceTree = "<group>"; };
 		365F1FB62D1710BA00177D30 /* NativeNavigation.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NativeNavigation.m; sourceTree = "<group>"; };
+		3C6BBF202EE51A2F00341FD8 /* v2.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = v2.mp4; sourceTree = "<group>"; };
+		3C6BBF212EE51A2F00341FD8 /* v3.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = v3.mp4; sourceTree = "<group>"; };
 		3CB74E8D2E707E1800AB5C28 /* ApplePayModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ApplePayModule.h; sourceTree = "<group>"; };
 		3CB74E8E2E707E1800AB5C28 /* ApplePayModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ApplePayModule.m; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = MyCrossPlatformApp/LaunchScreen.storyboard; sourceTree = "<group>"; };
@@ -116,6 +120,8 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
+				3C6BBF202EE51A2F00341FD8 /* v2.mp4 */,
+				3C6BBF212EE51A2F00341FD8 /* v3.mp4 */,
 				3CB74E8D2E707E1800AB5C28 /* ApplePayModule.h */,
 				3CB74E8E2E707E1800AB5C28 /* ApplePayModule.m */,
 				365D68972E5B05DC00CF6564 /* NativeCOS.h */,
@@ -214,6 +220,8 @@
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				245563D7274B02A878A37B53 /* PrivacyInfo.xcprivacy in Resources */,
+				3C6BBF222EE51A2F00341FD8 /* v3.mp4 in Resources */,
+				3C6BBF232EE51A2F00341FD8 /* v2.mp4 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -280,7 +280,7 @@ const SubscriptionScreen: React.FC = () => {
       {/* 背景视频 */}
       <Video
         ref={videoRef}
-        source={require('../assets/v3.mp4')}
+        source={{ uri: 'v3.mp4' }} // 使用原生资源（iOS 在 Xcode Resources 中，Android 在 res/raw 中）
         style={styles.backgroundVideo}
         muted={true}
         repeat={true}

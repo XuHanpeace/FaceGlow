@@ -279,7 +279,7 @@ const CoinPurchaseScreen: React.FC = () => {
       <View style={styles.videoContainer}>
         <Video
           ref={videoRef}
-          source={require('../assets/v2.mp4')}
+          source={{ uri: 'v2.mp4' }} // 使用原生资源（iOS 在 Xcode Resources 中，Android 在 res/raw 中）
           style={styles.backgroundVideo}
           muted={true}
           repeat={true}
@@ -287,6 +287,9 @@ const CoinPurchaseScreen: React.FC = () => {
           rate={1.0}
           ignoreSilentSwitch="obey"
           paused={false}
+          onError={(error) => {
+            console.warn('视频加载失败:', error);
+          }}
         />
         {/* 视频底部渐变遮罩，实现过渡效果 */}
         <LinearGradient
@@ -485,6 +488,10 @@ const styles = StyleSheet.create({
   backgroundVideo: {
     width: '100%',
     height: '100%',
+  },
+  videoPlaceholder: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1,
   },
   videoGradient: {
     position: 'absolute',

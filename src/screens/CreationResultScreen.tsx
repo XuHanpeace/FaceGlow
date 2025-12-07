@@ -22,13 +22,14 @@ import { callFaceFusionCloudFunction } from '../services/tcb/tcb';
 import { userWorkService } from '../services/database/userWorkService';
 import { useAuthState } from '../hooks/useAuthState';
 import { aegisService } from '../services/monitoring/aegisService';
+import { imageUploadService } from '../services/imageUploadService';
 import { UserWorkModel, ResultData } from '../types/model/user_works';
 import { authService } from '../services/auth/authService';
 import { shareService } from '../services/shareService';
 import { ShareModal } from '../components/ShareModal';
 import GradientButton from '../components/GradientButton';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
-import { showSuccessToast, showErrorToast } from '../utils/toast';
+import { showSuccessToast, showErrorToast, showInfoToast } from '../utils/toast';
 import BackButton from '../components/BackButton';
 import ReactNativeHapticFeedback from "react-native-haptic-feedback";
 
@@ -301,7 +302,7 @@ const CreationResultScreen: React.FC = () => {
           resultData.push({
             template_id: template.template_id,
             template_image: template.template_url,
-            result_image: fusionResult,
+            result_image: fusionResult, // 临时URL，稍后会被COS URL替换
           });
         }
       });
@@ -313,7 +314,51 @@ const CreationResultScreen: React.FC = () => {
         return;
       }
 
-      // 构建用户作品数据
+      // 1. 上传所有结果图片到COS（替换临时URL为永久URL）
+      console.log('📤 开始上传图片到COS...');
+      const imageUrls = resultData.map(r => r.result_image).filter(Boolean) as string[];
+      
+      // 显示上传进度提示
+      if (imageUrls.length > 0) {
+        showInfoToast(`正在上传 ${imageUrls.length} 张图片到云端...`);
+      }
+      
+      const uploadResults = await imageUploadService.uploadImagesToCOS(
+        imageUrls, 
+        'user_works',
+        albumData.album_id // 传入 album_id 用于文件命名
+      );
+      
+      // 检查上传结果
+      const failedUploads = uploadResults.filter(r => !r.success);
+      if (failedUploads.length > 0) {
+        console.error('❌ 部分图片上传失败:', failedUploads);
+        Alert.alert(
+          '😢 上传失败',
+          `${failedUploads.length} 张图片上传失败，请检查网络连接后重试`
+        );
+        setIsSaving(false);
+        return;
+      }
+
+      // 2. 更新 resultData，使用COS URL替换临时URL
+      const cosUrlMap = new Map<string, string>();
+      imageUrls.forEach((url, index) => {
+        if (uploadResults[index].cosUrl) {
+          cosUrlMap.set(url, uploadResults[index].cosUrl!);
+        }
+      });
+
+      const resultDataWithCOS = resultData.map(result => ({
+        ...result,
+        result_image: result.result_image && cosUrlMap.get(result.result_image) 
+          ? cosUrlMap.get(result.result_image)! 
+          : result.result_image,
+      }));
+
+      console.log('✅ 所有图片已上传到COS，开始保存作品记录...');
+
+      // 3. 构建用户作品数据（使用COS URL）
       const workData: Omit<UserWorkModel, '_id'> = {
         uid: userId,
         activity_id: activityId,
@@ -324,7 +369,7 @@ const CreationResultScreen: React.FC = () => {
         likes: '0',
         is_public: '1', // 默认公开
         download_count: '0',
-        result_data: resultData,
+        result_data: resultDataWithCOS,
         ext_data: JSON.stringify({
           selfie_url: selfieUrl,
           completed_templates: resultData.map(r => r.template_id),
@@ -335,7 +380,7 @@ const CreationResultScreen: React.FC = () => {
         updatedAt: Date.now(),
       };
 
-      console.log('🔄 开始保存用户作品:', workData);
+      console.log('🔄 开始保存用户作品到数据库:', workData);
 
       const result = await userWorkService.createWork(workData);
 

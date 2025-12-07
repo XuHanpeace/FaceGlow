@@ -480,6 +480,7 @@ const UserWorkPreviewScreen: React.FC = () => {
 
   const handleSharePress = () => {
     const currentResultImage = activeWork?.result_data?.[0]?.result_image;
+    debugger;
     if (currentResultImage) {
       setShareImageUrl(currentResultImage);
       setShowShareModal(true);

@@ -8,8 +8,12 @@ import {
   Dimensions,
   Animated,
   ScrollView,
+  Text,
+  Platform,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { themeColors } from '../config/theme';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import MasonryList from '@react-native-seoul/masonry-list';
 
@@ -374,6 +378,20 @@ const NewHomeScreen: React.FC = () => {
       <StatusBar barStyle="light-content" backgroundColor="#000" />
       <SafeAreaView style={styles.safeAreaTop} />
       
+      {/* iPhone 刘海处的渐变胶囊 */}
+      {Platform.OS === 'ios' && (
+        <View style={[styles.notchCapsule, { top: 5 }]}>
+          <LinearGradient
+            colors={themeColors.appIcon.gradient} // 使用 App 图标渐变配置
+            start={themeColors.appIcon.start}
+            end={themeColors.appIcon.end}
+            style={styles.capsuleGradient}
+          >
+            <Text style={styles.capsuleText}>FaceGlow</Text>
+          </LinearGradient>
+        </View>
+      )}
+      
       <View style={styles.fixedHeader}>
         <HomeHeader
           ref={homeHeaderRef}
@@ -528,7 +546,30 @@ const styles = StyleSheet.create({
       zIndex: 2, 
       justifyContent: 'center',
       alignItems: 'center',
-  }
+  },
+  notchCapsule: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 1000, // 确保在最上层
+    pointerEvents: 'box-none', // 允许点击穿透
+  },
+  capsuleGradient: {
+    borderRadius: 40, // 胶囊形状
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  capsuleText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+    fontStyle: 'italic',
+    // fontFamily: 'Helvetica Neue-Bold',
+    letterSpacing: -0.5,
+    marginHorizontal: 10,
+    marginVertical: 4,
+  },
 });
 
 export default NewHomeScreen;
