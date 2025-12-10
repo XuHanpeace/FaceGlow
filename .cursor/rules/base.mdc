@@ -85,6 +85,41 @@ FaceGlow是一个基于React Native的跨平台AI换脸应用，使用CloudBase�
 - 引用资源前先检查文件是否存在
 - 使用项目中已存在的资源文件
 - 为缺失的资源提供合适的替代方案
+
+## 版本发布流程
+
+### 大版本发布
+**定义**：更新APP版本 + 更新JS版本，xCode Archive 提交Apple审核；ipa文件上传至pushy
+
+**流程**：
+1. 运行 `scripts/bump-version.js` 更新版本号（同时更新APP版本和JS版本）
+2. 在 xCode 中执行 Archive 构建
+3. 提交到 Apple App Store 审核
+4. 将 ipa 文件上传至 pushy
+
+**使用场景**：
+- 原生代码变更
+- 需要提交 App Store 审核
+- 重大功能更新
+
+### 小版本发布
+**定义**：仅更新JS版本，上传至pushy
+
+**流程**：
+1. 运行 `scripts/bump-js-version.js` 仅更新JS版本号
+2. 打包 JS Bundle
+3. 上传至 pushy 热更新服务
+
+**使用场景**：
+- 仅 JavaScript/TypeScript 代码变更
+- React Native 热更新
+- 不需要重新提交 App Store 审核的修复和功能更新
+
+### 版本管理脚本
+- `scripts/bump-version.js` - 更新APP版本（同时更新APP和JS版本）
+- `scripts/bump-js-version.js` - 仅更新JS版本（热更新版本）
+- `scripts/patch-release.js` - 小版本发布自动化流程
+
 description:
 globs:
 alwaysApply: true
