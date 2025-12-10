@@ -238,6 +238,27 @@ class ImageUploadService {
     
     return results;
   }
+
+  /**
+   * 上传视频到COS（暂时使用图片上传逻辑，因为都是下载后上传）
+   * @param _videoUrl 临时视频URL
+   * @param _folder COS文件夹路径（可选，默认为'user_works'）
+   * @param _albumId 相册ID（用于文件命名）
+   * @returns 上传结果，包含COS永久URL
+   */
+  async uploadVideoToCOS(
+    _videoUrl: string,
+    _folder: string = 'user_works',
+    _albumId?: string
+  ): Promise<ImageUploadResult> {
+    // TODO: 实现视频上传逻辑（目前返回失败，保留原始URL）
+    // 视频文件较大，下载上传需要特殊处理
+    console.warn('⚠️ 视频上传功能暂未实现，保留原始URL');
+    return {
+      success: false,
+      error: '视频上传功能暂未实现',
+    };
+  }
 }
 
 // 创建并导出服务实例

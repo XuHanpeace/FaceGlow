@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   Dimensions,
   FlatList,
   ViewToken,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -23,12 +25,13 @@ import { AlbumWithActivityId, selectAllAlbums } from '../store/slices/activitySl
 import GradientButton from '../components/GradientButton';
 import BackButton from '../components/BackButton';
 import SelfieSelector from '../components/SelfieSelector';
-import { startAsyncTask } from '../store/slices/asyncTaskSlice';
+import { startAsyncTask, StartAsyncTaskPayload, AsyncTaskError } from '../store/slices/asyncTaskSlice';
 import { CrossFadeImage } from '../components/CrossFadeImage';
 import FastImage from 'react-native-fast-image';
 import { useUser, useUserBalance, useUserSelfies } from '../hooks/useUser';
-import { AlbumRecord } from '../types/model/album';
+import { AlbumRecord, FunctionType } from '../types/model/album';
 import { aegisService } from '../services/monitoring/aegisService';
+import { TaskType } from '../services/cloud/asyncTaskService';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -42,14 +45,16 @@ const TemplateSlide = React.memo(({
   selectedSelfieUrl, 
   isFusionProcessing, 
   onUseStyle, 
-  onSelfieSelect 
+  onSelfieSelect
 }: { 
   template: Template, 
   album: Album, 
   selectedSelfieUrl: string | null, 
   isFusionProcessing: boolean, 
   onUseStyle: (template: Template) => void, 
-  onSelfieSelect: (url: string) => void 
+  onSelfieSelect: (url: string) => void,
+  customPrompt: string,
+  onCustomPromptChange: (text: string) => void,
 }) => {
   // 使用 AlbumRecord 结构中的 src_image 字段
   const albumRecord = album as AlbumRecord;
@@ -96,8 +101,29 @@ const TemplateSlide = React.memo(({
           </Text>
         </View>
 
+        {/* 自定义提示词输入框（如果允许） */}
+        {/* {album.allow_custom_prompt && (
+          <View style={styles.promptInputContainer}>
+            <TextInput
+              style={styles.promptInput}
+              placeholder={album.custom_prompt_placeholder || "描述你想要的视频效果..."}
+              placeholderTextColor="rgba(255, 255, 255, 0.5)"
+              value={customPrompt}
+              onChangeText={onCustomPromptChange}
+              multiline
+              numberOfLines={3}
+              maxLength={200}
+              textAlignVertical="top"
+              editable={!isFusionProcessing}
+            />
+            <Text style={styles.promptInputHint}>
+              {customPrompt.length}/200
+            </Text>
+          </View>
+        )} */}
+
         <GradientButton
-          title="立即创作"
+          title="一键创作"
           onPress={() => onUseStyle(template)}
           variant="primary"
           size="large"
@@ -132,13 +158,17 @@ const AlbumSlide = React.memo(({
   selectedSelfieUrl, 
   isFusionProcessing, 
   onUseStyle, 
-  onSelfieSelect 
+  onSelfieSelect,
+  customPrompt,
+  onCustomPromptChange,
 }: { 
   album: Album, 
   selectedSelfieUrl: string | null, 
   isFusionProcessing: boolean, 
   onUseStyle: (template: Template) => void, 
-  onSelfieSelect: (url: string) => void 
+  onSelfieSelect: (url: string) => void,
+  customPrompt: string,
+  onCustomPromptChange: (text: string) => void,
 }) => {
   
   // 如果是 asyncTask，可能 template_list 为空，构造一个虚拟 template
@@ -161,9 +191,11 @@ const AlbumSlide = React.memo(({
         isFusionProcessing={isFusionProcessing}
         onUseStyle={onUseStyle}
         onSelfieSelect={onSelfieSelect}
+        customPrompt={customPrompt}
+        onCustomPromptChange={onCustomPromptChange}
       />
     );
-  }, [album, selectedSelfieUrl, isFusionProcessing, onUseStyle, onSelfieSelect]);
+  }, [album, selectedSelfieUrl, isFusionProcessing, onUseStyle, onSelfieSelect, customPrompt, onCustomPromptChange]);
 
   return (
     <View style={styles.albumContainer}>
@@ -230,6 +262,7 @@ const BeforeCreationScreen: React.FC = () => {
   const [isFusionProcessing, setIsFusionProcessing] = useState(false);
   const [selectedSelfieUrl, setSelectedSelfieUrl] = useState<string | null>(null);
   const [activeAlbumIndex, setActiveAlbumIndex] = useState(initialIndex);
+  const [customPrompt, setCustomPrompt] = useState<string>('');
 
   // 页面加载时上报埋点
   useEffect(() => {
@@ -357,17 +390,43 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
       });
 
       if (isAsyncTask) {
-        // 异步任务逻辑（图生图）- 使用 prompt 数据
+        // 异步任务逻辑（图生图、图生视频、视频特效）- 使用 prompt 数据
         // 从 AlbumRecord 中获取 prompt_text
         const promptText = albumRecord.prompt_text || '';
         
-        if (!promptText) {
-          Alert.alert('错误', '缺少提示词数据，无法进行图生图创作');
+        // 判断任务类型
+        let taskType: TaskType;
+        if (albumRecord.function_type === FunctionType.IMAGE_TO_VIDEO) {
+          taskType = TaskType.IMAGE_TO_VIDEO;
+        } else if (albumRecord.function_type === FunctionType.VIDEO_EFFECT) {
+          taskType = TaskType.VIDEO_EFFECT;
+        } else {
+          taskType = TaskType.IMAGE_TO_IMAGE;
+        }
+
+        // 合并提示词：默认提示词 + 用户自定义提示词
+        let finalPrompt = promptText;
+        if (albumRecord.allow_custom_prompt && customPrompt.trim()) {
+          finalPrompt = `${promptText} ${customPrompt.trim()}`;
+        }
+        
+        if (!finalPrompt && taskType !== TaskType.VIDEO_EFFECT) {
+          Alert.alert('错误', '缺少提示词数据，无法进行创作');
           setIsFusionProcessing(false);
           return;
         }
         
-        console.log('[BeforeCreation] Starting AsyncTask with Prompt:', promptText);
+        // 验证必填参数
+        if ((taskType === TaskType.IMAGE_TO_IMAGE || taskType === TaskType.IMAGE_TO_VIDEO) && !selectedSelfieUrl) {
+          Alert.alert('错误', '请先选择自拍照');
+          setIsFusionProcessing(false);
+          return;
+        }
+        
+        // 视频特效使用首帧图片（从selectedSelfieUrl或images获取）
+        // 不需要额外验证，因为视频特效实际上使用的是首帧图片URL
+        
+        console.log('[BeforeCreation] Starting AsyncTask:', { taskType, prompt: finalPrompt });
         
         // 尝试从 authService 直接获取当前用户信息，作为兜底
         const currentUid = authService.getCurrentUserId();
@@ -378,18 +437,29 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
              throw new Error('用户未登录');
         }
 
-        const taskParams = {
-             prompt: promptText, // 使用 AlbumRecord 中的 prompt_text
-             images: [selectedSelfieUrl],
+        const taskParams: StartAsyncTaskPayload = {
+             taskType: taskType,
+             prompt: finalPrompt || '', // 视频特效不需要prompt，但保持向后兼容
+             images: [selectedSelfieUrl], // 视频特效也使用首帧图片（从自拍图获取）
+             audioUrl: taskType === TaskType.IMAGE_TO_VIDEO ? albumRecord.audio_url : undefined, // 图生视频音频URL（如果相册数据中有）
              activityId: currentActivityId,
              activityTitle: albumRecord.album_name,
              activityDescription: albumRecord.album_description,
-             activityImage: albumRecord.result_image || albumRecord.album_image,
+             activityImage: albumRecord.preview_video_url || albumRecord.result_image || albumRecord.album_image,
              uid: uid,
-             templateId: currentTemplate?.template_id || albumRecord.album_id, // 使用 template_id 或 album_id
-             price: totalPrice, // 传递价格给云函数
+             templateId: currentTemplate?.template_id || albumRecord.album_id,
+             price: totalPrice,
+             videoParams: {
+               resolution: '720P', // 图生视频和视频特效分辨率：480P、720P、1080P，默认720P
+               template: albumRecord.function_type === FunctionType.VIDEO_EFFECT 
+                 ? (albumRecord.video_effect_template || 'flying') // 视频特效模板，从数据库读取，默认 'flying'
+                 : undefined,
+               style_type: albumRecord.function_type === FunctionType.VIDEO_EFFECT 
+                 ? (albumRecord.video_effect_template || 'flying') // 向后兼容
+                 : undefined,
+             },
              promptData: {
-               text: promptText,
+               text: finalPrompt,
                srcImage: albumRecord.src_image,
                resultImage: albumRecord.result_image,
                styleTitle: albumRecord.album_name,
@@ -401,35 +471,51 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
         try {
         await dispatch(startAsyncTask(taskParams)).unwrap();
         console.log('[BeforeCreation] AsyncTask started successfully');
-        } catch (error: any) {
-          // 处理余额不足错误
-          if (error.message && error.message.includes('余额不足')) {
-            Alert.alert(
-              '💎 余额不足',
-              error.message + '\n是否前往充值？',
-              [
-                { text: '取消', style: 'cancel' },
-                { 
-                  text: '去充值', 
-                  onPress: () => navigation.navigate('CoinPurchase')
-                }
-              ]
-            );
-            return;
+        } catch (error) {
+          // 处理余额不足错误（使用错误码判断）
+          if (error && typeof error === 'object' && 'errCode' in error) {
+            const asyncTaskError = error as AsyncTaskError;
+            if (asyncTaskError.errCode === 'INSUFFICIENT_BALANCE') {
+              const currentBalance = asyncTaskError.data?.currentBalance ?? 0;
+              const requiredAmount = asyncTaskError.data?.requiredAmount ?? 0;
+              Alert.alert(
+                '💎 余额不足',
+                `需要${requiredAmount}美美币，当前余额${currentBalance}美美币\n是否前往充值？`,
+                [
+                  { text: '取消', style: 'cancel' },
+                  { 
+                    text: '去充值', 
+                    onPress: () => navigation.navigate('CoinPurchase')
+                  }
+                ]
+              );
+              return;
+            }
           }
-          throw error;
+          // 其他错误
+          const errorMessage = error && typeof error === 'object' && 'message' in error 
+            ? (error as AsyncTaskError).message 
+            : (error instanceof Error ? error.message : String(error));
+          throw new Error(errorMessage);
         }
 
         // 埋点：异步任务提交成功（使用 fg_action_ 前缀，包含专辑标题）
+        const taskTypeMessages = {
+          [TaskType.IMAGE_TO_IMAGE]: '图生图',
+          [TaskType.IMAGE_TO_VIDEO]: '图生视频',
+          [TaskType.VIDEO_EFFECT]: '视频特效'
+        };
+        
         aegisService.reportUserAction('async_task_submitted', {
           album_id: currentAlbum?.album_id || '',
-          album_title: currentAlbum?.album_name || '', // 专辑标题
+          album_title: currentAlbum?.album_name || '',
           template_id: currentTemplate?.template_id || albumRecord.album_id,
           activity_id: currentActivityId,
-          task_type: 'image_to_image',
+          task_type: taskType,
+          has_custom_prompt: !!(albumRecord.allow_custom_prompt && customPrompt.trim()),
         });
 
-        Alert.alert('任务已提交', '创作任务已在后台运行，请留意悬浮条任务列表。', [
+        Alert.alert('任务已提交', `${taskTypeMessages[taskType] || '创作'}任务已在后台运行，请留意悬浮条任务列表。`, [
             { text: '好的', onPress: () => navigation.goBack() }
         ]);
 
@@ -465,13 +551,14 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
         });
       }
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('处理失败:', error);
-      Alert.alert('错误', error.message || '处理失败，请重试');
+      const errorMessage = error instanceof Error ? error.message : '处理失败，请重试';
+      Alert.alert('错误', errorMessage);
     } finally {
       setIsFusionProcessing(false);
     }
-  }, [selectedSelfieUrl, navigation, activityId, albumsWithCurrent, activeAlbumIndex, activities, dispatch, user, userInfo, isVip, balance]);
+  }, [selectedSelfieUrl, customPrompt, navigation, activityId, albumsWithCurrent, activeAlbumIndex, activities, dispatch, user, userInfo, isVip, balance]);
 
   const handleBackPress = () => {
     navigation.goBack();
@@ -479,6 +566,10 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
 
   const handleSelfieSelect = useCallback((selfieUrl: string) => {
     setSelectedSelfieUrl(selfieUrl);
+  }, []);
+
+  const handleCustomPromptChange = useCallback((text: string) => {
+    setCustomPrompt(text);
   }, []);
 
   const renderAlbumItem = useCallback(({ item }: { item: Album }) => {
@@ -489,9 +580,11 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
         isFusionProcessing={isFusionProcessing}
         onUseStyle={handleUseStylePress}
         onSelfieSelect={handleSelfieSelect}
+        customPrompt={customPrompt}
+        onCustomPromptChange={handleCustomPromptChange}
       />
     );
-  }, [selectedSelfieUrl, isFusionProcessing, handleUseStylePress, handleSelfieSelect]);
+  }, [selectedSelfieUrl, isFusionProcessing, handleUseStylePress, handleSelfieSelect, customPrompt, handleCustomPromptChange]);
 
   // 如果没有数据，显示 Loading 或空状态
   if (!albumsWithCurrent || albumsWithCurrent.length === 0) {
@@ -512,6 +605,11 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
       
       <BackButton iconType="arrow" onPress={handleBackPress} />
 
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
       <FlatList
         style={{ flex: 1 }}
         data={albumsWithCurrent}
@@ -536,6 +634,7 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
         removeClippedSubviews={true}
         nestedScrollEnabled={true}
       />
+      </KeyboardAvoidingView>
     </View>
   );
 };
@@ -614,6 +713,26 @@ const styles = StyleSheet.create({
     color: '#FFD700',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  promptInputContainer: {
+    marginBottom: 16,
+    width: '100%',
+  },
+  promptInput: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    padding: 12,
+    color: '#fff',
+    fontSize: 14,
+    minHeight: 80,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  promptInputHint: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 11,
+    textAlign: 'right',
+    marginTop: 4,
   },
   useButton: {
     width: '100%',

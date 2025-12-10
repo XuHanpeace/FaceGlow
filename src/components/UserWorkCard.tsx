@@ -12,6 +12,7 @@ import { UserWorkModel, TaskStatus } from '../types/model/user_works';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { DeleteIcon } from './DeleteIcon';
 import FastImage from 'react-native-fast-image';
+import Video from 'react-native-video';
 
 interface UserWorkCardProps {
   work: UserWorkModel;
@@ -75,17 +76,52 @@ const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress, onDelete, ca
   // 增强 selfieUrl 获取逻辑：优先 ext_data，其次尝试取 result_data 中的 template_image (原图)
   const selfieUrl = extData.selfie_url || (work.result_data?.[0]?.template_image);
 
-  // 获取作品封面图片
-  const getCoverImage = () => {
-    // 如果是 asyncTask 且 result_image 为空 (生成中/失败)，优先展示 activity_image 或 template_image
-    if (work.activity_type === 'asyncTask' && (!work.result_data?.[0]?.result_image)) {
-       return work.activity_image || work.result_data?.[0]?.template_image;
-    }
-    if (work.result_data && work.result_data.length > 0) {
-      return work.result_data[0].result_image || work.activity_image;
-    }
-    return work.activity_image;
+  // 判断 result_image 是否是视频文件
+  const isVideoUrl = (url?: string) => {
+    if (!url) return false;
+    const urlLower = url.toLowerCase();
+    return urlLower.endsWith('.mp4') || urlLower.includes('.mp4?') || extData.task_type === 'image_to_video' || extData.task_type === 'video_effect';
   };
+
+  // 获取作品封面图片（如果 result_image 是视频，使用 activity_image 作为封面）
+  const getCoverImage = () => {
+    const resultImage = work.result_data?.[0]?.result_image;
+    
+    // 如果 result_image 是视频文件，使用 activity_image 或 template_image 作为封面（不能使用视频URL作为封面）
+    if (resultImage && isVideoUrl(resultImage)) {
+      return work.activity_image || work.result_data?.[0]?.template_image || work.result_data?.[0]?.template_image || '';
+    }
+    
+    // 如果是 asyncTask 且 result_image 为空 (生成中/失败)，优先展示 activity_image 或 template_image
+    if (work.activity_type === 'asyncTask' && (!resultImage)) {
+       return work.activity_image || work.result_data?.[0]?.template_image || '';
+    }
+    
+    // 如果有 result_image 且不是视频，直接使用
+    if (resultImage && !isVideoUrl(resultImage)) {
+      return resultImage;
+    }
+    
+    // 兜底：使用 activity_image 或 template_image
+    return work.activity_image || work.result_data?.[0]?.template_image || '';
+  };
+
+  // 获取视频URL（如果是视频作品）
+  const getVideoUrl = () => {
+    const resultImage = work.result_data?.[0]?.result_image;
+    if (resultImage && isVideoUrl(resultImage)) {
+      return resultImage;
+    }
+    // 也可以从 ext_data 中获取
+    if (extData.video_url && isVideoUrl(extData.video_url)) {
+      return extData.video_url;
+    }
+    return null;
+  };
+
+  const coverImage = getCoverImage();
+  const videoUrl = getVideoUrl();
+  const isVideoWork = !!videoUrl;
 
   // 格式化创建时间
   const formatDate = (timestamp?: number) => {
@@ -124,11 +160,35 @@ const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress, onDelete, ca
       activeOpacity={0.8}
     >
       <View style={{ position: 'relative' }}>
-        <FastImage 
-          source={{ uri: getCoverImage() }} 
-          style={[styles.workImage, { height: imageHeight }]}
-          resizeMode={FastImage.resizeMode.cover}
-        />
+        {/* 如果是视频作品，显示视频播放器；否则显示图片 */}
+        {isVideoWork && videoUrl ? (
+          <Video
+            source={{ uri: videoUrl }}
+            style={[styles.workImage, { height: imageHeight }]}
+            resizeMode="cover"
+            paused={true}
+            muted={true}
+            repeat={false}
+            playInBackground={false}
+            playWhenInactive={false}
+            poster={coverImage}
+            posterResizeMode="cover"
+          />
+        ) : (
+          <FastImage 
+            source={{ uri: coverImage }} 
+            style={[styles.workImage, { height: imageHeight }]}
+            resizeMode={FastImage.resizeMode.cover}
+          />
+        )}
+        
+        {/* 视频标识 */}
+        {isVideoWork && (
+          <View style={styles.videoBadge}>
+            <FontAwesome name="play-circle" size={14} color="#fff" />
+            <Text style={styles.videoBadgeText}>视频</Text>
+          </View>
+        )}
 
         {/* 任务状态覆盖层 */}
         {taskStatus === TaskStatus.PENDING && (
@@ -293,6 +353,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 8,
     fontWeight: '600',
+  },
+  videoBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  videoBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
+    marginLeft: 4,
   },
 });
 

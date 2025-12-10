@@ -1,9 +1,10 @@
-import React, { useMemo, useRef, useEffect } from 'react';
+import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, Dimensions, Animated } from 'react-native';
-import { AlbumRecord, AlbumLevel } from '../types/model/album';
+import { AlbumRecord, AlbumLevel, FunctionType } from '../types/model/album';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import LinearGradient from 'react-native-linear-gradient';
 import FastImage from 'react-native-fast-image';
+import Video from 'react-native-video';
 
 const { width: screenWidth } = Dimensions.get('window');
 // 2 column layout: Screen Width / 2 - Padding
@@ -24,6 +25,7 @@ export const NewAlbumCard: React.FC<NewAlbumCardProps> = ({
 }) => {
   // 渐隐渐显动画
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [isVideoPaused, setIsVideoPaused] = useState(false);
 
   useEffect(() => {
     // 卡片出现时渐显
@@ -33,6 +35,11 @@ export const NewAlbumCard: React.FC<NewAlbumCardProps> = ({
       useNativeDriver: true,
     }).start();
   }, []);
+
+  // 判断是否为视频类型相册
+  const isVideoAlbum = album.function_type === FunctionType.IMAGE_TO_VIDEO || 
+                       album.function_type === FunctionType.VIDEO_EFFECT;
+  const hasPreviewVideo = !!album.preview_video_url;
 
   // Determine cover image
   const coverImage = album.template_list?.[0]?.template_url || album.album_image;
@@ -160,13 +167,40 @@ export const NewAlbumCard: React.FC<NewAlbumCardProps> = ({
         activeOpacity={0.8}
       >
         <View style={[styles.imageContainer, { height: cardHeight }]}>
-        <FastImage
-          source={{ uri: coverImage }}
-          style={styles.image}
-          resizeMode={FastImage.resizeMode.cover}
-        />
+        {/* 如果有预览视频，显示视频播放器；否则显示图片 */}
+        {hasPreviewVideo && isVideoAlbum ? (
+          <Video
+            source={{ uri: album.preview_video_url }}
+            style={styles.video}
+            resizeMode="cover"
+            paused={isVideoPaused}
+            muted={true}
+            repeat={true}
+            playInBackground={false}
+            playWhenInactive={false}
+            ignoreSilentSwitch="obey"
+            onError={(error) => {
+              console.warn('视频播放错误:', error);
+              setIsVideoPaused(true);
+            }}
+          />
+        ) : (
+          <FastImage
+            source={{ uri: coverImage }}
+            style={styles.image}
+            resizeMode={FastImage.resizeMode.cover}
+          />
+        )}
         
         {renderBadge()}
+        
+        {/* 视频类型标识 */}
+        {isVideoAlbum && (
+          <View style={styles.videoBadge}>
+            <FontAwesome name="play-circle" size={12} color="#fff" />
+            <Text style={styles.videoBadgeText}>视频</Text>
+          </View>
+        )}
         
         {/* Template count for template-based albums */}
         {(!album.src_image && album.template_list && album.template_list.length > 0) && (
@@ -224,6 +258,28 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: '100%',
+  },
+  video: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#000',
+  },
+  videoBadge: {
+    position: 'absolute',
+    bottom: 6,
+    left: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  videoBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '500',
+    marginLeft: 4,
   },
   activityBadge: {
     position: 'absolute',

@@ -113,7 +113,7 @@ class AegisService {
    * @param action 行为名称
    * @param params 行为参数
    */
-  reportUserAction(action: string, params?: Record<string, string | number | boolean>) {
+  reportUserAction(action: string, params?: Record<string, string | number | boolean | undefined>) {
     if (!aegisInstance) {
       console.warn('Aegis 未初始化，无法上报用户行为');
       return;
@@ -121,7 +121,7 @@ class AegisService {
 
     try {
       // 使用 fg_action_ 前缀
-      this.reportEvent(`fg_action_${action}`, params || {});
+      this.reportEvent(`fg_action_${action}`, params as Record<string, string | number | boolean>);
     } catch (error) {
       console.error('上报用户行为失败:', error);
     }
@@ -158,7 +158,7 @@ class AegisService {
    * @param error 错误对象或错误信息
    * @param extraData 额外数据
    */
-  reportError(error: Error | string, extraData?: Record<string, string | number | boolean>) {
+  reportError(error: Error | string, extraData?: Record<string, string | number | boolean | undefined>) {
     if (!aegisInstance) {
       console.warn('Aegis 未初始化，无法上报错误');
       return;
@@ -170,7 +170,7 @@ class AegisService {
           msg: `fg_error_${error.message.substring(0, 50)}`,
           ext1: error.message,
           ext2: error.stack,
-          ext3: extraData ? JSON.stringify(extraData) : undefined,
+          ext3: extraData ? JSON.stringify(extraData as Record<string, string | number | boolean>) : undefined,
         });
       } else {
         // 如果错误信息已经包含 fg_error_ 前缀，直接使用
@@ -178,7 +178,7 @@ class AegisService {
         aegisInstance.error({
           msg: errorMsg,
           ext1: error,
-          ext2: extraData ? JSON.stringify(extraData) : undefined,
+          ext2: extraData ? JSON.stringify(extraData as Record<string, string | number | boolean>) : undefined,
         });
       }
     } catch (err) {

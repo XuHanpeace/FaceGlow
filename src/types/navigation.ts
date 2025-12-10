@@ -47,4 +47,5 @@ export type RootStackParamList = {
     url: string;
     title?: string;
   };
+  VideoTest: undefined;
 };

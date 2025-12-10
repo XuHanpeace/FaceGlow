@@ -31,6 +31,7 @@ import { userWorkService } from '../services/database/userWorkService';
 import { fetchUserWorks } from '../store/slices/userWorksSlice';
 import { OneTimeReveal } from '../components/OneTimeReveal';
 import FastImage from 'react-native-fast-image';
+import Video from 'react-native-video';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -47,7 +48,9 @@ const ResultItem = React.memo(({
   isAsyncTask,
   taskStatus,
   onRefresh,
-  coverImage
+  coverImage,
+  extData,
+  isVisible = true
 }: { 
   item: any, 
   showComparison: boolean, 
@@ -57,8 +60,39 @@ const ResultItem = React.memo(({
   isAsyncTask?: boolean,
   taskStatus?: TaskStatus,
   onRefresh?: () => void,
-  coverImage?: string
+  coverImage?: string,
+  extData?: any,
+  isVisible?: boolean
 }) => {
+  // 判断 result_image 是否是视频文件
+  const isVideoUrl = (url?: string) => {
+    if (!url) return false;
+    const urlLower = url.toLowerCase();
+    return urlLower.endsWith('.mp4') || urlLower.includes('.mp4?') || 
+           extData?.task_type === 'image_to_video' || 
+           extData?.task_type === 'video_effect';
+  };
+
+  const resultImageUrl = item.result_image;
+  const isVideoResult = isVideoUrl(resultImageUrl);
+  
+  // 视频播放状态管理
+  const [isVideoPaused, setIsVideoPaused] = useState(!isVisible); // 默认根据可见性设置
+  const videoRef = useRef<any>(null);
+  
+  // 当可见性改变时，更新播放状态
+  useEffect(() => {
+    if (isVideoResult) {
+      setIsVideoPaused(!isVisible);
+    }
+  }, [isVisible, isVideoResult]);
+  
+  // 处理视频点击暂停/播放
+  const handleVideoPress = () => {
+    if (isVideoResult) {
+      setIsVideoPaused(prev => !prev);
+    }
+  };
   // Hourglass Animation
   const spinValue = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -100,6 +134,14 @@ const ResultItem = React.memo(({
   const [playReveal, setPlayReveal] = useState(false);
   // Track previous status to detect the edge.
   const prevStatusRef = useRef(taskStatus);
+  
+  // 判断是否是 image_to_image 类型
+  const isImageToImage = extData?.task_type === 'image_to_image';
+  
+  // 针对 image_to_image 类型，获取原始图（优先使用 selfieUrl，否则使用 template_image）
+  const originalImageForImageToImage = isImageToImage 
+    ? (selfieUrl || item.template_image || coverImage || '')
+    : null;
 
   useEffect(() => {
       if (!isAsyncTask) return;
@@ -107,17 +149,23 @@ const ResultItem = React.memo(({
       if (taskStatus === TaskStatus.SUCCESS) {
           // Case 1: Transition from !SUCCESS -> SUCCESS
           if (prevStatusRef.current !== TaskStatus.SUCCESS) {
+              // 对于 image_to_image 类型，先展示原始图一段时间，再触发动画
+              const delay = isImageToImage ? 800 : 500;
               setTimeout(() => {
                   setPlayReveal(true);
-              }, 500);
+              }, delay);
           }
           // Case 2: Already SUCCESS on mount (Entry)
           else if (!playReveal) {
-              setPlayReveal(true);
+              // 对于 image_to_image 类型，先展示原始图一段时间，再触发动画
+              const delay = isImageToImage ? 800 : 0;
+              setTimeout(() => {
+                  setPlayReveal(true);
+              }, delay);
           }
       }
       prevStatusRef.current = taskStatus;
-  }, [taskStatus, isAsyncTask]);
+  }, [taskStatus, isAsyncTask, isImageToImage]);
 
   if (isAsyncTask) {
     if (taskStatus === TaskStatus.FAILED) {
@@ -140,16 +188,52 @@ const ResultItem = React.memo(({
     
     // Unified View for PENDING and SUCCESS (Static & Transition)
     return (
-        <View style={styles.pageContainer}>
-            {/* Main Content: OneTimeReveal handles both static cover, transition, and static result */}
-            <OneTimeReveal 
-                image1={coverImage || ''}
-                image2={item.result_image || undefined}
-                trigger={playReveal}
-                revealed={false} // Always animate reveal on entry
-                duration={1500}
-                containerStyle={{ width: screenWidth, height: screenHeight }}
-            />
+        <TouchableOpacity 
+          style={styles.pageContainer} 
+          activeOpacity={1}
+          onPress={isVideoResult ? handleVideoPress : undefined}
+        >
+            {/* Main Content: 如果是视频，使用Video组件；否则使用OneTimeReveal */}
+            {taskStatus === TaskStatus.SUCCESS && isVideoResult && resultImageUrl ? (
+              <>
+                <Video
+                  ref={videoRef}
+                  source={{ uri: resultImageUrl }}
+                  style={styles.resultImage}
+                  resizeMode="cover"
+                  paused={isVideoPaused}
+                  muted={false}
+                  repeat={true}
+                  playInBackground={false}
+                  playWhenInactive={false}
+                  poster={coverImage}
+                  posterResizeMode="cover"
+                  onError={(error) => {
+                    console.error('视频播放错误:', error);
+                  }}
+                />
+                {/* 播放/暂停按钮覆盖层 */}
+                {isVideoPaused ? (
+                  <View style={styles.videoPlayButton}>
+                    <FontAwesome name="play-circle" size={60} color="rgba(255,255,255,0.9)" />
+                  </View>
+                ) : null}
+              </>
+            ) : (
+              <OneTimeReveal 
+                  image1={
+                    // 对于 image_to_image 类型，使用原始图作为背景
+                    isImageToImage && originalImageForImageToImage
+                      ? originalImageForImageToImage
+                      : coverImage || ''
+                  }
+                  image2={isVideoResult ? undefined : (item.result_image || undefined)}
+                  trigger={playReveal}
+                  revealed={false} // Always animate reveal on entry
+                  duration={1500}
+                  containerStyle={{ width: screenWidth, height: screenHeight }}
+              />
+            )}
 
             {/* Overlays for PENDING state */}
             {taskStatus === TaskStatus.PENDING && (
@@ -178,20 +262,101 @@ const ResultItem = React.memo(({
                     />
                 </View>
             )}
-        </View>
+        </TouchableOpacity>
     );
   }
 
+  // 非异步任务：判断是否是视频（需要在组件顶层声明函数）
+  const isVideoUrlForSync = (url?: string) => {
+    if (!url) return false;
+    const urlLower = url.toLowerCase();
+    return urlLower.endsWith('.mp4') || urlLower.includes('.mp4?');
+  };
+  
+  const resultImageSync = item.result_image;
+  const isVideoSync = isVideoUrlForSync(resultImageSync);
+  
+  // 非异步任务的视频播放状态管理
+  const [isVideoSyncPaused, setIsVideoSyncPaused] = useState(!isVisible);
+  const videoSyncRef = useRef<any>(null);
+  
+  useEffect(() => {
+    if (isVideoSync) {
+      setIsVideoSyncPaused(!isVisible);
+    }
+  }, [isVisible, isVideoSync]);
+  
+  const handleVideoSyncPress = () => {
+    if (isVideoSync) {
+      setIsVideoSyncPaused(prev => !prev);
+    }
+  };
+  
+  // 非异步任务的 image_to_image 类型动画触发
+  const isImageToImageSync = extData?.task_type === 'image_to_image';
+  const [playRevealSync, setPlayRevealSync] = useState(false);
+  const originalImageForImageToImageSync = isImageToImageSync 
+    ? (selfieUrl || item.template_image || coverImage || '')
+    : null;
+  
+  useEffect(() => {
+    if (isImageToImageSync && isVisible && !playRevealSync) {
+      // 先展示原始图一段时间，再触发动画
+      setTimeout(() => {
+        setPlayRevealSync(true);
+      }, 800);
+    }
+  }, [isImageToImageSync, isVisible, playRevealSync]);
+  
   return (
-    <View style={styles.pageContainer}>
+    <TouchableOpacity 
+      style={styles.pageContainer} 
+      activeOpacity={1}
+      onPress={isVideoSync ? handleVideoSyncPress : undefined}
+    >
       {showComparison && selfieUrl && item.template_image ? (
         <ImageComparison
           beforeImage={item.template_image}
-          afterImage={item.result_image}
+          afterImage={isVideoSync ? (coverImage || item.template_image) : item.result_image}
           width={screenWidth}
           height={screenHeight}
           onInteractionStart={onInteractionStart}
           onInteractionEnd={onInteractionEnd}
+        />
+      ) : isVideoSync && resultImageSync ? (
+        <>
+          <Video
+            ref={videoSyncRef}
+            source={{ uri: resultImageSync }}
+            style={styles.resultImage}
+            resizeMode="cover"
+            paused={isVideoSyncPaused}
+            muted={false}
+            repeat={true}
+            playInBackground={false}
+            playWhenInactive={false}
+            poster={coverImage || item.template_image}
+            posterResizeMode="cover"
+            onError={(error) => {
+              console.error('视频播放错误:', error);
+            }}
+          />
+          {/* 播放/暂停按钮覆盖层 */}
+          {isVideoSyncPaused ? (
+            <View style={styles.videoPlayButton}>
+              <FontAwesome name="play-circle" size={60} color="rgba(255,255,255,0.9)" />
+            </View>
+          ) : null}
+        </>
+      ) : isImageToImageSync && originalImageForImageToImageSync && item.result_image ? (
+        // 对于 image_to_image 类型，使用 OneTimeReveal 展示绿光扫过效果
+        <OneTimeReveal 
+          image1={originalImageForImageToImageSync}
+          image2={item.result_image}
+          trigger={playRevealSync}
+          revealed={false}
+          duration={1500}
+          containerStyle={{ width: screenWidth, height: screenHeight }}
         />
       ) : (
         <FastImage
@@ -208,7 +373,7 @@ const ResultItem = React.memo(({
           pointerEvents="none"
         />
       )}
-    </View>
+    </TouchableOpacity>
   );
 });
 
@@ -218,13 +383,15 @@ const WorkSlide = React.memo(({
   showComparison,
   onInteractionStart,
   onInteractionEnd,
-  onRefresh
+  onRefresh,
+  isVisible = true
 }: { 
   work: UserWorkModel,
   showComparison: boolean,
   onInteractionStart: () => void,
   onInteractionEnd: () => void,
-  onRefresh: () => void
+  onRefresh: () => void,
+  isVisible?: boolean
 }) => {
   const [scrollEnabled, setScrollEnabled] = useState(true);
 
@@ -243,13 +410,25 @@ const WorkSlide = React.memo(({
   };
   const taskStatus = getTaskStatus(work);
 
+  // 解析 ext_data
+  const extData = useMemo(() => {
+    try {
+      if (work.ext_data) {
+        return JSON.parse(work.ext_data);
+      }
+    } catch (e) {
+      console.error('解析ext_data失败:', e);
+    }
+    return {};
+  }, [work.ext_data]);
+
   // 获取自拍照URL（从ext_data中解析，兜底 template_image）
   const selfieUrl = useMemo(() => {
     let extSelfie = null;
     try {
       if (work.ext_data) {
-        const extData = JSON.parse(work.ext_data);
-        extSelfie = extData.selfie_url || null;
+        const parsedExtData = JSON.parse(work.ext_data);
+        extSelfie = parsedExtData.selfie_url || null;
       }
     } catch (error) {
       console.error('解析ext_data失败:', error);
@@ -257,10 +436,25 @@ const WorkSlide = React.memo(({
     return extSelfie || work.result_data?.[0]?.template_image;
   }, [work.ext_data, work.result_data]);
 
-  // 获取封面/底图
+  // 获取封面/底图（如果result_image是视频，使用activity_image作为封面）
   const coverImage = useMemo(() => {
-      return work.activity_image || work.result_data?.[0]?.template_image;
-  }, [work.activity_image, work.result_data]);
+    const resultImage = work.result_data?.[0]?.result_image;
+    // 判断是否是视频
+    const isVideo = resultImage && (
+      resultImage.toLowerCase().endsWith('.mp4') || 
+      resultImage.toLowerCase().includes('.mp4?') ||
+      extData?.task_type === 'image_to_video' ||
+      extData?.task_type === 'video_effect'
+    );
+    
+    // 如果是视频，使用activity_image或template_image作为封面
+    if (isVideo) {
+      return work.activity_image || work.result_data?.[0]?.template_image || '';
+    }
+    
+    // 否则使用result_image（如果存在）或activity_image
+    return resultImage || work.activity_image || work.result_data?.[0]?.template_image || '';
+  }, [work.activity_image, work.result_data, extData]);
 
   const handleInteractionStart = useCallback(() => {
     setScrollEnabled(false); // 禁用自身水平滚动
@@ -272,7 +466,18 @@ const WorkSlide = React.memo(({
     onInteractionEnd(); // 通知父组件启用垂直滚动
   }, [onInteractionEnd]);
 
-  const renderResultItem = useCallback(({ item }: { item: any }) => {
+  // 跟踪当前可见的 result item 索引（用于视频播放控制）
+  const [visibleResultIndex, setVisibleResultIndex] = useState(0);
+  
+  const onViewableResultItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    if (viewableItems.length > 0 && viewableItems[0].index !== null) {
+      setVisibleResultIndex(viewableItems[0].index);
+    }
+  }).current;
+
+  // 根据工作可见性和 result item 可见性计算最终可见性
+  const renderResultItem = useCallback(({ item, index }: { item: any; index: number }) => {
+    const isResultItemVisible = isVisible && visibleResultIndex === index;
     return (
       <ResultItem
         item={item}
@@ -284,9 +489,11 @@ const WorkSlide = React.memo(({
         taskStatus={taskStatus}
         onRefresh={onRefresh}
         coverImage={coverImage}
+        extData={extData}
+        isVisible={isResultItemVisible}
       />
     );
-  }, [showComparison, selfieUrl, handleInteractionStart, handleInteractionEnd, isAsyncTask, taskStatus, onRefresh, coverImage]);
+  }, [showComparison, selfieUrl, handleInteractionStart, handleInteractionEnd, isAsyncTask, taskStatus, onRefresh, coverImage, extData, visibleResultIndex, isVisible]);
 
   return (
     <View style={styles.workContainer}>
@@ -300,7 +507,11 @@ const WorkSlide = React.memo(({
         decelerationRate="fast"
         snapToInterval={screenWidth}
         snapToAlignment="start"
-        scrollEnabled={scrollEnabled} 
+        scrollEnabled={scrollEnabled}
+        onViewableItemsChanged={onViewableResultItemsChanged}
+        viewabilityConfig={{
+          itemVisiblePercentThreshold: 50
+        }}
         initialNumToRender={1}
         windowSize={3}
         removeClippedSubviews={true}
@@ -480,7 +691,6 @@ const UserWorkPreviewScreen: React.FC = () => {
 
   const handleSharePress = () => {
     const currentResultImage = activeWork?.result_data?.[0]?.result_image;
-    debugger;
     if (currentResultImage) {
       setShareImageUrl(currentResultImage);
       setShowShareModal(true);
@@ -546,7 +756,8 @@ const UserWorkPreviewScreen: React.FC = () => {
     setIsVerticalScrollEnabled(true);
   }, []);
 
-  const renderWorkItem = useCallback(({ item }: { item: UserWorkModel }) => {
+  const renderWorkItem = useCallback(({ item, index }: { item: UserWorkModel; index: number }) => {
+    const isItemVisible = activeWorkIndex === index;
     return (
       <WorkSlide
         work={item}
@@ -554,9 +765,10 @@ const UserWorkPreviewScreen: React.FC = () => {
         onInteractionStart={handleInteractionStart}
         onInteractionEnd={handleInteractionEnd}
         onRefresh={handleRefreshTask}
+        isVisible={isItemVisible}
       />
     );
-  }, [showComparison, handleInteractionStart, handleInteractionEnd, handleRefreshTask]);
+  }, [showComparison, handleInteractionStart, handleInteractionEnd, handleRefreshTask, activeWorkIndex]);
 
   if (!activeWork) return null;
 
@@ -772,7 +984,17 @@ const styles = StyleSheet.create({
   manualRefreshText: {
     color: 'rgba(255,255,255,0.8)',
     fontSize: 12,
-  }
+  },
+  videoPlayButton: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
 });
 
 export default UserWorkPreviewScreen;

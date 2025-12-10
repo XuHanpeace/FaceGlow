@@ -24,6 +24,7 @@ import { MMKV } from 'react-native-mmkv';
 // 创建MMKV存储实例
 const storage = new MMKV();
 const LAST_PHONE_NUMBER_KEY = 'last_phone_number';
+const LAST_USERNAME_KEY = 'last_username';
 
 type NewAuthScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type NewAuthScreenRouteProp = NativeStackScreenProps<RootStackParamList, 'NewAuth'>['route'];
@@ -54,6 +55,15 @@ const NewAuthScreen: React.FC = () => {
   const getLastPhoneNumber = () => {
     try {
       return storage.getString(LAST_PHONE_NUMBER_KEY) || '';
+    } catch {
+      return '';
+    }
+  };
+
+  // 从存储中恢复上一次的用户名
+  const getLastUsername = () => {
+    try {
+      return storage.getString(LAST_USERNAME_KEY) || '';
     } catch {
       return '';
     }
@@ -150,6 +160,13 @@ const NewAuthScreen: React.FC = () => {
       const result = await authService.loginWithPassword(username, password);
       
       if (result.success && result.data) {
+        // 保存用户名到本地存储
+        try {
+          storage.set(LAST_USERNAME_KEY, username.trim());
+        } catch (error) {
+          console.error('保存用户名失败:', error);
+        }
+        
         setAuthData(result.data);
         // 重置导航栈，关闭整个登录流程
         navigation.popToTop();
@@ -168,7 +185,8 @@ const NewAuthScreen: React.FC = () => {
   // 切换到密码登录
   const switchToPasswordLogin = () => {
     setAuthMode('password');
-    setUsername('');
+    // 恢复上一次登录的用户名
+    setUsername(getLastUsername());
     setPassword('');
     setAgreedToTerms(false);
   };
@@ -388,7 +406,7 @@ const NewAuthScreen: React.FC = () => {
 
         {/* 底部入口 */}
         <View style={styles.switchContainer}>
-          {authMode === 'phone-verify' && (
+          {(authMode === 'phone-verify' || authMode === 'register') && (
             <TouchableOpacity onPress={switchToPasswordLogin}>
               <Text style={styles.switchText}>账号密码登录</Text>
             </TouchableOpacity>

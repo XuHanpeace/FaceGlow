@@ -38,6 +38,7 @@ export const callFaceFusionCloudFunction = async (params: FusionParams): Promise
     console.log('🔄 调用人脸融合云函数:', params);
     
     const token = authService.getCurrentAccessToken();
+    const userId = authService.getCurrentUserId();
     const headers: any = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -55,7 +56,7 @@ export const callFaceFusionCloudFunction = async (params: FusionParams): Promise
           projectId: params.projectId,
           modelId: params.modelId,
           imageUrl: params.imageUrl,
-          user_id: params.user_id,
+          user_id: userId,
           price: params.price || 0,
         }
       },

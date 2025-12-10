@@ -3,17 +3,44 @@ import { authService } from '../auth/authService';
 import { aegisService } from '../monitoring/aegisService';
 
 /**
- * 阿里云百炼异步任务参数
+ * 任务类型枚举
+ */
+export enum TaskType {
+  IMAGE_TO_IMAGE = 'image_to_image', // 图生图
+  IMAGE_TO_VIDEO = 'image_to_video', // 图生视频
+  VIDEO_EFFECT = 'video_effect', // 视频特效
+}
+
+/**
+ * 阿里云百炼异步任务参数（通用）
  */
 export interface BailianParams {
+  /** 任务类型 */
+  task_type: TaskType;
+  /** 提示词文本 */
   prompt: string;
-  images: string[];
+  /** 图片URL数组（图生图、图生视频使用） */
+  images?: string[];
+  /** 视频URL（视频特效使用） */
+  video_url?: string;
+  /** 音频URL（图生视频使用，可选，仅wan2.5-i2v-preview支持） */
+  audio_url?: string;
   params?: {
     n?: number;
     size?: string;
     seed?: number;
     negative_prompt?: string;
     watermark?: boolean;
+    /** 视频时长（秒），图生视频使用（已废弃，改用resolution） */
+    duration?: number;
+    /** 视频帧率，图生视频使用（已废弃，改用resolution） */
+    fps?: number;
+    /** 视频分辨率，图生视频和视频特效使用：480P、720P、1080P，默认720P */
+    resolution?: string;
+    /** 风格类型/模板，视频特效使用（如 "flying", "frenchkiss"） */
+    style_type?: string;
+    /** 视频特效模板，视频特效使用（与style_type相同，推荐使用template） */
+    template?: string;
   };
   /** 用户ID（价格>0时必填） */
   user_id?: string;
@@ -22,33 +49,127 @@ export interface BailianParams {
 }
 
 /**
- * 阿里云百炼异步任务响应
+ * 阿里云百炼异步任务响应（统一返回体结构）
+ * 
+ * 统一格式：{ success, data, errCode, errorMsg }
  */
 export interface BailianResponse {
+  /** 是否成功 */
   success: boolean;
-  taskId?: string;
-  message?: string;
-  requestId?: string;
-  error?: string;
-  errorCode?: string;
-  currentBalance?: number;
-  requiredAmount?: number;
+  
+  /** 
+   * 数据对象
+   * - 成功时：包含 taskId, requestId, message
+   * - 失败时（余额不足）：包含 currentBalance, requiredAmount
+   * - 失败时（其他错误）：可能为 null 或包含错误详情（statusCode, details, requestUrl）
+   */
+  data?: {
+    /** 成功时返回 */
+    taskId?: string;
+    requestId?: string;
+    message?: string;
+    /** 余额不足时返回 */
+    currentBalance?: number;
+    requiredAmount?: number;
+    /** 其他错误时可能返回 */
+    statusCode?: number;
+    details?: any;
+    requestUrl?: string;
+  } | null;
+  
+  /** 
+   * 错误代码（失败时返回）
+   * - 'MISSING_API_KEY': 缺少API Key
+   * - 'MISSING_PROMPT': 缺少提示词
+   * - 'MISSING_IMAGES': 缺少图片
+   * - 'MISSING_USER_ID': 价格>0但缺少user_id
+   * - 'USER_NOT_FOUND': 用户不存在
+   * - 'INSUFFICIENT_BALANCE': 余额不足（此时data中包含currentBalance和requiredAmount）
+   * - 'INVALID_TASK_TYPE': 无效的任务类型
+   * - 'HTTP_XXX': HTTP状态码错误
+   * - 'InvalidParameter.XXX': API参数错误
+   * - 其他API返回的错误代码
+   */
+  errCode?: string | null;
+  
+  /** 
+   * 错误信息（失败时返回）
+   * - 当 success 为 false 时，此字段包含错误描述
+   */
+  errorMsg?: string | null;
 }
 
 /**
- * 任务查询响应
+ * 任务查询响应（统一返回体结构）
+ * 
+ * 统一格式：{ success, data, errCode, errorMsg }
+ * output 和 usage 结构原样透传在 data 中，客户端需要从 data.output 中读取具体字段
  */
 export interface TaskQueryResponse {
+  /** 是否成功 */
   success: boolean;
-  taskId: string;
-  taskStatus: 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELED' | 'UNKNOWN';
-  results?: Array<{
-    orig_prompt?: string;
-    url: string;
-  }>;
-  error?: string;
-  submitTime?: string;
-  endTime?: string;
+  
+  /** 
+   * 数据对象（成功时返回）
+   * - taskId: 任务ID
+   * - taskStatus: 任务状态
+   * - output: output 结构原样透传
+   * - usage: usage 结构原样透传（图生视频、图片特效）
+   * - results: 格式化后的结果数组（向后兼容）
+   * - submitTime, scheduledTime, endTime: 任务时间信息
+   * - requestId: 请求ID
+   */
+  data?: {
+    taskId?: string;
+    taskStatus?: 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELED' | 'UNKNOWN';
+    output?: {
+      task_id?: string;
+      task_status?: string;
+      submit_time?: string;
+      scheduled_time?: string;
+      end_time?: string;
+      video_url?: string;
+      orig_prompt?: string;
+      actual_prompt?: string;
+      results?: Array<{
+        url?: string;
+        orig_prompt?: string;
+      }>;
+      [key: string]: any;
+    };
+    usage?: {
+      duration?: number;
+      video_count?: number;
+      SR?: number;
+      video_duration?: number;
+      video_ratio?: string;
+      image_count?: number;
+      [key: string]: any;
+    };
+    results?: Array<{
+      orig_prompt?: string | null;
+      url: string;
+    }> | null;
+    submitTime?: string | null;
+    scheduledTime?: string | null;
+    endTime?: string | null;
+    requestId?: string;
+  } | null;
+  
+  /** 
+   * 错误代码（失败时返回）
+   * - 'MISSING_API_KEY': 缺少API Key
+   * - 'MISSING_TASK_ID': 缺少taskId
+   * - 'HTTP_XXX': HTTP状态码错误
+   * - 其他API返回的错误代码
+   */
+  errCode?: string | null;
+  
+  /** 
+   * 错误信息（失败时返回）
+   * - 当 success 为 false 时，此字段包含错误描述
+   */
+  errorMsg?: string | null;
 }
 
 class AsyncTaskService {
@@ -73,7 +194,6 @@ class AsyncTaskService {
       const response = await axios.post(`${this.baseUrl}/callBailian`, {
         data: {
           ...params,
-          user_id: params.user_id,
           price: params.price || 0,
         }
       }, {
@@ -93,19 +213,20 @@ class AsyncTaskService {
       aegisService.reportApiError(apiUrl, errorMessage, statusCode);
       
       // 处理余额不足错误
-      if (error.response?.data?.errorCode === 'INSUFFICIENT_BALANCE') {
+      if (error.response?.data?.errCode === 'INSUFFICIENT_BALANCE') {
         return {
           success: false,
-          error: '余额不足',
-          errorCode: 'INSUFFICIENT_BALANCE',
-          currentBalance: error.response.data.currentBalance,
-          requiredAmount: error.response.data.requiredAmount,
+          data: error.response.data.data || null,
+          errCode: 'INSUFFICIENT_BALANCE',
+          errorMsg: error.response.data.errorMsg || '余额不足',
         };
       }
       
       return {
         success: false,
-        error: error.response?.data?.error || error.message || '调用云函数失败',
+        data: error.response?.data?.data || null,
+        errCode: error.response?.data?.errCode || 'API_ERROR',
+        errorMsg: error.response?.data?.errorMsg || error.message || '调用云函数失败',
       };
     }
   }
@@ -141,9 +262,12 @@ class AsyncTaskService {
       
       return {
         success: false,
-        taskId,
-        taskStatus: 'UNKNOWN',
-        error: error.message || '查询任务失败',
+        data: {
+          taskId: taskId,
+          taskStatus: 'UNKNOWN'
+        },
+        errCode: error.response?.data?.errCode || 'QUERY_ERROR',
+        errorMsg: error.response?.data?.errorMsg || error.message || '查询任务失败',
       };
     }
   }

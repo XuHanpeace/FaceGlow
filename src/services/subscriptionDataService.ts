@@ -38,7 +38,6 @@ class SubscriptionDataService {
 
       // 更新用户数据
       const result = await userDataService.updateUserData(updateData);
-        debugger
       if (result.success) {
         console.log('用户订阅数据更新成功');
         

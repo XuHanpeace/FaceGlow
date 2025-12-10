@@ -20,7 +20,6 @@ import { RootStackParamList } from '../types/navigation';
 import { ImageComparison } from '../components/ImageComparison';
 import { callFaceFusionCloudFunction } from '../services/tcb/tcb';
 import { userWorkService } from '../services/database/userWorkService';
-import { useAuthState } from '../hooks/useAuthState';
 import { aegisService } from '../services/monitoring/aegisService';
 import { imageUploadService } from '../services/imageUploadService';
 import { UserWorkModel, ResultData } from '../types/model/user_works';
@@ -51,7 +50,6 @@ const CreationResultScreen: React.FC = () => {
   const navigation = useNavigation<CreationResultScreenNavigationProp>();
   const route = useRoute<CreationResultScreenRouteProp>();
   const { albumData, selfieUrl, activityId } = route.params;
-  const { user } = useAuthState();
   
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
     albumData?.template_list?.[0]?.template_id || ''
@@ -127,9 +125,9 @@ const CreationResultScreen: React.FC = () => {
       
       // 获取当前模板的价格
       const currentTemplate = albumData.template_list.find(t => t.template_id === templateId);
-      const templatePrice = currentTemplate?.price || 0;
+      const templatePrice = albumData.price || 0;
       
-      console.log(`💰 [CreationResult] 模板价格: ${templatePrice}, 用户ID: ${user?.uid}`);
+      console.log(`💰 [CreationResult] 模板价格: ${templatePrice}`);
       
       // 调用真实的换脸云函数
       // 优先使用 template 的 projectId，如果没有则使用 activityId 作为兜底
@@ -138,8 +136,7 @@ const CreationResultScreen: React.FC = () => {
         projectId: projectId || '',
         modelId: templateId || '',
         imageUrl: selfieUrl || '',
-        user_id: user?.uid,
-        price: templatePrice,
+        price: albumData.price,
       });
       
       console.log(`📥 [CreationResult] 云函数返回:`, JSON.stringify(result, null, 2));
@@ -361,7 +358,8 @@ const CreationResultScreen: React.FC = () => {
       // 3. 构建用户作品数据（使用COS URL）
       const workData: Omit<UserWorkModel, '_id'> = {
         uid: userId,
-        activity_id: activityId,
+        activity_id: activityId || '',
+        activity_type: 'fusion',
         activity_title: albumData.album_name, // 使用相册名称作为活动标题
         activity_description: albumData.album_description,
         activity_image: albumData.album_image,
@@ -376,8 +374,6 @@ const CreationResultScreen: React.FC = () => {
           total_templates: albumData.template_list.length,
           fusion_time: Date.now(),
         }),
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
       };
 
       console.log('🔄 开始保存用户作品到数据库:', workData);
@@ -407,20 +403,6 @@ const CreationResultScreen: React.FC = () => {
       Alert.alert('😱 保存失败', getUserFriendlyErrorMessage(error) || '哎呀，保存作品时出错了，再试一次吧～');
       setIsSaving(false);
     }
-  };
-
-  const handleSharePress = () => {
-    // 获取当前选中的换脸结果
-    const currentResult = selectedResult;
-    
-    if (!currentResult) {
-      Alert.alert('提示', '请先完成换脸后再分享');
-      return;
-    }
-    
-    // 显示分享Modal
-    setShareImageUrl(currentResult);
-    setShowShareModal(true);
   };
 
   // 分享选项配置

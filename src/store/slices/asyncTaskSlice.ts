@@ -1,9 +1,8 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { asyncTaskService, BailianParams } from '../../services/cloud/asyncTaskService';
+import { asyncTaskService, BailianParams, TaskType } from '../../services/cloud/asyncTaskService';
 import { userWorkService } from '../../services/database/userWorkService';
-import { TaskStatus, UserWorkModel } from '../../types/model/user_works';
+import { TaskStatus, UserWorkModel, ResultData } from '../../types/model/user_works';
 import { fetchUserWorks } from './userWorksSlice';
-import { imageUploadService } from '../../services/imageUploadService';
 
 // 任务信息接口
 export interface AsyncTask {
@@ -16,6 +15,77 @@ export interface AsyncTask {
   error?: string;
   resultImage?: string;
   updatedWork?: UserWorkModel; // 任务完成后的最新作品数据
+}
+
+/**
+ * 异步任务错误接口
+ */
+export interface AsyncTaskError {
+  /** 错误代码 */
+  errCode: string;
+  /** 错误消息 */
+  message: string;
+  /** 错误数据（如余额不足时的 currentBalance, requiredAmount） */
+  data?: {
+    currentBalance?: number;
+    requiredAmount?: number;
+  };
+}
+
+/**
+ * 提示词数据接口
+ */
+export interface PromptData {
+  text: string;
+  srcImage?: string;
+  resultImage?: string;
+  styleTitle?: string;
+  styleDesc?: string;
+}
+
+/**
+ * 视频参数接口
+ */
+export interface VideoParams {
+  duration?: number;
+  fps?: number;
+  resolution?: string; // 图生视频分辨率：480P、720P、1080P
+  template?: string; // 视频特效模板
+  style_type?: string; // 视频特效风格类型（向后兼容）
+}
+
+/**
+ * 发起异步任务的参数接口
+ */
+export interface StartAsyncTaskPayload {
+  /** 任务类型：图生图、图生视频、视频特效 */
+  taskType: TaskType;
+  /** 提示词文本 */
+  prompt: string;
+  /** 图片URL数组（图生图、图生视频使用） */
+  images?: string[];
+  /** 视频URL（视频特效使用） */
+  videoUrl?: string;
+  /** 音频URL（图生视频使用，可选） */
+  audioUrl?: string;
+  /** 活动ID */
+  activityId: string;
+  /** 活动标题 */
+  activityTitle: string;
+  /** 活动描述 */
+  activityDescription?: string;
+  /** 活动图片 */
+  activityImage?: string;
+  /** 用户ID */
+  uid: string;
+  /** 模板ID */
+  templateId: string;
+  /** 提示词数据（用于保存到数据库） */
+  promptData?: PromptData;
+  /** 模板价格（美美币），0表示免费 */
+  price?: number;
+  /** 视频参数 */
+  videoParams?: VideoParams;
 }
 
 interface AsyncTaskState {
@@ -32,28 +102,25 @@ const initialState: AsyncTaskState = {
 export const startAsyncTask = createAsyncThunk(
   'asyncTask/start',
   async (
-    payload: {
-      prompt: string;
-      images: string[];
-      activityId: string;
-      activityTitle: string;
-      activityDescription?: string;
-      activityImage?: string;
-      uid: string;
-      templateId: string; // 即使是自由生成，可能也有一个虚拟模板ID
-      promptData?: any;
-      price?: number; // 模板价格（美美币），0表示免费
-    },
-    { dispatch, rejectWithValue }
+    payload: StartAsyncTaskPayload,
+    { rejectWithValue }
   ) => {
     try {
       // 1. 调用云函数发起任务
       const bailianParams: BailianParams = {
+        task_type: payload.taskType,
         prompt: payload.prompt,
         images: payload.images,
+        video_url: payload.videoUrl,
+        audio_url: payload.audioUrl,
         params: {
           n: 1,
-          size: "720*1280" // 9:16 比例
+          size: "720*1280", // 9:16 比例（图生图使用）
+          duration: payload.videoParams?.duration, // 保留兼容性，但图生视频使用resolution
+          fps: payload.videoParams?.fps, // 保留兼容性，但图生视频使用resolution
+          resolution: payload.videoParams?.resolution || '720P', // 图生视频和视频特效分辨率，默认720P
+          template: payload.videoParams?.template || payload.videoParams?.style_type, // 视频特效模板（如 "frenchkiss"），在API中使用input.template
+          style_type: payload.videoParams?.style_type, // 视频特效风格类型（向后兼容，会映射为template）
         },
         user_id: payload.uid,
         price: payload.price || 0,
@@ -61,45 +128,71 @@ export const startAsyncTask = createAsyncThunk(
 
       const apiResponse = await asyncTaskService.callBailian(bailianParams);
 
-      if (!apiResponse.success || !apiResponse.taskId) {
+      if (!apiResponse.success || !apiResponse.data?.taskId) {
         // 处理余额不足错误
-        if (apiResponse.errorCode === 'INSUFFICIENT_BALANCE') {
-          throw new Error(`余额不足：需要${apiResponse.requiredAmount}美美币，当前余额${apiResponse.currentBalance}美美币`);
+        if (apiResponse.errCode === 'INSUFFICIENT_BALANCE') {
+          const error: AsyncTaskError = {
+            errCode: 'INSUFFICIENT_BALANCE',
+            message: apiResponse.errorMsg || '余额不足',
+            data: {
+              currentBalance: apiResponse.data?.currentBalance ?? 0,
+              requiredAmount: apiResponse.data?.requiredAmount ?? 0,
+            }
+          };
+          return rejectWithValue(error);
         }
-        throw new Error(apiResponse.error || '启动任务失败');
+        const error: AsyncTaskError = {
+          errCode: apiResponse.errCode || 'UNKNOWN_ERROR',
+          message: apiResponse.errorMsg || '启动任务失败',
+          data: apiResponse.data || undefined
+        };
+        return rejectWithValue(error);
       }
 
-      const taskId = apiResponse.taskId;
+      const taskId = apiResponse.data.taskId;
+      if (!taskId) {
+        throw new Error('任务ID缺失');
+      }
 
       // 2. 创建数据库记录（状态为进行中）
-      // 注意：这里需要UserWorkModel匹配数据库结构
-      const workData: any = {
+      const coverImage = payload.activityImage || 
+                        (payload.images && payload.images.length > 0 ? payload.images[0] : '') || 
+                        payload.videoUrl || 
+                        '';
+
+      const resultData: ResultData[] = [
+        {
+          template_id: payload.templateId,
+          template_image: coverImage, // 以此作为模板图或视频封面
+          result_image: '' // 尚未生成（可能是图片或视频URL）
+        }
+      ];
+
+      const extData = {
+        task_id: taskId,
+        task_status: TaskStatus.PENDING,
+        task_type: payload.taskType,
+        selfie_url: payload.images?.[0], // 保存自拍图（图生图、图生视频）
+        video_url: payload.videoUrl, // 保存视频URL（视频特效）
+        prompt_data: payload.promptData
+      };
+
+      const workData: Omit<UserWorkModel, '_id'> = {
         uid: payload.uid,
         activity_id: payload.activityId,
-        activity_type: 'asyncTask',
+        activity_type: 'asyncTask', // 异步任务统一使用 asyncTask，与同步任务（face fusion）区分
         activity_title: payload.activityTitle,
         activity_description: payload.activityDescription || '',
-        activity_image: payload.activityImage || payload.images[0],
+        activity_image: coverImage,
         album_id: '', // 异步任务可能没有特定相册ID，或者复用ActivityID
         likes: '0',
         is_public: '0',
         download_count: '0',
-        // 新增顶层字段
+        result_data: resultData,
+        ext_data: JSON.stringify(extData),
+        // 扩展字段（用于数据库存储）
         taskId: taskId,
         taskStatus: TaskStatus.PENDING,
-        result_data: [
-          {
-            template_id: payload.templateId,
-            template_image: payload.images[0], //以此作为模板图
-            result_image: '' // 尚未生成
-          }
-        ],
-        ext_data: JSON.stringify({
-          task_id: taskId,
-          task_status: TaskStatus.PENDING,
-          selfie_url: payload.images[0], // 保存自拍图
-          prompt_data: payload.promptData
-        }),
         createdAt: Date.now(),
         updatedAt: Date.now()
       };
@@ -119,11 +212,16 @@ export const startAsyncTask = createAsyncThunk(
         status: TaskStatus.PENDING,
         startTime: Date.now(),
         activityTitle: payload.activityTitle,
-        coverImage: payload.activityImage || payload.images[0]
+        coverImage: payload.activityImage || (payload.images && payload.images.length > 0 ? payload.images[0] : '')
       };
 
-    } catch (error: any) {
-      return rejectWithValue(error.message || '发起任务失败');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '发起任务失败';
+      const asyncTaskError: AsyncTaskError = {
+        errCode: 'UNKNOWN_ERROR',
+        message: errorMessage,
+      };
+      return rejectWithValue(asyncTaskError);
     }
   }
 );
@@ -139,25 +237,44 @@ export const pollAsyncTask = createAsyncThunk(
 
       if (!response.success) {
         // 查询失败暂不视为任务失败，可能是网络波动
-        console.warn('[Redux] 轮询任务失败:', task.taskId, response.error);
-        return { ...task, error: response.error };
+        console.warn('[Redux] 轮询任务失败:', task.taskId, response.errorMsg);
+        return { ...task, error: response.errorMsg || '查询失败' };
       }
 
-      if (response.taskStatus === 'SUCCEEDED') {
+      const taskStatus = response.data?.taskStatus || 'UNKNOWN';
+      
+      if (taskStatus === 'SUCCEEDED') {
          console.log('[Redux] 任务成功:', task.taskId); // LOG: Task Succeeded
-      } else if (response.taskStatus === 'FAILED') {
+      } else if (taskStatus === 'FAILED') {
          console.log('[Redux] 任务失败:', task.taskId);
       }
 
       let newStatus = task.status;
       let resultImage = '';
 
-      if (response.taskStatus === 'SUCCEEDED') {
+      if (taskStatus === 'SUCCEEDED') {
         newStatus = TaskStatus.SUCCESS;
-        if (response.results && response.results.length > 0) {
-          resultImage = response.results[0].url;
+        // 从 data.output 中获取结果URL
+        if (response.data?.output) {
+          // 优先使用 output.video_url（图生视频、图片特效）
+          if (response.data.output.video_url) {
+            resultImage = response.data.output.video_url;
+            console.log('[Redux] 从 data.output.video_url 获取视频URL:', resultImage);
+          }
+          // 其次使用 output.results（图生图）
+          else if (response.data.output.results && response.data.output.results.length > 0) {
+            resultImage = response.data.output.results[0].url || '';
+            console.log('[Redux] 从 data.output.results 获取图片URL:', resultImage);
+          }
         }
-      } else if (response.taskStatus === 'FAILED' || response.taskStatus === 'CANCELED') {
+        // 向后兼容：从 results 中获取（图生图）
+        else if (response.data?.results && response.data.results.length > 0) {
+          resultImage = response.data.results[0].url;
+          console.log('[Redux] 从 data.results 获取URL:', resultImage);
+        }
+        
+        console.log('[Redux] 轮询响应 - taskStatus:', taskStatus, 'resultImage:', resultImage);
+      } else if (taskStatus === 'FAILED' || taskStatus === 'CANCELED') {
         newStatus = TaskStatus.FAILED;
       }
 
@@ -179,23 +296,19 @@ export const pollAsyncTask = createAsyncThunk(
             };
 
             // 解析 ext_data
-            let extDataObj = {};
+            let extDataObj: any = {};
             try {
                 extDataObj = JSON.parse(work.record?.ext_data || '{}');
             } catch (e) {}
 
-            // 如果成功，先上传图片到COS，再更新 result_data
+            // 如果成功，直接保存结果URL到数据库（不上传到COS）
             if (newStatus === TaskStatus.SUCCESS && resultImage) {
-                console.log('[Redux] 任务成功，开始上传图片到COS:', resultImage);
+                console.log('[Redux] 任务成功，保存结果URL到数据库:', resultImage);
                 
-                // 上传图片到COS（传入 album_id 用于文件命名）
-                const albumId = work.record?.album_id || work.record?.activity_id || undefined;
-                const uploadResult = await imageUploadService.uploadImageToCOS(resultImage, 'user_works', albumId);
+                const taskType = extDataObj.task_type || TaskType.IMAGE_TO_IMAGE;
+                const isVideoResult = taskType === TaskType.IMAGE_TO_VIDEO || taskType === TaskType.VIDEO_EFFECT;
                 
-                if (!uploadResult.success || !uploadResult.cosUrl) {
-                    console.error('[Redux] 图片上传到COS失败:', uploadResult.error);
-                    // 即使上传失败，也保存临时URL，避免数据丢失
-                    // 但记录错误信息到 ext_data
+                // 更新 result_data
                     const resultData = work.record?.result_data || [];
                     if (resultData.length > 0) {
                         const newResultData = [...resultData];
@@ -203,34 +316,23 @@ export const pollAsyncTask = createAsyncThunk(
                         updateData.result_data = newResultData;
                     }
                     
-                    // 记录上传失败信息
+                // 更新 ext_data，保存结果URL（视频或图片）
                     updateData.ext_data = JSON.stringify({
                         ...extDataObj,
                         task_status: newStatus,
                         task_id: task.taskId,
-                        cos_upload_failed: true,
-                        cos_upload_error: uploadResult.error,
-                        result_image_temp_url: resultImage, // 保留临时URL作为备份
-                    });
-                } else {
-                    console.log('[Redux] 图片上传到COS成功:', uploadResult.cosUrl);
-                    
-                    // 使用COS URL更新 result_data
-                    const resultData = work.record?.result_data || [];
-                    if (resultData.length > 0) {
-                        const newResultData = [...resultData];
-                        newResultData[0] = { ...newResultData[0], result_image: uploadResult.cosUrl };
-                        updateData.result_data = newResultData;
-                    }
-                    
-                    // 更新 ext_data，记录COS URL
+                    // 保存结果URL到 ext_data（用于展示个人作品）
+                    ...(isVideoResult ? { video_url: resultImage } : { image_url: resultImage }),
+                });
+                
+                console.log('[Redux] ext_data 已更新，保存的URL:', resultImage);
+            } else if (newStatus === TaskStatus.SUCCESS && !resultImage) {
+                // 成功但无结果URL（理论上不应该发生，但保留处理）
                     updateData.ext_data = JSON.stringify({
                         ...extDataObj,
                         task_status: newStatus,
                         task_id: task.taskId,
-                        result_image_cos_url: uploadResult.cosUrl,
                     });
-                }
             } else {
                 // 非成功状态，只更新状态信息
                 updateData.ext_data = JSON.stringify({
@@ -285,8 +387,9 @@ export const pollAsyncTask = createAsyncThunk(
         updatedWork // 返回最新数据
       };
 
-    } catch (error: any) {
-      return rejectWithValue(error.message || '轮询失败');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '轮询失败';
+      return rejectWithValue(errorMessage);
     }
   }
 );

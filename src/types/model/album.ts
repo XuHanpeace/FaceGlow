@@ -21,6 +21,7 @@ export enum FunctionType {
   GROUP_PHOTO = 'group_photo', // 多人合拍
   IMAGE_TO_IMAGE = 'image_to_image', // 图生图
   IMAGE_TO_VIDEO = 'image_to_video', // 图生视频
+  VIDEO_EFFECT = 'video_effect', // 视频特效
 }
 
 /**
@@ -90,7 +91,7 @@ export interface AlbumRecord {
   
   /** 
    * 功能类型，存储 FunctionType 枚举的字符串值
-   * 可选值：'portrait'（个人写真）、'group_photo'（多人合拍）、'image_to_image'（图生图）、'image_to_video'（图生视频）
+   * 可选值：'portrait'（个人写真）、'group_photo'（多人合拍）、'image_to_image'（图生图）、'image_to_video'（图生视频）、'video_effect'（视频特效）
    * 用于区分不同的功能模块
    */
   function_type: string;
@@ -170,6 +171,39 @@ export interface AlbumRecord {
    * 用于控制相册在列表中的显示顺序，结合 likes 和 created_at 进行综合排序
    */
   sort_weight: number;
+  
+  /** 
+   * 预览视频URL，用于图生视频和视频特效类型的相册
+   * 可选字段，仅在 function_type 为 'image_to_video' 或 'video_effect' 时使用
+   */
+  preview_video_url?: string;
+  
+  /** 
+   * 是否允许用户自定义提示词
+   * 如果为 true，则在 BeforeCreationScreen 中显示提示词输入框
+   * 默认为 false
+   */
+  allow_custom_prompt?: boolean;
+  
+  /** 
+   * 自定义提示词的占位符文本
+   * 当 allow_custom_prompt 为 true 时使用
+   */
+  custom_prompt_placeholder?: string;
+  
+  /** 
+   * 音频URL，用于图生视频类型的相册
+   * 可选字段，仅在 function_type 为 'image_to_video' 时使用
+   */
+  audio_url?: string;
+  
+  /** 
+   * 视频特效模板，用于视频特效类型的相册
+   * 可选字段，仅在 function_type 为 'video_effect' 时使用
+   * 可选值：'flying', 'frenchkiss' 等，具体值参考阿里云百炼API文档
+   * 如果不提供，则使用默认值 'flying'
+   */
+  video_effect_template?: string;
 }
 
 /**
