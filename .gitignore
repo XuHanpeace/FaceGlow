@@ -81,13 +81,12 @@ src/config/cosSecrets.dev.js
 
 # react-native-update
 .update
-.pushypushy-config.json
-
-# react-native-update
 .pushy/*
+.pushy
+
+# Pushy 配置文件（包含敏感信息）
+pushy-config.json
 .pushy-config.json
 
 # 软著资料
 软著资料/
-# react-native-update
-.pushy

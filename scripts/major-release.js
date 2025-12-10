@@ -84,12 +84,19 @@ async function main() {
     console.log("   2. xCode Archive 提交Apple审核");
     console.log("   3. ipa文件上传至pushy\n");
 
-    // 1. Load Pushy Config
-    if (!fs.existsSync(configPath)) {
-      console.error('❌ Error: pushy-config.json not found.');
-      process.exit(1);
+    // 1. Load Pushy Config (可选)
+    let pushyConfig = null;
+    if (fs.existsSync(configPath)) {
+      try {
+        pushyConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      } catch (error) {
+        console.warn(`⚠️  无法读取 pushy-config.json: ${error.message}`);
+        console.log("💡 提示: Pushy 相关操作将跳过，稍后可手动操作\n");
+      }
+    } else {
+      console.warn('⚠️  pushy-config.json 未找到');
+      console.log("💡 提示: Pushy 相关操作将跳过，稍后可手动操作\n");
     }
-    const pushyConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
     // 2. Bump Version (更新APP版本 + 更新JS版本)
     console.log("📦 Step 1: 更新版本号（APP版本 + JS版本）...");
@@ -115,16 +122,29 @@ async function main() {
     await runCommand('pod', ['install'], { cwd: path.resolve(__dirname, '../ios') });
     console.log("✅ Pod Install 完成\n");
 
-    // 5. Login to Pushy
-    console.log("🔐 Step 4: 登录 Pushy...");
-    await runCommand('npx', ['react-native-update-cli', 'login'], {
-      inputs: [
-        { prompt: 'email:', value: pushyConfig.email, sent: false },
-        { prompt: 'password:', value: pushyConfig.password, sent: false }
-      ],
-      successMatch: '欢迎使用 pushy 热更新服务'
-    });
-    console.log("✅ Pushy 登录成功\n");
+    // 5. Login to Pushy (可选，失败不影响流程)
+    let pushyLoggedIn = false;
+    if (pushyConfig && pushyConfig.email && pushyConfig.password) {
+      console.log("🔐 Step 4: 登录 Pushy...");
+      try {
+        await runCommand('npx', ['react-native-update-cli', 'login'], {
+          inputs: [
+            { prompt: 'email:', value: pushyConfig.email, sent: false },
+            { prompt: 'password:', value: pushyConfig.password, sent: false }
+          ],
+          successMatch: '欢迎使用 pushy 热更新服务'
+        });
+        console.log("✅ Pushy 登录成功\n");
+        pushyLoggedIn = true;
+      } catch (error) {
+        console.warn(`⚠️  Pushy 登录失败: ${error.message}`);
+        console.log("💡 提示: 稍后可以手动登录 Pushy 并上传 IPA 文件\n");
+        pushyLoggedIn = false;
+      }
+    } else {
+      console.log("🔐 Step 4: 跳过 Pushy 登录（配置不可用）");
+      console.log("💡 提示: 稍后可以手动登录 Pushy 并上传 IPA 文件\n");
+    }
 
     // 6. Build IPA (Manual Interaction Required)
     console.log("📲 Step 5: xCode Archive 构建（需要手动操作）");
@@ -142,17 +162,25 @@ async function main() {
     
     const ipaPath = await askQuestion("📝 请输入导出的 .ipa 文件的完整路径: ");
     
+    let ipaUploaded = false;
     if (!ipaPath || !fs.existsSync(ipaPath)) {
-      console.error("❌ IPA 文件未找到");
-      const skip = await askQuestion("是否跳过 IPA 上传？(y/n): ");
-      if (skip.toLowerCase() !== 'y') {
-        process.exit(1);
-      }
+      console.warn("⚠️  IPA 文件未找到");
+      console.log("💡 提示: 稍后可以手动上传 IPA 文件到 Pushy\n");
+    } else if (!pushyLoggedIn) {
+      console.log("⚠️  由于 Pushy 未登录，跳过 IPA 上传");
+      console.log("💡 提示: 稍后可以手动登录 Pushy 并上传 IPA 文件\n");
     } else {
-      // 7. Upload IPA to Pushy
+      // 7. Upload IPA to Pushy (可选，失败不影响流程)
       console.log("\n📤 Step 6: 上传 IPA 文件到 Pushy...");
-      await runCommand('npx', ['react-native-update-cli', 'uploadIpa', ipaPath]);
-      console.log("✅ IPA 上传成功\n");
+      try {
+        await runCommand('npx', ['react-native-update-cli', 'uploadIpa', ipaPath]);
+        console.log("✅ IPA 上传成功\n");
+        ipaUploaded = true;
+      } catch (error) {
+        console.warn(`⚠️  IPA 上传失败: ${error.message}`);
+        console.log("💡 提示: 稍后可以手动上传 IPA 文件到 Pushy\n");
+        ipaUploaded = false;
+      }
     }
 
     console.log("\n🎉🎉🎉 大版本发布流程完成！ 🎉🎉🎉");
@@ -160,11 +188,31 @@ async function main() {
     console.log(`   - 版本号: ${version}`);
     console.log(`   - APP版本: ${version} (已更新)`);
     console.log(`   - JS版本: ${version} (已更新)`);
-    console.log(`   - IPA文件: ${ipaPath || '已跳过上传'}`);
     console.log(`   - Git Tag: v${version}`);
+    if (ipaPath && fs.existsSync(ipaPath)) {
+      console.log(`   - IPA文件: ${ipaPath}`);
+      if (ipaUploaded) {
+        console.log(`   - Pushy上传: ✅ 已上传`);
+      } else {
+        console.log(`   - Pushy上传: ⚠️  未上传（需要手动上传）`);
+      }
+    } else {
+      console.log(`   - IPA文件: ⚠️  未提供`);
+    }
     console.log(`\n💡 下一步:`);
     console.log(`   - 在 App Store Connect 中查看审核状态`);
-    console.log(`   - 在 Pushy 后台绑定热更新包到新版本`);
+    if (!ipaUploaded) {
+      console.log(`   - ⚠️  需要手动上传 IPA 文件到 Pushy:`);
+      console.log(`     1. 运行: npm run pushy:login`);
+      if (ipaPath && fs.existsSync(ipaPath)) {
+        console.log(`     2. 运行: npm run publish:ipa ${ipaPath}`);
+      } else {
+        console.log(`     2. 运行: npm run publish:ipa <ipa文件路径>`);
+      }
+      console.log(`   - 在 Pushy 后台绑定热更新包到新版本`);
+    } else {
+      console.log(`   - 在 Pushy 后台绑定热更新包到新版本`);
+    }
 
   } catch (error) {
     console.error('\n❌ 大版本发布失败:', error);
