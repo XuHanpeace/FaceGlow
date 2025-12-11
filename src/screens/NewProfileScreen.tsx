@@ -712,12 +712,12 @@ const NewProfileScreen: React.FC = () => {
           </TouchableOpacity>
           
           {/* 测试入口 */}
-          <TouchableOpacity 
+          {/* <TouchableOpacity 
             style={styles.aboutUsButton}
             onPress={() => navigation.navigate('VideoTest')}
           >
             <Text style={[styles.aboutUsText, { color: '#FF6B9D' }]}>🧪 视频功能测试</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
 
       </ScrollView>
