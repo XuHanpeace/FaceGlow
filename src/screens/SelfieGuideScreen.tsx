@@ -14,7 +14,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import * as ImagePicker from 'react-native-image-picker';
-import { PermissionsAndroid, Platform } from 'react-native';
+import { PermissionsAndroid, Platform, Linking } from 'react-native';
 import { useAppDispatch } from '../store/hooks';
 import { uploadSelfie, fetchUserProfile } from '../store/middleware/asyncMiddleware';
 import { useUser } from '../hooks/useUser';
@@ -91,6 +91,39 @@ const SelfieGuideScreen: React.FC = () => {
     setShowModal(false);
   };
 
+  /**
+   * 引导用户去设置中开启权限
+   * @param permissionType 权限类型：'album' | 'camera'
+   */
+  const guideToSettings = (permissionType: 'album' | 'camera') => {
+    const permissionText = permissionType === 'album' 
+      ? '我们仅用于保存您的作品图片，不会访问您的其他信息。我们重视并保护您的隐私安全。'
+      : '我们仅用于拍摄照片，不会访问您的其他信息。我们重视并保护您的隐私安全。';
+    
+    Alert.alert(
+      '"美颜换换"需要您的授权',
+      permissionText,
+      [
+        {
+          text: '取消',
+          style: 'cancel',
+        },
+        {
+          text: '去设置',
+          onPress: async () => {
+            try {
+              await Linking.openSettings();
+            } catch (error) {
+              console.error('打开设置失败:', error);
+              Alert.alert('提示', '无法打开设置，请手动前往系统设置开启权限');
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
   const requestPermissions = async (source: 'library' | 'camera') => {
     if (Platform.OS === 'android') {
       if (source === 'camera') {
@@ -128,7 +161,7 @@ const SelfieGuideScreen: React.FC = () => {
     if (hasPermission) {
       await selectImage('library');
     } else {
-      Alert.alert('权限被拒绝', '需要相册权限才能选择图片');
+      guideToSettings('album');
     }
   };
 
@@ -138,7 +171,7 @@ const SelfieGuideScreen: React.FC = () => {
     if (hasPermission) {
       await selectImage('camera');
     } else {
-      Alert.alert('权限被拒绝', '需要相机权限才能拍照');
+      guideToSettings('camera');
     }
   };
 
@@ -171,7 +204,9 @@ const SelfieGuideScreen: React.FC = () => {
 
       if (result.errorCode) {
         console.error('ImagePicker错误:', result.errorCode, result.errorMessage);
-        Alert.alert('错误', `选择图片失败: ${result.errorMessage}`);
+        // 统一视为权限问题，引导用户去设置开启权限
+        const permissionType = source === 'camera' ? 'camera' : 'album';
+        guideToSettings(permissionType);
         return;
       }
 
@@ -184,7 +219,9 @@ const SelfieGuideScreen: React.FC = () => {
       }
     } catch (error) {
       console.error('选择图片失败:', error);
-      Alert.alert('错误', `选择图片失败: ${error}`);
+      // 统一视为权限问题，引导用户去设置开启权限
+      const permissionType = source === 'camera' ? 'camera' : 'album';
+      guideToSettings(permissionType);
     }
   };
 
@@ -320,13 +357,17 @@ const SelfieGuideScreen: React.FC = () => {
       <StatusBar barStyle="light-content" translucent={true} backgroundColor="transparent" />
       
       {/* 关闭按钮 */}
-      <BackButton iconType="close" onPress={handleClosePress} />
+      <BackButton 
+        iconType="close" 
+        onPress={handleClosePress}
+        style={{ left: undefined, right: 20 }}
+      />
 
       {/* 主要内容 */}
       <View style={styles.content}>
         {/* 标题 */}
         <Text style={styles.title}>创作AI头像</Text>
-        <Text style={styles.subtitle}>别担心,这是一次性操作</Text>
+        <Text style={styles.subtitle}>AI写真就在这一瞬间</Text>
 
         {/* 过程展示区域 - selfie + temp = ai-result */}
         <View style={styles.processShowcaseContainer}>
@@ -371,7 +412,12 @@ const SelfieGuideScreen: React.FC = () => {
         </View>
 
         {/* 结果说明 */}
-        <Text style={styles.resultText}>AI写真就在这一瞬间</Text>
+        {/* <Text style={styles.resultText}>AI写真就在这一瞬间</Text> */}
+
+        {/* 引导文案 */}
+        <Text style={styles.guideText}>
+          💡 小贴士：清晰的自拍照或全身/半身照片，能让AI写真效果更出色哦
+        </Text>
 
         {/* 展示用户选择的自拍 */}
          {/* 照片预览区域 */}
@@ -382,7 +428,11 @@ const SelfieGuideScreen: React.FC = () => {
               style={styles.previewImage}
               resizeMode="cover"
             />
-            <TouchableOpacity style={styles.changePhotoButton} onPress={handleChangePhoto}>
+            <TouchableOpacity 
+              style={[styles.changePhotoButton, isUploading && styles.changePhotoButtonDisabled]} 
+              onPress={handleChangePhoto}
+              disabled={isUploading}
+            >
               <Text style={styles.changePhotoText}>更换自拍</Text>
             </TouchableOpacity>
           </View>
@@ -419,6 +469,7 @@ const SelfieGuideScreen: React.FC = () => {
             fontSize={16}
             borderRadius={25}
             disabled={isUploading}
+            loading={isUploading}
             style={styles.uploadButton}
           />
         ) : (
@@ -460,7 +511,7 @@ const SelfieGuideScreen: React.FC = () => {
               </TouchableOpacity>
 
               {/* 标题 */}
-              <Text style={styles.modalTitle}>从...拍照</Text>
+              <Text style={styles.modalTitle}>选择您的自拍</Text>
 
               {/* 选择按钮 */}
               <TouchableOpacity style={styles.modalButton} onPress={handlePhotoLibrary}>
@@ -528,7 +579,7 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 100,
-    borderWidth: 3,
+    borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   changePhotoButton: {
@@ -546,6 +597,9 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '500',
+  },
+  changePhotoButtonDisabled: {
+    opacity: 0.5,
   },
   uploadedImageContainer: {
     alignItems: 'center',
@@ -653,6 +707,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 30,
   },
+  guideText: {
+    fontSize: 14,
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 30,
+    marginHorizontal: 40,
+    opacity: 0.7,
+    lineHeight: 20,
+  },
   bottomContainer: {
     paddingHorizontal: 20,
     paddingBottom: 40,
@@ -713,7 +776,7 @@ const styles = StyleSheet.create({
   modalCloseButton: {
     position: 'absolute',
     top: 10,
-    left: 10,
+    right: 10,
     width: 30,
     height: 30,
     borderRadius: 15,

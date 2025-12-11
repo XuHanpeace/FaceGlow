@@ -735,9 +735,7 @@ const UserWorkPreviewScreen: React.FC = () => {
         const result = await shareService.saveImageToAlbum(shareImageUrl);
         if (result.success) {
           showSuccessToast('图片已保存到相册');
-        } else {
-          Alert.alert('提示', result.error || '保存失败');
-        }
+        } 
       },
     },
   ];

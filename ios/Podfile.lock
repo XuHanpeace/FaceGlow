@@ -71,6 +71,7 @@ PODS:
     - React-RCTText (= 0.76.4)
     - React-RCTVibration (= 0.76.4)
   - React-callinvoker (0.76.4)
+  - React-Codegen (0.1.0)
   - React-Core (0.76.4):
     - glog
     - hermes-engine
@@ -1291,6 +1292,13 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
+  - react-native-image-marker (1.2.9):
+    - RCT-Folly
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Codegen
+    - React-Core
+    - ReactCommon/turbomodule/core
   - react-native-image-picker (8.2.1):
     - DoubleConversion
     - glog
@@ -1996,6 +2004,7 @@ DEPENDENCIES:
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
   - "react-native-cameraroll (from `../node_modules/@react-native-camera-roll/camera-roll`)"
+  - react-native-image-marker (from `../node_modules/react-native-image-marker`)
   - react-native-image-picker (from `../node_modules/react-native-image-picker`)
   - react-native-mmkv (from `../node_modules/react-native-mmkv`)
   - react-native-pager-view (from `../node_modules/react-native-pager-view`)
@@ -2050,6 +2059,7 @@ SPEC REPOS:
     - QCloudCore
     - QCloudCOSXML
     - QCloudTrack
+    - React-Codegen
     - RevenueCat
     - RevenueCatUI
     - SDWebImage
@@ -2133,6 +2143,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/microtasks"
   react-native-cameraroll:
     :path: "../node_modules/@react-native-camera-roll/camera-roll"
+  react-native-image-marker:
+    :path: "../node_modules/react-native-image-marker"
   react-native-image-picker:
     :path: "../node_modules/react-native-image-picker"
   react-native-mmkv:
@@ -2242,6 +2254,7 @@ SPEC CHECKSUMS:
   RCTTypeSafety: d92eadf87003fe0a307d65b9551ca2b9f2312d1a
   React: bcfa87f7eb47fbc172a3d28bc6a7625bf41b9975
   React-callinvoker: 4d41b07e7ab0322dd1767c2620613fe750c3e632
+  React-Codegen: 4b8b4817cea7a54b83851d4c1f91f79aa73de30a
   React-Core: 66f90b8cf3548d1632d9e9e7f668db02dbf83100
   React-CoreModules: 4e670556f772355a9aea9225404aeb24b22b3316
   React-cxxreact: 7e9d703303dd6cf458ebb937ea74fe9d15c60b12
@@ -2266,6 +2279,7 @@ SPEC CHECKSUMS:
   React-Mapbuffer: e086ffb0c143c96e19fa114bef0ff27bab208dff
   React-microtasksnativemodule: 8e528efbba69994a8cb107b4698d028430e80f25
   react-native-cameraroll: 9aef54b1a28c7880a8d902a51804fe4f5f5de64a
+  react-native-image-marker: dd2602bd822c502be43f9c80b8812d8f938fb4b9
   react-native-image-picker: aec6d7db7ee9020a2c8041128c0bfaa48a41d0ca
   react-native-mmkv: 0c87c7565759edd28df18042b920f3061d1b7f4e
   react-native-pager-view: 76db9d690b34ad57049f39c68da0ead3a98fa2a9

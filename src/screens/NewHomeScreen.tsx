@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { themeColors } from '../config/theme';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import MasonryList from '@react-native-seoul/masonry-list';
@@ -45,6 +46,7 @@ const NewHomeScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const { userInfo } = useUser();
   const { hasSelfies, selfies } = useUserSelfies();
+  const insets = useSafeAreaInsets();
   
   const scrollRef = useRef<ScrollView>(undefined);
   const homeHeaderRef = useRef<HomeHeaderRef>(null);
@@ -53,6 +55,12 @@ const NewHomeScreen: React.FC = () => {
   
   // 滚动距离动画值
   const scrollY = useRef(new Animated.Value(0)).current;
+  
+  // 检测设备类型：通过安全区域top值判断
+  // 刘海屏（iPhone X系列）：top值约为44-50
+  // 灵动岛（iPhone 14 Pro系列及以上）：top值约为59左右
+  const isDynamicIsland = Platform.OS === 'ios' && insets.top >= 54;
+  const capsuleTop = isDynamicIsland ? 15 : 5; // 灵动岛设备向下移动更多
 
   // State
   const [albums, setAlbums] = useState<AlbumRecord[]>([]);
@@ -402,7 +410,7 @@ const NewHomeScreen: React.FC = () => {
       
       {/* iPhone 刘海处的渐变胶囊 */}
       {Platform.OS === 'ios' && (
-        <View style={[styles.notchCapsule, { top: 5 }]}>
+        <View style={[styles.notchCapsule, { top: capsuleTop }]}>
           <LinearGradient
             colors={themeColors.appIcon.gradient} // 使用 App 图标渐变配置
             start={themeColors.appIcon.start}

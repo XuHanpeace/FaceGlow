@@ -515,7 +515,7 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
           has_custom_prompt: !!(albumRecord.allow_custom_prompt && customPrompt.trim()),
         });
 
-        Alert.alert('任务已提交', `${taskTypeMessages[taskType] || '创作'}任务已在后台运行，请留意悬浮条任务列表。`, [
+        Alert.alert('创作已开始', `AI正在努力创作中，预计需要1-3分钟。完成后会提醒你，记得去"我的作品"查看哦～`, [
             { text: '好的', onPress: () => navigation.goBack() }
         ]);
 

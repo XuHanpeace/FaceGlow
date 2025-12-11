@@ -1,9 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, FlatList, Image, Dimensions, ActivityIndicator } from 'react-native';
 import { useAppDispatch, useTypedSelector } from '../store/hooks';
 import { togglePanel, pollAsyncTask, removeTask } from '../store/slices/asyncTaskSlice';
 import { TaskStatus } from '../types/model/user_works';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import { showSuccessToast } from '../utils/toast';
+import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 // import { navigate } from '../navigation/navigationUtils'; // Removed
 
 const { height } = Dimensions.get('window');
@@ -11,10 +13,37 @@ const { height } = Dimensions.get('window');
 const AsyncTaskPanel: React.FC = () => {
   const dispatch = useAppDispatch();
   const { tasks, isPanelOpen } = useTypedSelector(state => state.asyncTask);
+  
+  // 用于记录已完成的任务ID，避免重复提示
+  const completedTaskIdsRef = useRef<Set<string>>(new Set());
 
   const handleClose = () => {
     dispatch(togglePanel(false));
   };
+
+  // 监听任务状态变化，当任务完成时显示Toast和震动
+  useEffect(() => {
+    tasks.forEach(task => {
+      // 检查任务是否刚完成（从PENDING变为SUCCESS）
+      if (task.status === TaskStatus.SUCCESS && !completedTaskIdsRef.current.has(task.taskId)) {
+        // 标记为已处理
+        completedTaskIdsRef.current.add(task.taskId);
+        
+        // 显示Toast提示
+        showSuccessToast('作品已生成完成，快去"我的作品"查看吧！', '创作完成');
+        
+        // 震动反馈
+        try {
+          ReactNativeHapticFeedback.trigger('impactMedium', {
+            enableVibrateFallback: true,
+            ignoreAndroidSystemSettings: false,
+          });
+        } catch (error) {
+          console.warn('震动反馈失败:', error);
+        }
+      }
+    });
+  }, [tasks]);
 
   // 轮询逻辑
   useEffect(() => {
