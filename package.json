@@ -1,6 +1,6 @@
 {
   "name": "faceglow",
-  "version": "1.3.6",
+  "version": "1.3.7",
   "private": true,
   "scripts": {
     "android": "react-native run-android",
@@ -12,8 +12,8 @@
     "postinstall": "patch-package",
     "format": "prettier --write .",
     "pushy:login": "npx react-native-update-cli login",
-    "publish:ipa": "bash scripts/pushy-upload-ipa.sh",
-    "publish:rn": "bash scripts/pushy-hot-update.sh",
+    "publish:ipa": "pushy uploadIpa",
+    "publish:rn": "pushy bundle --platform ios --rncli",
     "pushy:release": "bash scripts/pushy-release.sh",
     "release:patch": "node scripts/patch-release.js",
     "release:major": "node scripts/major-release.js"
