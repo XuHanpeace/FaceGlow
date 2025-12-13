@@ -78,8 +78,8 @@ const NewHomeScreen: React.FC = () => {
   // Config State
   const [functionTypes, setFunctionTypes] = useState<CategoryConfigRecord[]>([]);
   const [themeStyles, setThemeStyles] = useState<CategoryConfigRecord[]>([]);
-  // 预留：活动标签筛选（当前未使用）
-  const [_activityTags, setActivityTags] = useState<CategoryConfigRecord[]>([]);
+  // 活动标签配置（用于徽章渲染）
+  const [activityTags, setActivityTags] = useState<CategoryConfigRecord[]>([]);
 
   // Filter State
   const [selectedFunctionType, setSelectedFunctionType] = useState<string>('all');
@@ -116,9 +116,20 @@ const NewHomeScreen: React.FC = () => {
       const response = await albumService.getCategoryConfig();
       if (response.code === 200) {
         const configs = response.data;
-        setFunctionTypes(configs.filter(c => c.category_type === CategoryType.FUNCTION_TYPE && c.is_active));
-        setThemeStyles(configs.filter(c => c.category_type === CategoryType.THEME_STYLE && c.is_active));
-        setActivityTags(configs.filter(c => c.category_type === CategoryType.ACTIVITY_TAG && c.is_active));
+        const functionTypesList = configs.filter(c => c.category_type === CategoryType.FUNCTION_TYPE && c.is_active);
+        const themeStylesList = configs.filter(c => c.category_type === CategoryType.THEME_STYLE && c.is_active);
+        const activityTagsList = configs.filter(c => c.category_type === CategoryType.ACTIVITY_TAG && c.is_active);
+        
+        console.log('📋 [NewHomeScreen] Category Configs loaded:', {
+          functionTypes: functionTypesList.length,
+          themeStyles: themeStylesList.length,
+          activityTags: activityTagsList.length,
+          activityTags_detail: activityTagsList.map(t => ({ code: t.category_code, label: t.category_label }))
+        });
+        
+        setFunctionTypes(functionTypesList);
+        setThemeStyles(themeStylesList);
+        setActivityTags(activityTagsList);
       }
     } catch (error) {
       console.error('Failed to load config:', error);
@@ -126,16 +137,23 @@ const NewHomeScreen: React.FC = () => {
   };
 
   // Derived: Available Theme Styles based on Selected Function Type
+  // 按照 supported_theme_styles 数组的顺序渲染
   const getAvailableThemeStyles = () => {
     if (selectedFunctionType === 'all') {
-      return themeStyles;
+      // 选择"全部"时，显示所有激活的 theme styles，按照 sort_order 排序
+      return [...themeStyles].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
     }
     const selectedFunc = functionTypes.find(f => f.category_code === selectedFunctionType);
     if (!selectedFunc || !selectedFunc.extra_config?.supported_theme_styles) {
-      return themeStyles;
+      // 如果没有配置，按照 sort_order 排序（显示所有）
+      return [...themeStyles].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
     }
     const supported = selectedFunc.extra_config.supported_theme_styles;
-    return themeStyles.filter(t => supported.includes(t.category_code));
+    // 按照 supported_theme_styles 数组的顺序排序
+    const themeMap = new Map(themeStyles.map(t => [t.category_code, t]));
+    return supported
+      .map(code => themeMap.get(code))
+      .filter(Boolean) as CategoryConfigRecord[];
   };
 
   const availableThemes = getAvailableThemeStyles();
@@ -466,7 +484,11 @@ const NewHomeScreen: React.FC = () => {
             showsVerticalScrollIndicator={false}
             renderItem={({ item, i }: { item: any; i: number }) => (
                 <View style={{ paddingLeft: i % 2 === 0 ? 8 : 4, paddingRight: i % 2 === 0 ? 4 : 8, marginBottom: 4 }}>
-                    <NewAlbumCard album={item as AlbumRecord} onPress={handleAlbumPress} />
+                    <NewAlbumCard 
+                      album={item as AlbumRecord} 
+                      onPress={handleAlbumPress}
+                      activityTagConfigs={activityTags}
+                    />
                 </View>
             )}
             onEndReached={handleLoadMore}

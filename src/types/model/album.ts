@@ -31,6 +31,7 @@ export enum ActivityTag {
   NEW = 'new',
   DISCOUNT = 'discount',
   FREE = 'free',
+  HOT = 'hot', // 热门
 }
 
 /**
@@ -98,7 +99,7 @@ export interface AlbumRecord {
   
   /** 
    * 活动标签数组，存储 ActivityTag 枚举的字符串值
-   * 可选值：'new'（新品）、'discount'（折扣）、'free'（免费）
+   * 可选值：'new'（新品）、'discount'（折扣）、'free'（免费）、'hot'（热门）
    * 用于标记相册的活动状态，支持多个标签
    */
   activity_tags: string[];

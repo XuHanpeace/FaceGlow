@@ -36,13 +36,16 @@ target 'MyCrossPlatformApp' do
       target.build_configurations.each do |config|
         config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '18.6' # 确保版本号与你项目的一致
         
-        # 以下部分是关键！排除模拟器的 arm64 架构，这是 React Native 的常见配置
-        config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64'
-        
         # 生成dSYM文件配置
         config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf-with-dsym'
         config.build_settings['GCC_GENERATE_DEBUGGING_SYMBOLS'] = 'YES'
         config.build_settings['STRIP_INSTALLED_PRODUCT'] = 'NO'
+        
+        # 确保 Hermes 调试符号正确链接
+        if target.name == 'React-jsinspector' || target.name.include?('hermes')
+          config.build_settings['OTHER_LDFLAGS'] ||= ['$(inherited)']
+          config.build_settings['OTHER_LDFLAGS'] << '-ObjC'
+        end
       end
     end
 
@@ -54,13 +57,21 @@ target 'MyCrossPlatformApp' do
       # :ccache_enabled => true
     )
     
-    # 修复Hermes dSYM问题
+    # 修复Hermes dSYM问题并确保调试符号链接
     installer.pods_project.targets.each do |target|
       if target.name == 'hermes-engine'
         target.build_configurations.each do |config|
           config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf-with-dsym'
           config.build_settings['GCC_GENERATE_DEBUGGING_SYMBOLS'] = 'YES'
           config.build_settings['STRIP_INSTALLED_PRODUCT'] = 'NO'
+        end
+      end
+      
+      # 确保 React-jsinspector 正确链接
+      if target.name == 'React-jsinspector'
+        target.build_configurations.each do |config|
+          config.build_settings['OTHER_LDFLAGS'] ||= ['$(inherited)']
+          config.build_settings['OTHER_LDFLAGS'] << '-ObjC'
         end
       end
     end

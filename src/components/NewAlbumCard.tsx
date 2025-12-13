@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, Dimensions, Animated } from 'react-native';
-import { AlbumRecord, AlbumLevel, FunctionType } from '../types/model/album';
+import { AlbumRecord, FunctionType } from '../types/model/album';
+import { CategoryConfigRecord, CategoryType } from '../types/model/config';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import LinearGradient from 'react-native-linear-gradient';
 import FastImage from 'react-native-fast-image';
@@ -17,11 +18,13 @@ const COLUMN_WIDTH = (screenWidth - 16) / 2; // Adjusted for smaller margins
 interface NewAlbumCardProps {
   album: AlbumRecord;
   onPress: (album: AlbumRecord) => void;
+  activityTagConfigs?: CategoryConfigRecord[]; // 活动标签配置，用于动态渲染徽章
 }
 
 export const NewAlbumCard: React.FC<NewAlbumCardProps> = ({
   album,
   onPress,
+  activityTagConfigs = [],
 }) => {
   // 渐隐渐显动画
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -54,75 +57,78 @@ export const NewAlbumCard: React.FC<NewAlbumCardProps> = ({
 
   const cardHeight = COLUMN_WIDTH * aspectRatio;
 
-  // Badge Logic with Gradient
+  // Badge Logic with Gradient - 使用 activity_tags 数组的第一项作为最高优先级
   const renderBadge = () => {
-    if (album.activity_tag_type) {
-        let gradientColors: string[] = ['#000', '#000'];
-        let icon = 'tag';
-        let text = album.activity_tag_text || '';
+    // 获取 activity_tags 的第一项
+    const firstTag = album.activity_tags && album.activity_tags.length > 0 
+      ? album.activity_tags[0] 
+      : null;
 
-        switch (album.activity_tag_type) {
-            case 'new':
-                gradientColors = ['#4CAF50', '#66BB6A']; // Green gradient
-                icon = 'bolt';
-                text = text || '新品';
-                break;
-            case 'discount':
-                gradientColors = ['#FF5722', '#FF7043']; // Deep Orange gradient
-                icon = 'percent';
-                text = text || '限时';
-                break;
-            case 'free':
-                gradientColors = ['#2196F3', '#42A5F5']; // Blue gradient
-                icon = 'gift';
-                text = text || '免费';
-                break;
-            case 'premium':
-                gradientColors = ['#9C27B0', '#BA68C8']; // Purple gradient
-                icon = 'diamond';
-                text = text || '热门';
-                break;
-             case 'member':
-                gradientColors = ['#FFD700', '#FFE082']; // Gold gradient
-                icon = 'star';
-                text = text || '会员';
-                break;
-        }
-
-        return (
-            <View style={styles.activityBadge}>
-                <LinearGradient
-                    colors={gradientColors}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={StyleSheet.absoluteFill}
-                />
-                <View style={styles.badgeContent}>
-                    <FontAwesome name={icon} size={10} color="#fff" style={{ marginRight: 4 }} />
-                    <Text style={styles.activityBadgeText}>{text}</Text>
-                </View>
-            </View>
-        );
+    if (!firstTag) {
+      return null;
     }
+
+    // 根据 tag 查找对应的配置
+    const activityTagConfig = activityTagConfigs.find(
+      config => config.category_type === CategoryType.ACTIVITY_TAG && 
+      config.category_code === firstTag
+    );
+
+    if (activityTagConfig) {
+      // 使用配置中的信息
+      const text = activityTagConfig.category_label || '';
+      const icon = activityTagConfig.icon || 'tag';
+      const gradientColors = getGradientColors(firstTag);
+      
+      return renderBadgeView(gradientColors, icon, text);
+    } else {
+      // 如果没有找到配置，使用默认值
+      const text = firstTag;
+      const icon = 'tag';
+      const gradientColors = getGradientColors(firstTag);
+      
+      return renderBadgeView(gradientColors, icon, text);
+    }
+  };
+
+  // 获取渐变颜色
+  const getGradientColors = (tagCode: string): string[] => {
+    switch (tagCode) {
+      case 'new':
+        return ['#4CAF50', '#66BB6A']; // Green gradient
+      case 'discount':
+        return ['#FF5722', '#FF7043']; // Deep Orange gradient
+      case 'free':
+        return ['#2196F3', '#42A5F5']; // Blue gradient
+      case 'premium':
+      case 'hot':
+        return ['#FF6B9D', '#FF6B35']; // Purple gradient
+      case 'member':
+      case 'vip_only':
+        return ['#FFD700', '#FFE082']; // Gold gradient
+      default:
+        return ['#FF6B9D', '#FF6B35']; // 主特色渐变（粉色到橙色）
+    }
+  };
+
+  // 渲染徽章视图
+  const renderBadgeView = (gradientColors: string[], icon: string, text: string) => {
+    if (!text) return null;
     
-    // Fallback to level badge if no activity tag
-    if (album.level !== AlbumLevel.FREE) {
-       return (
-          <View style={styles.activityBadge}>
-            <LinearGradient
-                colors={['#FFD700', '#FFE082']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={StyleSheet.absoluteFill}
-            />
-            <View style={styles.badgeContent}>
-                <FontAwesome name="star" size={10} color="#000" style={{ marginRight: 4 }} />
-                <Text style={[styles.activityBadgeText, { color: '#000' }]}>会员</Text>
-            </View>
-          </View>
-       );
-    }
-    return null;
+    return (
+      <View style={styles.activityBadge}>
+        <LinearGradient
+          colors={gradientColors}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.badgeContent}>
+          <FontAwesome name={icon} size={10} color="#fff" style={{ marginRight: 4 }} />
+          <Text style={styles.activityBadgeText}>{text}</Text>
+        </View>
+      </View>
+    );
   };
 
   // Price Logic with Coin Icon

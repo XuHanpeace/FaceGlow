@@ -3,6 +3,30 @@
 ## 项目概述
 FaceGlow是一个基于React Native的跨平台AI换脸应用，使用CloudBase作为后端服务。
 
+## 项目结构
+FaceGlow项目由多个子项目组成，每个子项目有明确的职责：
+
+- **`/Users/hanksxu/Desktop/project/FaceGlow/`** - 美颜换换APP（React Native移动应用）
+  - 这是主应用项目，包含iOS和Android原生代码
+  - 使用React Native开发跨平台移动应用
+  - 包含所有前端业务逻辑、组件、页面等
+
+- **`/Users/hanksxu/Desktop/project/cloud-func/`** - 美颜换换云函数
+  - 专门维护所有云函数的目录
+  - 所有云函数统一放在 `functions/` 子目录下
+  - 包括：generateImages、queryTaskWithoutToken、uploadToCOS、callRUMAPI、getAlbumList、getCategoryConfig等
+  - 使用云开发MCP工具部署时，指定 `functionRootPath` 为 `/Users/hanksxu/Desktop/project/cloud-func`
+
+- **`/Users/hanksxu/Desktop/project/faceglow-admin/`** - 美颜换换的管理后台
+  - Web管理后台项目，用于管理相册、批量生成、数据统计等
+  - 使用React + TypeScript + Vite构建
+  - 包含数据大盘、相册管理、批量生产等功能
+  - 运行在 http://localhost:8080
+
+- **`/Users/hanksxu/Desktop/project/faceglow-support/`** - 美颜换换的隐私协议等静态页面
+  - 存放隐私政策、用户协议等静态HTML页面
+  - 用于展示法律文档和用户协议
+
 ## 编码标准
 
 ### 基本规则

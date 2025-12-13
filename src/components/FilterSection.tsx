@@ -198,7 +198,9 @@ export const FilterSection: React.FC<FilterSectionProps> = ({
     updated_at: 0,
   };
   
-  const subTabsList = themeStyles.length > 0 ? [allThemeStyle, ...themeStyles] : [];
+  // 构建子分类列表，确保按照 sort_order 排序
+  const sortedThemeStyles = [...themeStyles].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+  const subTabsList = sortedThemeStyles.length > 0 ? [allThemeStyle, ...sortedThemeStyles] : [];
 
   return (
     <View style={styles.container}>
@@ -244,7 +246,7 @@ export const FilterSection: React.FC<FilterSectionProps> = ({
       )}
 
       {/* Sub Tabs */}
-      {subTabsList.length > 0 && selectedFunctionType !== 'all' && (
+      {subTabsList.length > 0 && (
         <View style={styles.subTabsContainer}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.subScrollContent}>
             {subTabsList.map((item) => {
