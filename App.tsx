@@ -23,6 +23,7 @@ import { aegisService } from './src/services/monitoring/aegisService';
 import LoginPromptManager from './src/components/LoginPromptManager';
 import AsyncTaskFloatBar from './src/components/AsyncTaskFloatBar';
 import AsyncTaskPanel from './src/components/AsyncTaskPanel';
+import DebugEntry from './src/components/DebugEntry';
 import { navigationRef } from './src/navigation/navigationUtils';
 
 // Pushy 集成
@@ -122,6 +123,13 @@ function App(): JSX.Element {
         <LoginPromptManager />
         <AsyncTaskFloatBar />
         <AsyncTaskPanel />
+        {__DEV__ && (
+          <DebugEntry
+            onPress={() => {
+              navigationRef.current?.navigate('DebugTest' as never);
+            }}
+          />
+        )}
       </ModalProvider>
        <View style={styles.toastContainer} pointerEvents="box-none">
         <ToastProvider
