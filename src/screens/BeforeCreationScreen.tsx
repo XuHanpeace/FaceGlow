@@ -29,7 +29,8 @@ import { startAsyncTask, StartAsyncTaskPayload, AsyncTaskError } from '../store/
 import { CrossFadeImage } from '../components/CrossFadeImage';
 import FastImage from 'react-native-fast-image';
 import { useUser, useUserBalance, useUserSelfies } from '../hooks/useUser';
-import { AlbumRecord, FunctionType } from '../types/model/album';
+import { AlbumRecord } from '../types/model/album';
+import { normalizeTaskExecutionType } from '../utils/albumUtils';
 import { aegisService } from '../services/monitoring/aegisService';
 import { TaskType } from '../services/cloud/asyncTaskService';
 
@@ -375,32 +376,39 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
       // 开始处理
       setIsFusionProcessing(true);
 
-      // 3.3 判断任务类型并检查字段取值
-      // 根据新的 AlbumRecord 结构判断：task_execution_type === 'async' 或 function_type === 'image_to_image'
-      const isAsyncTask = albumRecord.task_execution_type === 'async' || 
-                         albumRecord.function_type === 'image_to_image' ||
-                         !!albumRecord.src_image;
-
-      console.log('[BeforeCreation] Check AsyncTask:', { 
+      // 3.3 根据 task_execution_type 判断调用哪个云函数
+      // 兼容旧模板：将 sync/async 映射到新的具体类型
+      const normalizedTaskExecutionType = normalizeTaskExecutionType(
+        albumRecord.task_execution_type,
+        albumRecord.function_type
+      );
+      
+      console.log('[BeforeCreation] Task Execution Type:', { 
           currentActivityId, 
-          task_execution_type: albumRecord.task_execution_type,
+          original_task_execution_type: albumRecord.task_execution_type,
+          normalized_task_execution_type: normalizedTaskExecutionType,
           function_type: albumRecord.function_type,
-          hasSrcImage: !!albumRecord.src_image,
-          isAsyncTask 
       });
 
-      if (isAsyncTask) {
-        // 异步任务逻辑（图生图、图生视频、视频特效）- 使用 prompt 数据
+      // 判断是否为同步任务（调用 fusion 云函数）
+      const isSyncTask = normalizedTaskExecutionType === 'sync_portrait' || 
+                        normalizedTaskExecutionType === 'sync_group_photo';
+
+      if (!isSyncTask) {
+        // 异步任务逻辑（调用 callBailian 云函数）
         // 从 AlbumRecord 中获取 prompt_text
         const promptText = albumRecord.prompt_text || '';
         
-        // 判断任务类型
+        // 根据标准化后的 task_execution_type 映射到 TaskType
         let taskType: TaskType;
-        if (albumRecord.function_type === FunctionType.IMAGE_TO_VIDEO) {
+        if (normalizedTaskExecutionType === 'async_image_to_video') {
           taskType = TaskType.IMAGE_TO_VIDEO;
-        } else if (albumRecord.function_type === FunctionType.VIDEO_EFFECT) {
+        } else if (normalizedTaskExecutionType === 'async_video_effect') {
           taskType = TaskType.VIDEO_EFFECT;
+        } else if (normalizedTaskExecutionType === 'async_portrait_style_redraw') {
+          taskType = TaskType.PORTRAIT_STYLE_REDRAW;
         } else {
+          // 默认或 async_image_to_image
           taskType = TaskType.IMAGE_TO_IMAGE;
         }
 
@@ -437,10 +445,31 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
              throw new Error('用户未登录');
         }
 
+        // 构建视频参数（视频特效使用）
+        const videoParams: any = {};
+        if (taskType === TaskType.VIDEO_EFFECT) {
+          videoParams.resolution = '720P'; // 默认720P
+          videoParams.template = albumRecord.video_effect_template || 'flying';
+          videoParams.style_type = albumRecord.video_effect_template || 'flying'; // 向后兼容
+        } else if (taskType === TaskType.IMAGE_TO_VIDEO) {
+          videoParams.resolution = '720P'; // 默认720P
+        }
+
+        // 构建人像风格重绘参数
+        const styleRedrawParams: any = {};
+        if (taskType === TaskType.PORTRAIT_STYLE_REDRAW) {
+          if (albumRecord.style_index !== undefined) {
+            styleRedrawParams.style_index = albumRecord.style_index;
+          }
+          if (albumRecord.style_ref_url) {
+            styleRedrawParams.style_ref_url = albumRecord.style_ref_url;
+          }
+        }
+
         const taskParams: StartAsyncTaskPayload = {
              taskType: taskType,
-             prompt: finalPrompt || '', // 视频特效不需要prompt，但保持向后兼容
-             images: [selectedSelfieUrl], // 视频特效也使用首帧图片（从自拍图获取）
+             prompt: finalPrompt || '', // 视频特效和人像风格重绘不需要prompt，但保持向后兼容
+             images: [selectedSelfieUrl], // 所有异步任务都使用自拍图
              audioUrl: taskType === TaskType.IMAGE_TO_VIDEO ? albumRecord.audio_url : undefined, // 图生视频音频URL（如果相册数据中有）
              activityId: currentActivityId,
              activityTitle: albumRecord.album_name,
@@ -449,15 +478,8 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
              uid: uid,
              templateId: currentTemplate?.template_id || albumRecord.album_id,
              price: totalPrice,
-             videoParams: {
-               resolution: '720P', // 图生视频和视频特效分辨率：480P、720P、1080P，默认720P
-               template: albumRecord.function_type === FunctionType.VIDEO_EFFECT 
-                 ? (albumRecord.video_effect_template || 'flying') // 视频特效模板，从数据库读取，默认 'flying'
-                 : undefined,
-               style_type: albumRecord.function_type === FunctionType.VIDEO_EFFECT 
-                 ? (albumRecord.video_effect_template || 'flying') // 向后兼容
-                 : undefined,
-             },
+             videoParams: Object.keys(videoParams).length > 0 ? videoParams : undefined,
+             styleRedrawParams: Object.keys(styleRedrawParams).length > 0 ? styleRedrawParams : undefined,
              promptData: {
                text: finalPrompt,
                srcImage: albumRecord.src_image,
@@ -500,12 +522,6 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
         }
 
         // 埋点：异步任务提交成功（使用 fg_action_ 前缀，包含专辑标题）
-        const taskTypeMessages = {
-          [TaskType.IMAGE_TO_IMAGE]: '图生图',
-          [TaskType.IMAGE_TO_VIDEO]: '图生视频',
-          [TaskType.VIDEO_EFFECT]: '视频特效'
-        };
-        
         aegisService.reportUserAction('async_task_submitted', {
           album_id: currentAlbum?.album_id || '',
           album_title: currentAlbum?.album_name || '',

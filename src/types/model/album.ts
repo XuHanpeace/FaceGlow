@@ -36,10 +36,18 @@ export enum ActivityTag {
 
 /**
  * 任务执行类型
+ * 用于决定调用哪个云函数以及传递哪些参数
  */
 export enum TaskExecutionType {
-  SYNC = 'sync',
-  ASYNC = 'async',
+  // 同步任务 - 调用 fusion 云函数
+  SYNC_PORTRAIT = 'sync_portrait',        // 个人写真换脸
+  SYNC_GROUP_PHOTO = 'sync_group_photo',  // 多人合拍换脸
+  
+  // 异步任务 - 调用 callBailian 云函数
+  ASYNC_IMAGE_TO_IMAGE = 'async_image_to_image',           // 图生图
+  ASYNC_IMAGE_TO_VIDEO = 'async_image_to_video',           // 图生视频
+  ASYNC_VIDEO_EFFECT = 'async_video_effect',               // 视频特效
+  ASYNC_PORTRAIT_STYLE_REDRAW = 'async_portrait_style_redraw', // 人像风格重绘
 }
 
 /**
@@ -205,6 +213,19 @@ export interface AlbumRecord {
    * 如果不提供，则使用默认值 'flying'
    */
   video_effect_template?: string;
+  
+  /** 
+   * 风格索引，用于人像风格重绘类型的相册
+   * 可选字段，仅在 task_execution_type 为 'async_portrait_style_redraw' 时使用
+   * 可选值：0-9为预设风格，-1为自定义风格
+   */
+  style_index?: number;
+  
+  /** 
+   * 风格参考图URL，用于人像风格重绘类型的相册
+   * 可选字段，仅在 task_execution_type 为 'async_portrait_style_redraw' 且 style_index 为 -1 时使用
+   */
+  style_ref_url?: string;
 }
 
 /**

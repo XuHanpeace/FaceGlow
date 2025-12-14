@@ -9,6 +9,7 @@ export enum TaskType {
   IMAGE_TO_IMAGE = 'image_to_image', // 图生图
   IMAGE_TO_VIDEO = 'image_to_video', // 图生视频
   VIDEO_EFFECT = 'video_effect', // 视频特效
+  PORTRAIT_STYLE_REDRAW = 'portrait_style_redraw', // 人像风格重绘
 }
 
 /**
@@ -41,6 +42,10 @@ export interface BailianParams {
     style_type?: string;
     /** 视频特效模板，视频特效使用（与style_type相同，推荐使用template） */
     template?: string;
+    /** 风格索引，人像风格重绘使用（0-9为预设风格，-1为自定义风格） */
+    style_index?: number;
+    /** 风格参考图URL，人像风格重绘使用（当style_index=-1时必填） */
+    style_ref_url?: string;
   };
   /** 用户ID（价格>0时必填） */
   user_id?: string;

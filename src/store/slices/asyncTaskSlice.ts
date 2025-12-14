@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { asyncTaskService, BailianParams, TaskType } from '../../services/cloud/asyncTaskService';
 import { userWorkService } from '../../services/database/userWorkService';
 import { TaskStatus, UserWorkModel, ResultData } from '../../types/model/user_works';
-import { fetchUserWorks } from './userWorksSlice';
+import { fetchUserWorks, updateWorkItem } from './userWorksSlice';
 
 // 任务信息接口
 export interface AsyncTask {
@@ -55,6 +55,14 @@ export interface VideoParams {
 }
 
 /**
+ * 人像风格重绘参数接口
+ */
+export interface StyleRedrawParams {
+  style_index?: number; // 风格索引（0-9为预设风格，-1为自定义风格）
+  style_ref_url?: string; // 风格参考图URL（当style_index=-1时必填）
+}
+
+/**
  * 发起异步任务的参数接口
  */
 export interface StartAsyncTaskPayload {
@@ -86,6 +94,8 @@ export interface StartAsyncTaskPayload {
   price?: number;
   /** 视频参数 */
   videoParams?: VideoParams;
+  /** 人像风格重绘参数 */
+  styleRedrawParams?: StyleRedrawParams;
 }
 
 interface AsyncTaskState {
@@ -121,6 +131,9 @@ export const startAsyncTask = createAsyncThunk(
           resolution: payload.videoParams?.resolution || '720P', // 图生视频和视频特效分辨率，默认720P
           template: payload.videoParams?.template || payload.videoParams?.style_type, // 视频特效模板（如 "frenchkiss"），在API中使用input.template
           style_type: payload.videoParams?.style_type, // 视频特效风格类型（向后兼容，会映射为template）
+          // 人像风格重绘参数
+          style_index: payload.styleRedrawParams?.style_index,
+          style_ref_url: payload.styleRedrawParams?.style_ref_url,
         },
         user_id: payload.uid,
         price: payload.price || 0,
@@ -351,24 +364,31 @@ export const pollAsyncTask = createAsyncThunk(
               console.warn('[Redux] DB更新失败:', updateResult.error);
             } else {
                 // 3. DB更新成功后
-                console.log('[Redux] DB更新成功，即将刷新数据...');
+                console.log('[Redux] DB更新成功，即将更新Redux状态...');
                 
-                // 触发全局列表刷新 (如果作品属于当前用户)
-                if (work.record?.uid) {
-                    console.log('[Redux] 触发用户作品列表刷新 uid:', work.record?.uid);
-                    dispatch(fetchUserWorks({ uid: work.record?.uid }));
-                }
-                
-                // 同时也拉取最新单条数据 (供 Preview 页使用，因为它依赖 updatedWork)
+                // 拉取最新单条数据并更新Redux状态（而不是重新获取整个列表）
+                // 这样可以避免因为分页限制（只返回前20个）而丢失新创建的作品
                 try {
                   const latestWorkResult = await userWorkService.getWorkByTaskId(task.taskId);
                   if (latestWorkResult.success && latestWorkResult.data) {
                       const rawData = latestWorkResult.data as any;
                       updatedWork = rawData.record ? rawData.record : rawData;
-                      console.log('[Redux] 最新单条作品数据拉取成功');
+                      console.log('[Redux] 最新单条作品数据拉取成功，更新Redux状态');
+                      
+                      // 使用 updateWorkItem 更新单个作品，而不是重新获取整个列表
+                      // 这样可以避免因为分页限制而丢失其他作品
+                      if (updatedWork && updatedWork._id) {
+                        dispatch(updateWorkItem(updatedWork));
+                        console.log('[Redux] 已通过 updateWorkItem 更新作品:', updatedWork._id);
+                      }
                   }
                 } catch(fetchError) {
                     console.error('[Redux] 拉取最新作品数据失败:', fetchError);
+                    // 如果拉取失败，仍然尝试刷新整个列表（作为兜底方案）
+                    if (work.record?.uid) {
+                      console.log('[Redux] 拉取失败，使用兜底方案刷新整个列表');
+                      dispatch(fetchUserWorks({ uid: work.record?.uid }));
+                    }
                 }
             }
           } else {
