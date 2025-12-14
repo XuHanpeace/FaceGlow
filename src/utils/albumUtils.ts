@@ -93,6 +93,7 @@ export function normalizeTaskExecutionType(
     TaskExecutionType.ASYNC_IMAGE_TO_VIDEO,
     TaskExecutionType.ASYNC_VIDEO_EFFECT,
     TaskExecutionType.ASYNC_PORTRAIT_STYLE_REDRAW,
+    TaskExecutionType.ASYNC_DOUBAO_IMAGE_TO_IMAGE, // 豆包图生图（独立执行类型）
   ];
   
   if (taskExecutionType && newTypes.includes(taskExecutionType as TaskExecutionType)) {

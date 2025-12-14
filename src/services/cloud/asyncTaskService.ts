@@ -10,6 +10,7 @@ export enum TaskType {
   IMAGE_TO_VIDEO = 'image_to_video', // 图生视频
   VIDEO_EFFECT = 'video_effect', // 视频特效
   PORTRAIT_STYLE_REDRAW = 'portrait_style_redraw', // 人像风格重绘
+  DOUBAO_IMAGE_TO_IMAGE = 'doubao_image_to_image', // 豆包图生图（同步返回）
 }
 
 /**
@@ -20,7 +21,27 @@ export interface BailianParams {
   task_type: TaskType;
   /** 提示词文本 */
   prompt: string;
-  /** 图片URL数组（图生图、图生视频使用） */
+  /** 
+   * 图片URL数组（图生图、图生视频、豆包图生图使用）
+   * 
+   * 对于豆包图生图（doubao_image_to_image）：
+   * - images[0] 对应 prompt 中的"图1"或"第一张图"
+   * - images[1] 对应 prompt 中的"图2"或"第二张图"
+   * - images[2] 对应 prompt 中的"图3"或"第三张图"
+   * - 以此类推...
+   * 
+   * 在相册（Album）场景中的标准构建规则：
+   * - images[0] = selectedSelfieUrl（用户选择的自拍图，人物来源图）
+   * - images[1] = result_image（结果图/场景图，目标场景图）
+   * 
+   * 示例：
+   * // 从相册数据和用户选择的自拍图构建
+   * images: [selectedSelfieUrl, albumData.result_image]
+   * prompt: "将图2中的人物替换为图1的人物"
+   * 含义：将 images[1]（result_image，场景图）中的人物替换为 images[0]（selectedSelfieUrl，用户自拍图）中的人物
+   * 
+   * 注意：prompt 中提到的"图1"、"图2"等，是按照 images 数组的索引顺序（从1开始计数）
+   */
   images?: string[];
   /** 视频URL（视频特效使用） */
   video_url?: string;
@@ -64,15 +85,19 @@ export interface BailianResponse {
   
   /** 
    * 数据对象
-   * - 成功时：包含 taskId, requestId, message
+   * - 成功时（异步任务）：包含 taskId, requestId, message
+   * - 成功时（豆包图生图同步任务）：包含 resultUrl, responseData, message
    * - 失败时（余额不足）：包含 currentBalance, requiredAmount
    * - 失败时（其他错误）：可能为 null 或包含错误详情（statusCode, details, requestUrl）
    */
   data?: {
-    /** 成功时返回 */
+    /** 异步任务成功时返回 */
     taskId?: string;
     requestId?: string;
     message?: string;
+    /** 豆包图生图同步任务成功时返回 */
+    resultUrl?: string;
+    responseData?: any;
     /** 余额不足时返回 */
     currentBalance?: number;
     requiredAmount?: number;

@@ -108,12 +108,172 @@ const initialState: AsyncTaskState = {
   isPanelOpen: false, // 面板默认关闭，通过悬浮条打开
 };
 
+/**
+ * 后台处理豆包图生图任务
+ */
+async function processDoubaoTaskInBackground(params: {
+  taskId: string;
+  bailianParams: BailianParams;
+  dispatch: (action: any) => void;
+}) {
+  const { taskId, bailianParams, dispatch } = params;
+  
+  try {
+    console.log('[Redux] 开始后台处理豆包图生图任务:', taskId);
+    
+    // 调用 API
+    const apiResponse = await asyncTaskService.callBailian(bailianParams);
+
+    if (!apiResponse.success) {
+      // 处理余额不足错误（特殊处理）
+      if (apiResponse.errCode === 'INSUFFICIENT_BALANCE') {
+        const error: AsyncTaskError = {
+          errCode: 'INSUFFICIENT_BALANCE',
+          message: apiResponse.errorMsg || '余额不足',
+          data: {
+            currentBalance: apiResponse.data?.currentBalance ?? 0,
+            requiredAmount: apiResponse.data?.requiredAmount ?? 0,
+          }
+        };
+        // 余额不足时，更新任务状态为失败，并记录错误信息
+        const workResult = await userWorkService.getWorkByTaskId(taskId);
+        if (workResult.success && workResult.data) {
+          const work = workResult.data;
+          const updateData: Partial<UserWorkModel> = {
+            taskStatus: TaskStatus.FAILED,
+          };
+          await userWorkService.updateWork(work.record?._id!, updateData);
+        }
+        dispatch(updateDoubaoTaskStatus({
+          taskId,
+          status: TaskStatus.FAILED,
+          error: `余额不足（需要${error.data?.requiredAmount}，当前${error.data?.currentBalance}）`
+        }));
+        return;
+      }
+      
+      // 其他错误：更新任务状态为失败
+      const workResult = await userWorkService.getWorkByTaskId(taskId);
+      if (workResult.success && workResult.data) {
+        const work = workResult.data;
+        const updateData: Partial<UserWorkModel> = {
+          taskStatus: TaskStatus.FAILED,
+        };
+        await userWorkService.updateWork(work.record?._id!, updateData);
+      }
+      
+      // 更新 Redux 状态
+      dispatch(updateDoubaoTaskStatus({
+        taskId,
+        status: TaskStatus.FAILED,
+        error: apiResponse.errorMsg || '豆包图生图失败'
+      }));
+      return;
+    }
+
+    const resultUrl = apiResponse.data?.resultUrl;
+    if (!resultUrl) {
+      // 更新任务状态为失败
+      const workResult = await userWorkService.getWorkByTaskId(taskId);
+      if (workResult.success && workResult.data) {
+        const work = workResult.data;
+        const updateData: Partial<UserWorkModel> = {
+          taskStatus: TaskStatus.FAILED,
+        };
+        await userWorkService.updateWork(work.record?._id!, updateData);
+      }
+      
+      dispatch(updateDoubaoTaskStatus({
+        taskId,
+        status: TaskStatus.FAILED,
+        error: '豆包图生图未返回结果URL'
+      }));
+      return;
+    }
+
+    // 更新作品记录
+    const workResult = await userWorkService.getWorkByTaskId(taskId);
+    if (workResult.success && workResult.data) {
+      const work = workResult.data;
+      const workId = work.record?._id!;
+
+      // 解析 ext_data
+      let extDataObj: any = {};
+      try {
+        extDataObj = JSON.parse(work.record?.ext_data || '{}');
+      } catch (e) {}
+
+      // 更新 result_data
+      const resultData = work.record?.result_data || [];
+      const newResultData = [...resultData];
+      if (newResultData.length > 0) {
+        newResultData[0] = {
+          ...newResultData[0],
+          result_image: resultUrl
+        };
+      }
+
+      // 更新 ext_data
+      extDataObj.result_url = resultUrl;
+      extDataObj.task_status = TaskStatus.SUCCESS;
+
+      const updateData: Partial<UserWorkModel> = {
+        taskStatus: TaskStatus.SUCCESS,
+        result_data: newResultData,
+        ext_data: JSON.stringify(extDataObj),
+        updatedAt: Date.now()
+      };
+
+      await userWorkService.updateWork(workId, updateData);
+
+      // 获取更新后的作品数据
+      const updatedWorkResult = await userWorkService.getWorkById(workId);
+      const updatedWork = updatedWorkResult.success && updatedWorkResult.data 
+        ? updatedWorkResult.data.record 
+        : undefined;
+
+      // 更新 Redux 状态
+      dispatch(updateDoubaoTaskStatus({
+        taskId,
+        status: TaskStatus.SUCCESS,
+        resultImage: resultUrl,
+        updatedWork
+      }));
+
+      // 更新作品列表
+      if (updatedWork) {
+        dispatch(updateWorkItem(updatedWork));
+      }
+
+      console.log('[Redux] 豆包图生图任务处理完成:', taskId, resultUrl);
+    }
+  } catch (error) {
+    console.error('[Redux] 豆包图生图后台处理异常:', error);
+    
+    // 更新任务状态为失败
+    const workResult = await userWorkService.getWorkByTaskId(taskId);
+    if (workResult.success && workResult.data) {
+      const work = workResult.data;
+      const updateData: Partial<UserWorkModel> = {
+        taskStatus: TaskStatus.FAILED,
+      };
+      await userWorkService.updateWork(work.record?._id!, updateData);
+    }
+    
+    dispatch(updateDoubaoTaskStatus({
+      taskId,
+      status: TaskStatus.FAILED,
+      error: error instanceof Error ? error.message : '处理失败'
+    }));
+  }
+}
+
 // 发起异步任务
 export const startAsyncTask = createAsyncThunk(
   'asyncTask/start',
   async (
     payload: StartAsyncTaskPayload,
-    { rejectWithValue }
+    { rejectWithValue, dispatch }
   ) => {
     try {
       // 1. 调用云函数发起任务
@@ -139,9 +299,86 @@ export const startAsyncTask = createAsyncThunk(
         price: payload.price || 0,
       };
 
+      // 豆包图生图：先创建 PENDING 状态的任务，然后在后台处理
+      if (payload.taskType === TaskType.DOUBAO_IMAGE_TO_IMAGE) {
+        // 注意：余额检查在后台处理时进行，如果余额不足会更新任务状态为失败
+        // 1. 先创建 PENDING 状态的任务记录（不调用 API）
+        const taskId = `doubao_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const coverImage = payload.activityImage || 
+                          (payload.images && payload.images.length > 0 ? payload.images[0] : '') || 
+                          '';
+
+        const resultData: ResultData[] = [
+          {
+            template_id: payload.templateId,
+            template_image: coverImage,
+            result_image: '' // 尚未生成
+          }
+        ];
+
+        const extData = {
+          task_id: taskId,
+          task_status: TaskStatus.PENDING,
+          task_type: payload.taskType,
+          selfie_url: payload.images?.[0], // 保存图1（用户选择的自拍图）
+          scene_url: payload.images?.[1], // 保存图2（result_image，场景图）
+          prompt_data: payload.promptData
+        };
+
+        const workData: Omit<UserWorkModel, '_id'> = {
+          uid: payload.uid,
+          activity_id: payload.activityId,
+          activity_type: 'asyncTask',
+          activity_title: payload.activityTitle,
+          activity_description: payload.activityDescription || '',
+          activity_image: coverImage,
+          album_id: '',
+          likes: '0',
+          is_public: '0',
+          download_count: '0',
+          result_data: resultData,
+          ext_data: JSON.stringify(extData),
+          taskId: taskId,
+          taskStatus: TaskStatus.PENDING,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        };
+
+        const createResult = await userWorkService.createWork(workData);
+
+        if (!createResult.success || !createResult.data?.id) {
+          throw new Error(createResult.error?.message || '创建作品记录失败');
+        }
+
+        const workId = createResult.data.id;
+
+        // 2. 立即返回 PENDING 状态的任务信息
+        const pendingTask = {
+          taskId,
+          workId,
+          status: TaskStatus.PENDING,
+          startTime: Date.now(),
+          activityTitle: payload.activityTitle,
+          coverImage: payload.activityImage || (payload.images && payload.images.length > 0 ? payload.images[0] : ''),
+        };
+
+        // 3. 在后台异步调用 API（不阻塞返回）
+        // 余额检查在后台处理时进行，如果余额不足会更新任务状态为失败
+        processDoubaoTaskInBackground({
+          taskId,
+          bailianParams,
+          dispatch
+        }).catch((error) => {
+          console.error('[Redux] 豆包图生图后台处理失败:', error);
+        });
+
+        return pendingTask;
+      }
+
+      // 其他异步任务：正常调用 API（包含余额检查）
       const apiResponse = await asyncTaskService.callBailian(bailianParams);
 
-      if (!apiResponse.success || !apiResponse.data?.taskId) {
+      if (!apiResponse.success) {
         // 处理余额不足错误
         if (apiResponse.errCode === 'INSUFFICIENT_BALANCE') {
           const error: AsyncTaskError = {
@@ -162,7 +399,8 @@ export const startAsyncTask = createAsyncThunk(
         return rejectWithValue(error);
       }
 
-      const taskId = apiResponse.data.taskId;
+      // 其他异步任务需要 taskId
+      const taskId = apiResponse.data?.taskId;
       if (!taskId) {
         throw new Error('任务ID缺失');
       }
@@ -426,6 +664,25 @@ const asyncTaskSlice = createSlice({
     },
     addTask: (state, action: PayloadAction<AsyncTask>) => {
       state.tasks.push(action.payload);
+    },
+    updateDoubaoTaskStatus: (state, action: PayloadAction<{
+      taskId: string;
+      status: TaskStatus;
+      resultImage?: string;
+      error?: string;
+      updatedWork?: UserWorkModel;
+    }>) => {
+      const { taskId, status, resultImage, error, updatedWork } = action.payload;
+      const index = state.tasks.findIndex(t => t.taskId === taskId);
+      if (index !== -1) {
+        state.tasks[index] = {
+          ...state.tasks[index],
+          status,
+          resultImage,
+          error,
+          updatedWork
+        };
+      }
     }
   },
   extraReducers: (builder) => {
@@ -452,5 +709,5 @@ const asyncTaskSlice = createSlice({
   },
 });
 
-export const { togglePanel, removeTask, addTask } = asyncTaskSlice.actions;
+export const { togglePanel, removeTask, addTask, updateDoubaoTaskStatus } = asyncTaskSlice.actions;
 export default asyncTaskSlice.reducer;

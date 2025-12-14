@@ -48,6 +48,7 @@ export enum TaskExecutionType {
   ASYNC_IMAGE_TO_VIDEO = 'async_image_to_video',           // 图生视频
   ASYNC_VIDEO_EFFECT = 'async_video_effect',               // 视频特效
   ASYNC_PORTRAIT_STYLE_REDRAW = 'async_portrait_style_redraw', // 人像风格重绘
+  ASYNC_DOUBAO_IMAGE_TO_IMAGE = 'async_doubao_image_to_image', // 豆包图生图（独立执行类型）
 }
 
 /**

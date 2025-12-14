@@ -407,6 +407,9 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
           taskType = TaskType.VIDEO_EFFECT;
         } else if (normalizedTaskExecutionType === 'async_portrait_style_redraw') {
           taskType = TaskType.PORTRAIT_STYLE_REDRAW;
+        } else if (normalizedTaskExecutionType === 'async_doubao_image_to_image') {
+          // 豆包图生图是独立的执行类型
+          taskType = TaskType.DOUBAO_IMAGE_TO_IMAGE;
         } else {
           // 默认或 async_image_to_image
           taskType = TaskType.IMAGE_TO_IMAGE;
@@ -418,7 +421,27 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
           finalPrompt = `${promptText} ${customPrompt.trim()}`;
         }
         
-        if (!finalPrompt && taskType !== TaskType.VIDEO_EFFECT) {
+        // 豆包图生图需要 prompt_text、用户自拍图和 result_image
+        if (taskType === TaskType.DOUBAO_IMAGE_TO_IMAGE) {
+          if (!finalPrompt) {
+            Alert.alert('错误', '缺少提示词数据，无法进行豆包图生图创作');
+            setIsFusionProcessing(false);
+            return;
+          }
+          // 豆包图生图需要用户选择的自拍图
+          if (!selectedSelfieUrl) {
+            Alert.alert('错误', '请先选择自拍照（将作为图1）');
+            setIsFusionProcessing(false);
+            return;
+          }
+          // 豆包图生图需要 result_image 作为图2
+          if (!albumRecord.result_image) {
+            Alert.alert('错误', '缺少结果图片（result_image），无法进行豆包图生图');
+            setIsFusionProcessing(false);
+            return;
+          }
+        } else if (!finalPrompt && taskType !== TaskType.VIDEO_EFFECT) {
+          // 其他任务（除了视频特效）也需要 prompt
           Alert.alert('错误', '缺少提示词数据，无法进行创作');
           setIsFusionProcessing(false);
           return;
@@ -466,10 +489,31 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
           }
         }
 
+        // 构建 images 数组
+        // 豆包图生图：使用用户选择的自拍图作为 images[0]（图1），result_image 作为 images[1]（图2）
+        // 其他任务：使用 selectedSelfieUrl
+        let imagesArray: string[] = [];
+        if (taskType === TaskType.DOUBAO_IMAGE_TO_IMAGE) {
+          // 豆包图生图：按照标准顺序构建
+          // images[0] = selectedSelfieUrl（用户选择的自拍图，图1 - 人物来源图）
+          // images[1] = result_image（结果图/场景图，图2 - 目标场景图）
+          imagesArray = [
+            selectedSelfieUrl!,          // 图1 - 用户选择的自拍图（人物来源图）
+            albumRecord.result_image!    // 图2 - 目标场景图
+          ];
+          console.log('[BeforeCreation] 豆包图生图 images 数组:', {
+            'images[0] (图1 - 用户自拍图)': imagesArray[0],
+            'images[1] (图2 - 场景图)': imagesArray[1]
+          });
+        } else {
+          // 其他异步任务使用自拍图
+          imagesArray = [selectedSelfieUrl!];
+        }
+
         const taskParams: StartAsyncTaskPayload = {
              taskType: taskType,
              prompt: finalPrompt || '', // 视频特效和人像风格重绘不需要prompt，但保持向后兼容
-             images: [selectedSelfieUrl], // 所有异步任务都使用自拍图
+             images: imagesArray, // 根据任务类型构建不同的 images 数组
              audioUrl: taskType === TaskType.IMAGE_TO_VIDEO ? albumRecord.audio_url : undefined, // 图生视频音频URL（如果相册数据中有）
              activityId: currentActivityId,
              activityTitle: albumRecord.album_name,
@@ -482,8 +526,8 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
              styleRedrawParams: Object.keys(styleRedrawParams).length > 0 ? styleRedrawParams : undefined,
              promptData: {
                text: finalPrompt,
-               srcImage: albumRecord.src_image,
-               resultImage: albumRecord.result_image,
+               srcImage: selectedSelfieUrl, // 豆包图生图使用用户选择的自拍图作为图1
+               resultImage: albumRecord.result_image, // 图2 - 场景图
                styleTitle: albumRecord.album_name,
                styleDesc: albumRecord.album_description,
              }
@@ -521,6 +565,7 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
           throw new Error(errorMessage);
         }
 
+        // 所有异步任务（包括豆包图生图）统一处理：弹出提示并退出
         // 埋点：异步任务提交成功（使用 fg_action_ 前缀，包含专辑标题）
         aegisService.reportUserAction('async_task_submitted', {
           album_id: currentAlbum?.album_id || '',
@@ -531,8 +576,13 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
           has_custom_prompt: !!(albumRecord.allow_custom_prompt && customPrompt.trim()),
         });
 
-        Alert.alert('创作已开始', `AI正在努力创作中，预计需要1-3分钟。完成后会提醒你，记得去"我的作品"查看哦～`, [
-            { text: '好的', onPress: () => navigation.goBack() }
+        // 豆包图生图虽然调用是同步的，但需要至少5秒，所以也当作异步任务展示
+        const alertMessage = taskType === TaskType.DOUBAO_IMAGE_TO_IMAGE
+          ? `AI正在努力创作中，预计需要5-10秒。完成后会提醒你，记得去"我的作品"查看哦～`
+          : `AI正在努力创作中，预计需要1-3分钟。完成后会提醒你，记得去"我的作品"查看哦～`;
+
+        Alert.alert('创作已开始', alertMessage, [
+          { text: '好的', onPress: () => navigation.goBack() }
         ]);
 
       } else {
