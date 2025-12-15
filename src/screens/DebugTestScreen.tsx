@@ -27,9 +27,9 @@ const DebugTestScreen: React.FC = () => {
   const [loading, setLoading] = useState<string | null>(null);
 
   // Mock 数据
-  const mockImageUrl = 'https://example.com/mock-image.jpg';
+  const mockImageUrl = 'https://myhh2-1257391807.cos.ap-nanjing.myqcloud.com/uploads/mankuaimen/mt_1994254173231509504.png';
   const mockVideoUrl = 'https://example.com/mock-video.mp4';
-  const mockPrompt = '测试提示词：生成一个美丽的风景';
+  const mockPrompt = '让画面动起来，设计的动作展现女孩的柔美，她说道："我在故宫很想想你"，语调轻柔婉转，气息绵长，音色如丝滑绸缎般细腻，语速舒缓从容，带有古典韵味的腔调，情绪宁静而含蓄，仿佛在低吟浅唱中透出一丝温婉的思绪'
   const mockActivityId = 'debug-activity-001';
   const mockTemplateId = 'debug-template-001';
 
@@ -65,10 +65,10 @@ const DebugTestScreen: React.FC = () => {
           },
         }),
         ...(taskType === TaskType.VIDEO_EFFECT && {
-          videoUrl: mockVideoUrl,
+          images: [mockImageUrl],
           videoParams: {
             resolution: '720P',
-            template: 'frenchkiss', // 示例模板
+            template: 'dance1', // 示例模板
           },
         }),
         ...(taskType === TaskType.PORTRAIT_STYLE_REDRAW && {
@@ -127,7 +127,6 @@ const DebugTestScreen: React.FC = () => {
     <View style={styles.container}>
       <View style={styles.header}>
         <BackButton onPress={() => navigation.goBack()} />
-        <Text style={styles.headerTitle}>调试测试页面</Text>
         <View style={styles.headerPlaceholder} />
       </View>
 
