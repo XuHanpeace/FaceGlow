@@ -43,12 +43,33 @@ const userWorksSlice = createSlice({
     },
     updateWorkItem: (state, action: PayloadAction<UserWorkModel>) => {
         const updatedWork = action.payload;
-        const index = state.works.findIndex(w => w._id === updatedWork._id);
+        
+        // 确保 taskStatus 字段正确设置（优先使用顶层字段，否则从 ext_data 中提取）
+        let finalTaskStatus = updatedWork.taskStatus;
+        if (!finalTaskStatus && updatedWork.ext_data) {
+          try {
+            const extData = JSON.parse(updatedWork.ext_data);
+            if (extData.task_status) {
+              finalTaskStatus = extData.task_status;
+            }
+          } catch (e) {
+            // 忽略解析错误
+          }
+        }
+        
+        // 创建更新后的作品对象，确保包含 taskStatus
+        const workToUpdate = {
+          ...updatedWork,
+          taskStatus: finalTaskStatus || updatedWork.taskStatus
+        };
+        
+        const index = state.works.findIndex(w => w._id === workToUpdate._id);
         if (index !== -1) {
-            state.works[index] = updatedWork;
+            // 完全替换，确保所有字段都更新
+            state.works[index] = workToUpdate;
         } else {
             // Optional: Add if not exists (e.g. new creation)
-            state.works.unshift(updatedWork);
+            state.works.unshift(workToUpdate);
         }
         
         // Re-sort after update
@@ -57,6 +78,10 @@ const userWorksSlice = createSlice({
             const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
             return timeB - timeA;
         });
+    },
+    removeWork: (state, action: PayloadAction<string>) => {
+        // 根据作品ID从列表中移除
+        state.works = state.works.filter(w => w._id !== action.payload);
     }
   },
   extraReducers: (builder) => {
@@ -80,6 +105,20 @@ const userWorksSlice = createSlice({
         } else if (payload && payload.data && Array.isArray(payload.data.records)) {
             list = payload.data.records;
         }
+        
+        // 确保每个作品都有正确的 taskStatus 字段（从 ext_data 中提取）
+        list.forEach(work => {
+          if (!work.taskStatus && work.ext_data) {
+            try {
+              const extData = JSON.parse(work.ext_data);
+              if (extData.task_status) {
+                work.taskStatus = extData.task_status;
+              }
+            } catch (e) {
+              // 忽略解析错误
+            }
+          }
+        });
         
         // Force sort by createdAt desc
         list.sort((a, b) => {
@@ -132,5 +171,5 @@ const userWorksSlice = createSlice({
   },
 });
 
-export const { resetUserWorks, updateWorkItem } = userWorksSlice.actions;
+export const { resetUserWorks, updateWorkItem, removeWork } = userWorksSlice.actions;
 export default userWorksSlice.reducer;

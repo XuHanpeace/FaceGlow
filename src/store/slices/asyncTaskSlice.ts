@@ -610,14 +610,32 @@ export const pollAsyncTask = createAsyncThunk(
                   const latestWorkResult = await userWorkService.getWorkByTaskId(task.taskId);
                   if (latestWorkResult.success && latestWorkResult.data) {
                       const rawData = latestWorkResult.data as any;
-                      updatedWork = rawData.record ? rawData.record : rawData;
-                      console.log('[Redux] 最新单条作品数据拉取成功，更新Redux状态');
+                      const workData = rawData.record ? rawData.record : rawData;
                       
-                      // 使用 updateWorkItem 更新单个作品，而不是重新获取整个列表
-                      // 这样可以避免因为分页限制而丢失其他作品
-                      if (updatedWork && updatedWork._id) {
-                        dispatch(updateWorkItem(updatedWork));
-                        console.log('[Redux] 已通过 updateWorkItem 更新作品:', updatedWork._id);
+                      if (workData && workData._id) {
+                        // 确保 taskStatus 字段正确设置（优先使用顶层字段，否则从 ext_data 中提取）
+                        if (!workData.taskStatus && workData.ext_data) {
+                          try {
+                            const extData = JSON.parse(workData.ext_data);
+                            if (extData.task_status) {
+                              workData.taskStatus = extData.task_status;
+                            }
+                          } catch (e) {
+                            console.warn('[Redux] 解析 ext_data 失败:', e);
+                          }
+                        }
+                        
+                        // 如果仍然没有 taskStatus，使用当前任务状态
+                        if (!workData.taskStatus) {
+                          workData.taskStatus = newStatus;
+                        }
+                        
+                        // 使用 updateWorkItem 更新单个作品，而不是重新获取整个列表
+                        // 这样可以避免因为分页限制而丢失其他作品
+                        updatedWork = workData;
+                        console.log('[Redux] 最新单条作品数据拉取成功，更新Redux状态，taskStatus:', workData.taskStatus);
+                        dispatch(updateWorkItem(workData));
+                        console.log('[Redux] 已通过 updateWorkItem 更新作品:', workData._id);
                       }
                   }
                 } catch(fetchError) {

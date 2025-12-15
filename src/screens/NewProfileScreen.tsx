@@ -19,7 +19,7 @@ import { RootStackParamList } from '../types/navigation';
 import { useTypedSelector, useAppDispatch } from '../store/hooks';
 import { clearAllSelfies } from '../store/slices/selfieSlice';
 import { resetUser } from '../store/slices/userSlice';
-import { fetchUserWorks } from '../store/slices/userWorksSlice'; // Added
+import { fetchUserWorks, removeWork } from '../store/slices/userWorksSlice'; // Added
 import { logoutUser, fetchUserProfile } from '../store/middleware/asyncMiddleware';
 import { authService } from '../services/auth/authService';
 import { useUser, useUserSelfies } from '../hooks/useUser';
@@ -374,7 +374,10 @@ const NewProfileScreen: React.FC = () => {
     try {
       const result = await userWorkService.deleteWork(work._id);
       if (result.success) {
+        // 立即从 Redux store 中移除作品，更新 UI
+        dispatch(removeWork(work._id));
         showSuccessToast('删除成功'); 
+        // 然后重新获取数据以确保与服务器同步
         loadUserWorks(userProfile?.uid || '');
       } else {
         Alert.alert('删除失败', result.error?.message || '请稍后重试');
@@ -396,6 +399,8 @@ const NewProfileScreen: React.FC = () => {
       const currentUserId = authService.getCurrentUserId();
       if (currentUserId) {
         dispatch(fetchUserProfile({ userId: currentUserId }));
+        // 刷新作品列表，确保异步任务状态更新
+        loadUserWorks(currentUserId);
       }
     }, [dispatch])
   );

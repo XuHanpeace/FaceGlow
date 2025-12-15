@@ -2,10 +2,12 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, FlatList, Image, Dimensions, ActivityIndicator } from 'react-native';
 import { useAppDispatch, useTypedSelector } from '../store/hooks';
 import { togglePanel, pollAsyncTask, removeTask } from '../store/slices/asyncTaskSlice';
+import { fetchUserWorks } from '../store/slices/userWorksSlice';
 import { TaskStatus } from '../types/model/user_works';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { showSuccessToast } from '../utils/toast';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
+import { authService } from '../services/auth/authService';
 // import { navigate } from '../navigation/navigationUtils'; // Removed
 
 const { height } = Dimensions.get('window');
@@ -21,7 +23,7 @@ const AsyncTaskPanel: React.FC = () => {
     dispatch(togglePanel(false));
   };
 
-  // 监听任务状态变化，当任务完成时显示Toast和震动
+  // 监听任务状态变化，当任务完成时显示Toast和震动，并刷新作品列表
   useEffect(() => {
     tasks.forEach(task => {
       // 检查任务是否刚完成（从PENDING变为SUCCESS）
@@ -41,9 +43,16 @@ const AsyncTaskPanel: React.FC = () => {
         } catch (error) {
           console.warn('震动反馈失败:', error);
         }
+        
+        // 刷新作品列表，确保状态更新
+        const currentUserId = authService.getCurrentUserId();
+        if (currentUserId) {
+          console.log('[AsyncTaskPanel] 任务完成，刷新作品列表');
+          dispatch(fetchUserWorks({ uid: currentUserId }));
+        }
       }
     });
-  }, [tasks]);
+  }, [tasks, dispatch]);
 
   // 轮询逻辑
   useEffect(() => {

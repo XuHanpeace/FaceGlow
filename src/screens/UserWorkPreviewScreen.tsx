@@ -225,7 +225,7 @@ const ResultItem = React.memo(({
                     // 对于 image_to_image 类型，使用原始图作为背景
                     isImageToImage && originalImageForImageToImage
                       ? originalImageForImageToImage
-                      : coverImage || ''
+                      : coverImage || work.activity_image || work.result_data?.[0]?.template_image || ''
                   }
                   image2={isVideoResult ? undefined : (item.result_image || undefined)}
                   trigger={playReveal}
@@ -397,6 +397,17 @@ const WorkSlide = React.memo(({
 
   const isAsyncTask = work.activity_type === 'asyncTask';
   
+  // Debug: 打印作品信息
+  useEffect(() => {
+    console.log('[WorkSlide] 作品更新:', {
+      _id: work._id,
+      taskStatus: work.taskStatus,
+      result_image: work.result_data?.[0]?.result_image,
+      activity_image: work.activity_image,
+      template_image: work.result_data?.[0]?.template_image
+    });
+  }, [work]);
+  
   // 仅依赖 work 中的状态 (Single Source of Truth)
   const getTaskStatus = (w: UserWorkModel) => {
     if (w.taskStatus) return w.taskStatus;
@@ -449,12 +460,24 @@ const WorkSlide = React.memo(({
     
     // 如果是视频，使用activity_image或template_image作为封面
     if (isVideo) {
-      return work.activity_image || work.result_data?.[0]?.template_image || '';
+      const cover = work.activity_image || work.result_data?.[0]?.template_image || '';
+      console.log('[WorkSlide] 视频作品，coverImage:', cover);
+      return cover;
     }
     
-    // 否则使用result_image（如果存在）或activity_image
-    return resultImage || work.activity_image || work.result_data?.[0]?.template_image || '';
-  }, [work.activity_image, work.result_data, extData]);
+    // 对于异步任务，优先使用 template_image 作为背景（避免黑屏）
+    // 如果任务已完成且有 result_image，则使用 result_image
+    if (isAsyncTask && taskStatus === TaskStatus.SUCCESS && resultImage) {
+      // 任务已完成，使用 result_image 作为封面
+      console.log('[WorkSlide] 异步任务已完成，使用 result_image 作为封面:', resultImage);
+      return resultImage;
+    }
+    
+    // 否则优先使用 template_image（避免黑屏），然后才是 activity_image
+    const cover = work.result_data?.[0]?.template_image || work.activity_image || resultImage || '';
+    console.log('[WorkSlide] coverImage:', cover, 'resultImage:', resultImage, 'taskStatus:', taskStatus);
+    return cover;
+  }, [work.activity_image, work.result_data, extData, isAsyncTask, taskStatus]);
 
   const handleInteractionStart = useCallback(() => {
     setScrollEnabled(false); // 禁用自身水平滚动
