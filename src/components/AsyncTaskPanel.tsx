@@ -4,11 +4,28 @@ import { useAppDispatch, useTypedSelector } from '../store/hooks';
 import { togglePanel, pollAsyncTask, removeTask } from '../store/slices/asyncTaskSlice';
 import { fetchUserWorks } from '../store/slices/userWorksSlice';
 import { TaskStatus } from '../types/model/user_works';
+import { TaskType } from '../services/cloud/asyncTaskService';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { showSuccessToast } from '../utils/toast';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 import { authService } from '../services/auth/authService';
 // import { navigate } from '../navigation/navigationUtils'; // Removed
+
+// 辅助函数：从任务中获取 task_type
+function getTaskType(task: any): TaskType | null {
+  // 优先从 updatedWork.ext_data 中获取
+  if (task.updatedWork?.ext_data) {
+    try {
+      const extData = JSON.parse(task.updatedWork.ext_data);
+      if (extData.task_type) {
+        return extData.task_type as TaskType;
+      }
+    } catch (e) {
+      // 忽略解析错误
+    }
+  }
+  return null;
+}
 
 const { height } = Dimensions.get('window');
 
@@ -57,7 +74,13 @@ const AsyncTaskPanel: React.FC = () => {
   // 轮询逻辑
   useEffect(() => {
     // 只要有 PENDING 任务，就开始轮询，不依赖面板打开状态
-    const pendingTasks = tasks.filter(t => t.status === TaskStatus.PENDING);
+    // 排除 doubao 任务（doubao 任务不需要轮询，它在后台同步处理）
+    const pendingTasks = tasks.filter(t => {
+      if (t.status !== TaskStatus.PENDING) return false;
+      // 通过 task_type 判断是否为 doubao 任务
+      const taskType = getTaskType(t);
+      return taskType !== TaskType.DOUBAO_IMAGE_TO_IMAGE;
+    });
     if (pendingTasks.length === 0) return;
 
     const intervalId = setInterval(() => {

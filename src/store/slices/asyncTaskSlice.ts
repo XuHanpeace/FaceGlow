@@ -226,18 +226,41 @@ async function processDoubaoTaskInBackground(params: {
 
       await userWorkService.updateWork(workId, updateData);
 
-      // 获取更新后的作品数据
-      const updatedWorkResult = await userWorkService.getWorkById(workId);
-      const updatedWork = updatedWorkResult.success && updatedWorkResult.data 
-        ? updatedWorkResult.data.record 
-        : undefined;
+      // 获取更新后的作品数据（使用 taskId 而不是 workId，避免 HTTP 500 错误）
+      let updatedWork: UserWorkModel | undefined;
+      try {
+        const updatedWorkResult = await userWorkService.getWorkByTaskId(taskId);
+        if (updatedWorkResult.success && updatedWorkResult.data) {
+          const rawData = updatedWorkResult.data as any;
+          const workData = rawData.record ? rawData.record : rawData;
+          
+          if (workData) {
+            // 确保 taskStatus 字段正确设置
+            const workWithStatus = {
+              ...workData,
+              taskStatus: workData.taskStatus || TaskStatus.SUCCESS
+            };
+            updatedWork = workWithStatus as UserWorkModel;
+          }
+        }
+      } catch (error) {
+        console.error('[Redux] 获取更新后的作品数据失败:', error);
+        // 即使获取失败，也继续更新 Redux 状态（使用已更新的数据）
+        updatedWork = {
+          ...work.record!,
+          taskStatus: TaskStatus.SUCCESS,
+          result_data: newResultData,
+          ext_data: JSON.stringify(extDataObj),
+          updatedAt: Date.now()
+        } as UserWorkModel;
+      }
 
       // 更新 Redux 状态
       dispatch(updateDoubaoTaskStatus({
         taskId,
         status: TaskStatus.SUCCESS,
         resultImage: resultUrl,
-        updatedWork
+        updatedWork: updatedWork || undefined
       }));
 
       // 更新作品列表
@@ -353,13 +376,18 @@ export const startAsyncTask = createAsyncThunk(
         const workId = createResult.data.id;
 
         // 2. 立即返回 PENDING 状态的任务信息
-        const pendingTask = {
+        const pendingTask: AsyncTask = {
           taskId,
           workId,
           status: TaskStatus.PENDING,
           startTime: Date.now(),
           activityTitle: payload.activityTitle,
           coverImage: payload.activityImage || (payload.images && payload.images.length > 0 ? payload.images[0] : ''),
+          updatedWork: {
+            ...workData,
+            _id: workId,
+            ext_data: JSON.stringify(extData), // 保存 ext_data，包含 task_type
+          } as UserWorkModel,
         };
 
         // 3. 在后台异步调用 API（不阻塞返回）
@@ -456,14 +484,37 @@ export const startAsyncTask = createAsyncThunk(
 
       const workId = createResult.data.id;
 
-      // 3. 返回任务信息
+      // 3. 返回任务信息（包含 updatedWork，以便后续获取 task_type）
+      const workDataForTask: Omit<UserWorkModel, '_id'> = {
+        uid: payload.uid,
+        activity_id: payload.activityId,
+        activity_type: 'asyncTask',
+        activity_title: payload.activityTitle,
+        activity_description: payload.activityDescription || '',
+        activity_image: coverImage,
+        album_id: '',
+        likes: '0',
+        is_public: '0',
+        download_count: '0',
+        result_data: resultData,
+        ext_data: JSON.stringify(extData), // 保存 ext_data，包含 task_type
+        taskId: taskId,
+        taskStatus: TaskStatus.PENDING,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+
       return {
         taskId,
         workId,
         status: TaskStatus.PENDING,
         startTime: Date.now(),
         activityTitle: payload.activityTitle,
-        coverImage: payload.activityImage || (payload.images && payload.images.length > 0 ? payload.images[0] : '')
+        coverImage: payload.activityImage || (payload.images && payload.images.length > 0 ? payload.images[0] : ''),
+        updatedWork: {
+          ...workDataForTask,
+          _id: workId,
+        } as UserWorkModel,
       };
 
     } catch (error) {

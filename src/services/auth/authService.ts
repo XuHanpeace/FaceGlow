@@ -775,10 +775,11 @@ export class AuthService {
   /**
    * 要求真实用户登录（不允许匿名用户）
    * 如果当前是匿名用户或未登录，返回失败
+   * ⚠️ 注意：此方法只做判断，不会尝试刷新token
    * @returns Promise<AuthResponse>
    */
   async requireRealUser(): Promise<AuthResponse> {
-    console.log('👤 检查真实用户登录态...');
+    console.log('👤 检查真实用户登录态（仅判断，不刷新token）...');
     
     // 调试存储状态
     this.debugStorageState();
@@ -807,20 +808,7 @@ export class AuthService {
       };
     }
     
-    // 尝试刷新token（如果即将过期）
-    const refreshResult = await this.refreshTokenIfNeeded('auto');
-    if (!refreshResult.success) {
-      console.log('⚠️ Token刷新失败');
-      return {
-        success: false,
-        error: {
-          code: 'TOKEN_REFRESH_FAILED',
-          message: '登录已过期，请重新登录',
-        },
-      };
-    }
-    
-    // 返回当前真实用户的登录态
+    // 直接返回当前真实用户的登录态（不再尝试刷新token）
     console.log('✅ 真实用户登录态有效');
     const token = this.getCurrentAccessToken();
     const uid = this.getCurrentUserId();
