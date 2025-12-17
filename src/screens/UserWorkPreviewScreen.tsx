@@ -225,7 +225,7 @@ const ResultItem = React.memo(({
                     // 对于 image_to_image 类型，使用原始图作为背景
                     isImageToImage && originalImageForImageToImage
                       ? originalImageForImageToImage
-                      : coverImage || work.activity_image || work.result_data?.[0]?.template_image || ''
+                      : coverImage ? coverImage : ''
                   }
                   image2={isVideoResult ? undefined : (item.result_image || undefined)}
                   trigger={playReveal}
@@ -245,10 +245,13 @@ const ResultItem = React.memo(({
                         <Text style={styles.loadingHintText}>美颜换换正在施展魔法，预计1分钟完成...</Text>
                     </View>
 
-                    <TouchableOpacity onPress={onRefresh} style={styles.manualRefreshButton}>
-                        <FontAwesome name="refresh" size={14} color="rgba(255,255,255,0.8)" style={{ marginRight: 6 }} />
-                        <Text style={styles.manualRefreshText}>刷新进度</Text>
-                    </TouchableOpacity>
+                    {/* doubao 任务不支持刷新进度，不显示刷新按钮 */}
+                    {extData?.task_type !== 'doubao_image_to_image' && (
+                        <TouchableOpacity onPress={onRefresh} style={styles.manualRefreshButton}>
+                            <FontAwesome name="refresh" size={14} color="rgba(255,255,255,0.8)" style={{ marginRight: 6 }} />
+                            <Text style={styles.manualRefreshText}>刷新进度</Text>
+                        </TouchableOpacity>
+                    )}
                 </>
             )}
 

@@ -5,7 +5,48 @@ const readline = require('readline');
 
 // Configuration
 const packageJsonPath = path.resolve(__dirname, '../package.json');
-const configPath = path.resolve(__dirname, '../pushy-config.json');
+const versionConfigPath = path.resolve(__dirname, '../src/config/version.ts');
+const pbxprojPath = path.resolve(__dirname, '../ios/MyCrossPlatformApp.xcodeproj/project.pbxproj');
+
+// Helper: Read current versions
+function getCurrentVersions() {
+  const packageJson = require(packageJsonPath);
+  const versionConfigContent = fs.readFileSync(versionConfigPath, 'utf8');
+  
+  const appVersionMatch = versionConfigContent.match(/export const appVersion = '(.+)';/);
+  const jsVersionMatch = versionConfigContent.match(/export const jsVersion = '(.+)';/);
+  
+  return {
+    packageVersion: packageJson.version,
+    appVersion: appVersionMatch ? appVersionMatch[1] : packageJson.version,
+    jsVersion: jsVersionMatch ? jsVersionMatch[1] : packageJson.version
+  };
+}
+
+// Helper: Increment version (e.g., 1.3.6 -> 1.3.7)
+function incrementVersion(version) {
+  const [major, minor, patch] = version.split('.').map(Number);
+  return `${major}.${minor}.${patch + 1}`;
+}
+
+// Helper: Update versions in all files
+function updateVersions(appVersion, jsVersion) {
+  // 1. Update package.json (use appVersion as main version)
+  const packageJson = require(packageJsonPath);
+  packageJson.version = appVersion;
+  fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
+  
+  // 2. Update src/config/version.ts
+  let configContent = fs.readFileSync(versionConfigPath, 'utf8');
+  configContent = configContent.replace(/export const appVersion = '.*';/, `export const appVersion = '${appVersion}';`);
+  configContent = configContent.replace(/export const jsVersion = '.*';/, `export const jsVersion = '${jsVersion}';`);
+  fs.writeFileSync(versionConfigPath, configContent);
+  
+  // 3. Update project.pbxproj
+  let pbxprojContent = fs.readFileSync(pbxprojPath, 'utf8');
+  pbxprojContent = pbxprojContent.replace(/MARKETING_VERSION = .*;/g, `MARKETING_VERSION = ${appVersion};`);
+  fs.writeFileSync(pbxprojPath, pbxprojContent);
+}
 
 // Helper: Run Command
 function runCommand(command, args, options = {}) {
@@ -84,69 +125,72 @@ async function main() {
     console.log("   2. xCode Archive 提交Apple审核");
     console.log("   3. ipa文件上传至pushy\n");
 
-    // 1. Load Pushy Config (可选)
-    let pushyConfig = null;
-    if (fs.existsSync(configPath)) {
-      try {
-        pushyConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      } catch (error) {
-        console.warn(`⚠️  无法读取 pushy-config.json: ${error.message}`);
-        console.log("💡 提示: Pushy 相关操作将跳过，稍后可手动操作\n");
+    // 1. Bump Version (更新APP版本 + 更新JS版本)
+    console.log("📦 Step 1: 更新版本号（APP版本 + JS版本）...\n");
+    
+    // 读取当前版本
+    const currentVersions = getCurrentVersions();
+    console.log("📋 当前版本信息：");
+    console.log(`   - APP版本: ${currentVersions.appVersion}`);
+    console.log(`   - JS版本: ${currentVersions.jsVersion}`);
+    console.log(`   - Package版本: ${currentVersions.packageVersion}\n`);
+    
+    // 让用户确认版本是否准确
+    const confirmAnswer = await askQuestion("❓ 当前版本是否准确？\n   1. 准确（回车继续，将自动递增）\n   2. 不准确（输入 'n' 或 'no' 手动输入版本）\n   请选择: ");
+    
+    let appVersion, jsVersion;
+    
+    if (confirmAnswer.toLowerCase() === 'n' || confirmAnswer.toLowerCase() === 'no') {
+      // 手动输入版本
+      console.log("\n📝 请手动输入版本号：");
+      appVersion = await askQuestion(`   APP版本 (当前: ${currentVersions.appVersion}): `);
+      jsVersion = await askQuestion(`   JS版本 (当前: ${currentVersions.jsVersion}): `);
+      
+      // 验证版本格式
+      const versionRegex = /^\d+\.\d+\.\d+$/;
+      if (!versionRegex.test(appVersion) || !versionRegex.test(jsVersion)) {
+        throw new Error('版本号格式不正确，应为 x.y.z 格式（如 1.3.6）');
       }
     } else {
-      console.warn('⚠️  pushy-config.json 未找到');
-      console.log("💡 提示: Pushy 相关操作将跳过，稍后可手动操作\n");
+      // 自动递增版本（独立递增）
+      appVersion = incrementVersion(currentVersions.appVersion);
+      jsVersion = incrementVersion(currentVersions.jsVersion);
+      console.log(`\n🔄 自动递增版本：`);
+      console.log(`   - APP版本: ${currentVersions.appVersion} -> ${appVersion}`);
+      console.log(`   - JS版本: ${currentVersions.jsVersion} -> ${jsVersion}\n`);
     }
-
-    // 2. Bump Version (更新APP版本 + 更新JS版本)
-    console.log("📦 Step 1: 更新版本号（APP版本 + JS版本）...");
-    require('./bump-version.js'); 
+    
+    // 更新版本
+    updateVersions(appVersion, jsVersion);
+    
+    // 清除缓存并重新读取
     delete require.cache[require.resolve(packageJsonPath)];
+    delete require.cache[require.resolve(versionConfigPath)];
     const packageJson = require(packageJsonPath);
     const version = packageJson.version;
-    console.log(`✅ 版本号已更新到: ${version}\n`);
+    
+    console.log(`✅ 版本号已更新:`);
+    console.log(`   - APP版本: ${appVersion}`);
+    console.log(`   - JS版本: ${jsVersion}`);
+    console.log(`   - Package版本: ${version}\n`);
 
-    // 3. Git Tag
+    // 2. Git Tag
     console.log("🏷️  Step 2: Git 提交和打 Tag...");
     try {
       await runCommand('git', ['add', 'src/config/version.ts', 'package.json', 'ios/MyCrossPlatformApp.xcodeproj/project.pbxproj']);
-      await runCommand('git', ['commit', '-m', `chore: bump version to ${version} (major release)`]);
-      await runCommand('git', ['tag', `v${version}`]);
-      console.log(`✅ Git tag v${version} 已创建\n`);
+      await runCommand('git', ['commit', '-m', `chore: bump version to ${appVersion} (major release)`]);
+      await runCommand('git', ['tag', `v${appVersion}`]);
+      console.log(`✅ Git tag v${appVersion} 已创建\n`);
     } catch (e) {
       console.warn(`⚠️  Git 操作失败（可能没有变更或 tag 已存在）: ${e.message}\n`);
     }
 
-    // 4. Pod Install
+    // 3. Pod Install
     console.log("🥥 Step 3: Pod Install...");
     await runCommand('pod', ['install'], { cwd: path.resolve(__dirname, '../ios') });
     console.log("✅ Pod Install 完成\n");
 
-    // 5. Login to Pushy (可选，失败不影响流程)
-    let pushyLoggedIn = false;
-    if (pushyConfig && pushyConfig.email && pushyConfig.password) {
-      console.log("🔐 Step 4: 登录 Pushy...");
-      try {
-        await runCommand('npx', ['react-native-update-cli', 'login'], {
-          inputs: [
-            { prompt: 'email:', value: pushyConfig.email, sent: false },
-            { prompt: 'password:', value: pushyConfig.password, sent: false }
-          ],
-          successMatch: '欢迎使用 pushy 热更新服务'
-        });
-        console.log("✅ Pushy 登录成功\n");
-        pushyLoggedIn = true;
-      } catch (error) {
-        console.warn(`⚠️  Pushy 登录失败: ${error.message}`);
-        console.log("💡 提示: 稍后可以手动登录 Pushy 并上传 IPA 文件\n");
-        pushyLoggedIn = false;
-      }
-    } else {
-      console.log("🔐 Step 4: 跳过 Pushy 登录（配置不可用）");
-      console.log("💡 提示: 稍后可以手动登录 Pushy 并上传 IPA 文件\n");
-    }
-
-    // 6. Build IPA (Manual Interaction Required)
+    // 4. Build IPA (Manual Interaction Required)
     console.log("📲 Step 5: xCode Archive 构建（需要手动操作）");
     console.log("   ⚠️  由于签名要求，无法自动构建 IPA");
     console.log("   ⚠️  正在打开 Xcode...\n");
@@ -166,12 +210,9 @@ async function main() {
     if (!ipaPath || !fs.existsSync(ipaPath)) {
       console.warn("⚠️  IPA 文件未找到");
       console.log("💡 提示: 稍后可以手动上传 IPA 文件到 Pushy\n");
-    } else if (!pushyLoggedIn) {
-      console.log("⚠️  由于 Pushy 未登录，跳过 IPA 上传");
-      console.log("💡 提示: 稍后可以手动登录 Pushy 并上传 IPA 文件\n");
     } else {
-      // 7. Upload IPA to Pushy (可选，失败不影响流程)
-      console.log("\n📤 Step 6: 上传 IPA 文件到 Pushy...");
+      // 5. Upload IPA to Pushy (可选，失败不影响流程)
+      console.log("\n📤 Step 5: 上传 IPA 文件到 Pushy...");
       try {
         await runCommand('npx', ['react-native-update-cli', 'uploadIpa', ipaPath]);
         console.log("✅ IPA 上传成功\n");
@@ -185,10 +226,10 @@ async function main() {
 
     console.log("\n🎉🎉🎉 大版本发布流程完成！ 🎉🎉🎉");
     console.log(`\n📊 版本信息:`);
-    console.log(`   - 版本号: ${version}`);
-    console.log(`   - APP版本: ${version} (已更新)`);
-    console.log(`   - JS版本: ${version} (已更新)`);
-    console.log(`   - Git Tag: v${version}`);
+    console.log(`   - APP版本: ${appVersion} (已更新)`);
+    console.log(`   - JS版本: ${jsVersion} (已更新)`);
+    console.log(`   - Package版本: ${version}`);
+    console.log(`   - Git Tag: v${appVersion}`);
     if (ipaPath && fs.existsSync(ipaPath)) {
       console.log(`   - IPA文件: ${ipaPath}`);
       if (ipaUploaded) {

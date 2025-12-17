@@ -545,6 +545,18 @@ export const pollAsyncTask = createAsyncThunk(
 
       const taskStatus = response.data?.taskStatus || 'UNKNOWN';
       
+      // 遇到 UNKNOWN 状态，终止轮询（将任务标记为失败）
+      if (taskStatus === 'UNKNOWN') {
+        console.warn('[Redux] 任务状态为 UNKNOWN，终止轮询:', task.taskId);
+        return {
+          ...task,
+          status: TaskStatus.FAILED,
+          error: '任务状态未知，无法继续轮询',
+          resultImage: '',
+          updatedWork: undefined
+        };
+      }
+      
       if (taskStatus === 'SUCCEEDED') {
          console.log('[Redux] 任务成功:', task.taskId); // LOG: Task Succeeded
       } else if (taskStatus === 'FAILED') {

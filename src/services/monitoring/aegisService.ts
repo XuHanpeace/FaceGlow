@@ -139,6 +139,13 @@ class AegisService {
       return;
     }
 
+    // 防止错误循环：如果错误信息中包含 location 相关错误，直接记录到 console，不再上报
+    if (error && typeof error === 'string' && 
+        (error.includes('location') || error.includes('Property \'location\''))) {
+      console.error('⚠️ 检测到 location 相关错误，跳过上报以避免错误循环:', error);
+      return;
+    }
+
     try {
       // 从URL中提取接口名称
       const apiName = url.split('/').pop() || 'unknown';
@@ -149,7 +156,8 @@ class AegisService {
         ext3: url,
       });
     } catch (err) {
-      console.error('上报接口错误失败:', err);
+      // 上报错误本身失败时，只记录到 console，不再尝试上报，避免错误循环
+      console.error('上报接口错误失败（已跳过避免循环）:', err);
     }
   }
 
@@ -161,6 +169,14 @@ class AegisService {
   reportError(error: Error | string, extraData?: Record<string, string | number | boolean | undefined>) {
     if (!aegisInstance) {
       console.warn('Aegis 未初始化，无法上报错误');
+      return;
+    }
+
+    // 防止错误循环：如果错误信息中包含 location 相关错误，直接记录到 console，不再上报
+    const errorMessage = error instanceof Error ? error.message : error;
+    if (errorMessage && typeof errorMessage === 'string' && 
+        (errorMessage.includes('location') || errorMessage.includes('Property \'location\''))) {
+      console.error('⚠️ 检测到 location 相关错误，跳过上报以避免错误循环:', errorMessage);
       return;
     }
 
@@ -182,7 +198,8 @@ class AegisService {
         });
       }
     } catch (err) {
-      console.error('上报错误失败:', err);
+      // 上报错误本身失败时，只记录到 console，不再尝试上报，避免错误循环
+      console.error('上报错误失败（已跳过避免循环）:', err);
     }
   }
 
