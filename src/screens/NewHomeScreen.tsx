@@ -10,6 +10,7 @@ import {
   ScrollView,
   Text,
   Platform,
+  TouchableOpacity,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -37,6 +38,8 @@ import { useAppDispatch } from '../store/hooks';
 import { setAllAlbums } from '../store/slices/activitySlice';
 import { aegisService } from '../services/monitoring/aegisService';
 import { eventService } from '../services/eventService';
+import { readHomeAlbumCache, writeHomeAlbumCache } from '../services/storage/homeAlbumCache';
+import { readCategoryCache, writeCategoryCache } from '../services/storage/categoryCache';
 
 type NewHomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 const { width: screenWidth } = Dimensions.get('window');
@@ -69,6 +72,7 @@ const NewHomeScreen: React.FC = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [showDefaultSelfieSelector, setShowDefaultSelfieSelector] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   
   // 缓存机制：根据筛选条件缓存数据
   const cacheRef = useRef<Map<string, { albums: AlbumRecord[]; page: number; hasMore: boolean }>>(new Map());
@@ -113,6 +117,21 @@ const NewHomeScreen: React.FC = () => {
 
   const loadConfig = async () => {
     try {
+      // 先尝试读取缓存
+      const cached = await readCategoryCache();
+      if (cached && cached.categories.length > 0) {
+        console.log('📦 使用分类缓存数据:', cached.categories.length);
+        const configs = cached.categories;
+        const functionTypesList = configs.filter(c => c.category_type === CategoryType.FUNCTION_TYPE && c.is_active);
+        const themeStylesList = configs.filter(c => c.category_type === CategoryType.THEME_STYLE && c.is_active);
+        const activityTagsList = configs.filter(c => c.category_type === CategoryType.ACTIVITY_TAG && c.is_active);
+        
+        setFunctionTypes(functionTypesList);
+        setThemeStyles(themeStylesList);
+        setActivityTags(activityTagsList);
+      }
+      
+      // 请求最新数据
       const response = await albumService.getCategoryConfig();
       if (response.code === 200) {
         const configs = response.data;
@@ -127,9 +146,13 @@ const NewHomeScreen: React.FC = () => {
           activityTags_detail: activityTagsList.map(t => ({ code: t.category_code, label: t.category_label }))
         });
         
+        // 更新状态
         setFunctionTypes(functionTypesList);
         setThemeStyles(themeStylesList);
         setActivityTags(activityTagsList);
+        
+        // 写入缓存
+        await writeCategoryCache(configs);
       }
     } catch (error) {
       console.error('Failed to load config:', error);
@@ -169,20 +192,43 @@ const NewHomeScreen: React.FC = () => {
     
     const currentPage = reset ? 1 : page;
     const cacheKey = getCacheKey(selectedFunctionType, selectedThemeStyle);
+    let hadAnyCache = false;
 
-    // 如果是重置且缓存中有数据，先展示缓存数据
+    // 如果是重置且缓存中有数据，先展示缓存数据（但不阻止后续接口请求）
     if (reset) {
+      setLoadError(null);
+      
+      // a) 先读内存缓存
       const cached = cacheRef.current.get(cacheKey);
       if (cached && cached.albums.length > 0) {
-        console.log('📦 使用缓存数据:', cacheKey, cached.albums.length);
+        console.log('📦 使用内存缓存数据:', cacheKey, cached.albums.length);
         setAlbums(cached.albums);
         setPage(cached.page);
         setHasMore(cached.hasMore);
         dispatch(setAllAlbums(cached.albums));
-        // 不设置 loading，让用户看到缓存数据
+        hadAnyCache = true;
+        // 不设置 loading，让用户看到缓存数据，但继续请求接口更新
       } else {
-        // 没有缓存，显示 loading
-        setLoading(true);
+        // b) 内存未命中：读持久缓存
+        const persistentCache = await readHomeAlbumCache(cacheKey);
+        if (persistentCache && persistentCache.albums.length > 0) {
+          console.log('📦 使用持久缓存数据:', cacheKey, persistentCache.albums.length);
+          setAlbums(persistentCache.albums);
+          setPage(persistentCache.page);
+          setHasMore(persistentCache.hasMore);
+          // 同步写回内存缓存
+          cacheRef.current.set(cacheKey, {
+            albums: persistentCache.albums,
+            page: persistentCache.page,
+            hasMore: persistentCache.hasMore
+          });
+          dispatch(setAllAlbums(persistentCache.albums));
+          hadAnyCache = true;
+          // 不设置 loading，让用户看到缓存数据，但继续请求接口更新
+        } else {
+          // c) 两种缓存都没有：显示 loading
+          setLoading(true);
+        }
       }
     } else {
       // 加载更多时显示 loading
@@ -208,18 +254,48 @@ const NewHomeScreen: React.FC = () => {
       
       if (response.code === 200) {
         const newAlbums = response.data.albums;
+        
+        // 如果返回空数组且无缓存，显示友好提示
+        if (reset && newAlbums.length === 0 && !hadAnyCache) {
+          setLoadError('暂无数据');
+          setAlbums([]);
+          setPage(1);
+          setHasMore(false);
+          setLoading(false);
+          setRefreshing(false);
+          return;
+        }
+        
+        // 如果有缓存但接口返回空，不做任何响应（保持缓存数据）
+        if (reset && newAlbums.length === 0 && hadAnyCache) {
+          console.log('⚠️ 接口返回空，但已有缓存，保持缓存数据');
+          setLoading(false);
+          setRefreshing(false);
+          return;
+        }
+        
+        // 接口请求成功，更新最新数据并缓存
         let updatedAlbums: AlbumRecord[];
         
         if (reset) {
           updatedAlbums = newAlbums;
           setAlbums(updatedAlbums);
-          setPage(2);
+          setLoadError(null); // 清除错误状态
+          const newPage = 2;
+          setPage(newPage);
           setHasMore(response.data.has_more);
           
-          // 更新缓存
+          // 更新内存缓存（使用最新数据）
           cacheRef.current.set(cacheKey, {
             albums: updatedAlbums,
-            page: 2,
+            page: newPage,
+            hasMore: response.data.has_more
+          });
+          
+          // 写持久缓存（使用最新数据）
+          await writeHomeAlbumCache(cacheKey, {
+            albums: updatedAlbums,
+            page: newPage,
             hasMore: response.data.has_more
           });
           
@@ -227,17 +303,21 @@ const NewHomeScreen: React.FC = () => {
         } else {
           setAlbums(prev => {
             updatedAlbums = [...prev, ...newAlbums];
-            setPage(prevPage => prevPage + 1);
+            const newPage = prev.length > 0 ? Math.floor(prev.length / 20) + 2 : 2;
+            setPage(newPage);
             setHasMore(response.data.has_more);
             
-            // 更新缓存
+            // 更新内存缓存
             const cached = cacheRef.current.get(cacheKey);
             if (cached) {
-              cacheRef.current.set(cacheKey, {
+              const updatedCache = {
                 albums: updatedAlbums,
-                page: cached.page + 1,
+                page: newPage,
                 hasMore: response.data.has_more
-              });
+              };
+              cacheRef.current.set(cacheKey, updatedCache);
+              // 写持久缓存
+              writeHomeAlbumCache(cacheKey, updatedCache);
             }
             
             dispatch(setAllAlbums(updatedAlbums));
@@ -247,6 +327,22 @@ const NewHomeScreen: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to load albums:', error);
+      
+      // 有缓存的情况下，接口失败不做任何响应（保持缓存数据）
+      if (hadAnyCache) {
+        console.log('⚠️ 接口请求失败，但已有缓存，保持缓存数据');
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+      
+      // 无缓存失败空白页逻辑
+      if (reset && !hadAnyCache) {
+        setLoadError(error instanceof Error ? error.message : '加载失败，请检查网络连接');
+        setAlbums([]);
+        setPage(1);
+        setHasMore(true);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -421,6 +517,22 @@ const NewHomeScreen: React.FC = () => {
     </View>
   );
 
+  const renderEmptyState = () => {
+    if (!loadError) return null;
+    return (
+      <View style={styles.emptyPage}>
+        <Text style={styles.emptyTitle}>加载失败</Text>
+        <Text style={styles.emptyDesc}>{loadError}</Text>
+        <TouchableOpacity style={styles.retryBtn} onPress={() => {
+          setLoadError(null);
+          loadAlbums(true);
+        }}>
+          <Text style={styles.retryBtnText}>点击重试</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
@@ -516,6 +628,7 @@ const NewHomeScreen: React.FC = () => {
             ListFooterComponent={
                (loading && !refreshing && page > 1) ? <ActivityIndicator color="#fff" style={{padding: 20}} /> : <View style={{ height: 40 }} />
             }
+            ListEmptyComponent={!loading && !refreshing ? renderEmptyState() : null}
         />
 
         {/* Mask for Card Area when filtering (not initial load or refresh which usually show spinner/skeleton) */}
@@ -621,6 +734,38 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
     marginHorizontal: 10,
     marginVertical: 4,
+  },
+  emptyPage: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    paddingTop: 100,
+  },
+  emptyTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  emptyDesc: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  retryBtn: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  retryBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 

@@ -245,9 +245,9 @@ export const FilterSection: React.FC<FilterSectionProps> = ({
          </View>
       )}
 
-      {/* Sub Tabs */}
-      {subTabsList.length > 0 && (
-        <View style={styles.subTabsContainer}>
+      {/* Sub Tabs - 始终渲染容器以保持布局稳定，避免位置跳变 */}
+      <View style={styles.subTabsContainer}>
+        {subTabsList.length > 0 ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.subScrollContent}>
             {subTabsList.map((item) => {
               const isSelected = selectedThemeStyle === item.category_code;
@@ -271,8 +271,11 @@ export const FilterSection: React.FC<FilterSectionProps> = ({
               );
             })}
           </ScrollView>
-        </View>
-      )}
+        ) : (
+          // 占位空间，保持布局高度稳定
+          <View style={styles.subTabsPlaceholder} />
+        )}
+      </View>
     </View>
   );
 };
@@ -340,14 +343,18 @@ const styles = StyleSheet.create({
   // Sub Tabs
   subTabsContainer: {
     marginBottom: 4,
+    minHeight: 36, // 固定最小高度，避免位置跳变
   },
   subScrollContent: {
     paddingHorizontal: 4,
   },
+  subTabsPlaceholder: {
+    height: 36, // 占位高度，与实际的 subTabItem 高度保持一致
+  },
   subTabItem: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 14,
+    borderRadius: 18, // 与一级胶囊保持一致
     marginRight: 6, // Reduced margin
     justifyContent: 'center',
     alignItems: 'center',

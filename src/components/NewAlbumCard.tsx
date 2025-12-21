@@ -6,6 +6,7 @@ import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import LinearGradient from 'react-native-linear-gradient';
 import FastImage from 'react-native-fast-image';
 import Video from 'react-native-video';
+import { LoadingImage } from './LoadingImage';
 
 const { width: screenWidth } = Dimensions.get('window');
 // 2 column layout: Screen Width / 2 - Padding
@@ -47,13 +48,21 @@ export const NewAlbumCard: React.FC<NewAlbumCardProps> = ({
   // Determine cover image
   const coverImage = album.template_list?.[0]?.template_url || album.album_image;
 
-  // Generate a random aspect ratio for waterfall effect (between 1.2 and 1.6)
-  // Use album_id as seed to keep it consistent
+  // Generate aspect ratio with jitter based on album type
   const aspectRatio = useMemo(() => {
-    if (album.src_image) return 1.0; // Square for tasks like img2img usually
     const seed = album.album_id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return 1.2 + (seed % 5) * 0.1; // 1.2, 1.3, 1.4, 1.5, 1.6
-  }, [album.album_id, album.src_image]);
+    const jitter = (seed % 6) * 0.06;
+    
+    if (album.src_image) {
+      return 1.15 + jitter; // image_to_image 类型，不再是正方形
+    }
+    
+    if (isVideoAlbum || hasPreviewVideo) {
+      return 1.35 + jitter; // 视频类型
+    }
+    
+    return 1.10 + jitter; // 其他类型
+  }, [album.album_id, album.src_image, isVideoAlbum, hasPreviewVideo]);
 
   const cardHeight = COLUMN_WIDTH * aspectRatio;
 
@@ -191,10 +200,12 @@ export const NewAlbumCard: React.FC<NewAlbumCardProps> = ({
             }}
           />
         ) : (
-          <FastImage
+          <LoadingImage
             source={{ uri: coverImage }}
             style={styles.image}
             resizeMode={FastImage.resizeMode.cover}
+            placeholderColor="#2A2A2A"
+            fadeDuration={400}
           />
         )}
         
@@ -220,27 +231,31 @@ export const NewAlbumCard: React.FC<NewAlbumCardProps> = ({
         {/* Src Image for Image-to-Image albums */}
         {album.src_image && (
           <View style={styles.srcImageContainer}>
-            <FastImage source={{ uri: album.src_image }} style={styles.srcImage} resizeMode={FastImage.resizeMode.contain} />
+            <LoadingImage 
+              source={{ uri: album.src_image }} 
+              style={styles.srcImage} 
+              resizeMode={FastImage.resizeMode.contain}
+              placeholderColor="#1A1A1A"
+              fadeDuration={300}
+            />
           </View>
         )}
+        
+        {/* Likes - 放在右上角 */}
+        <View style={styles.likesContainer}>
+          <FontAwesome name="heart" size={10} color="#FF6B9D" style={styles.likesIcon} />
+          <Text style={styles.likesText}>
+            {album.likes >= 1000 ? `${(album.likes / 1000).toFixed(1)}K` : album.likes}
+          </Text>
+        </View>
       </View>
       
       <View style={styles.infoContainer}>
         <View style={styles.titleRow}>
-            <Text style={styles.title} numberOfLines={1}>
-                {album.album_name}
-            </Text>
-        </View>
-        
-        <View style={styles.metaRow}>
-            {renderPrice()}
-            {/* Likes */}
-            <View style={[styles.likesContainer, album.price > 0 ? { marginLeft: 'auto' } : {}]}>
-                <FontAwesome name="heart" size={10} color="#FF6B9D" style={styles.likesIcon} />
-                <Text style={styles.likesText}>
-                {album.likes >= 1000 ? `${(album.likes / 1000).toFixed(1)}K` : album.likes}
-                </Text>
-            </View>
+          <Text style={styles.title} numberOfLines={1}>
+            {album.album_name}
+          </Text>
+          {renderPrice()}
         </View>
       </View>
       </TouchableOpacity>
@@ -344,22 +359,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
   },
   title: {
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
     flex: 1,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    marginRight: 8,
   },
   priceContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   coinIcon: {
     width: 20,
@@ -377,14 +387,22 @@ const styles = StyleSheet.create({
       textDecorationLine: 'line-through',
   },
   likesContainer: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
   },
   likesIcon: {
     marginRight: 3,
   },
   likesText: {
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: '#fff',
     fontSize: 11,
+    fontWeight: '500',
   },
 });

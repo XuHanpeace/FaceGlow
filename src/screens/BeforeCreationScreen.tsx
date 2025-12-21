@@ -28,6 +28,7 @@ import SelfieSelector from '../components/SelfieSelector';
 import { startAsyncTask, StartAsyncTaskPayload, AsyncTaskError } from '../store/slices/asyncTaskSlice';
 import { CrossFadeImage } from '../components/CrossFadeImage';
 import FastImage from 'react-native-fast-image';
+import { LoadingImage } from '../components/LoadingImage';
 import { useUser, useUserBalance, useUserSelfies } from '../hooks/useUser';
 import { AlbumRecord } from '../types/model/album';
 import { normalizeTaskExecutionType } from '../utils/albumUtils';
@@ -73,10 +74,12 @@ const TemplateSlide = React.memo(({
           containerStyle={styles.mainImageContainer}
         />
       ) : (
-        <FastImage
+        <LoadingImage
           source={{ uri: template.template_url }}
           style={styles.mainImage}
           resizeMode={FastImage.resizeMode.cover}
+          placeholderColor="#1A1A1A"
+          fadeDuration={500}
         />
       )}
       

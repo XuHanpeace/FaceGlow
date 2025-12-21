@@ -345,7 +345,15 @@ export const startAsyncTask = createAsyncThunk(
           task_type: payload.taskType,
           selfie_url: payload.images?.[0], // 保存图1（用户选择的自拍图）
           scene_url: payload.images?.[1], // 保存图2（result_image，场景图）
-          prompt_data: payload.promptData
+          prompt_data: payload.promptData,
+          price: payload.price || 0,
+          template_id: payload.templateId,
+          activity_id: payload.activityId,
+          activity_title: payload.activityTitle,
+          activity_image: coverImage,
+          video_params: payload.videoParams,
+          style_redraw_params: payload.styleRedrawParams,
+          audio_url: payload.audioUrl,
         };
 
         const workData: Omit<UserWorkModel, '_id'> = {
@@ -452,8 +460,17 @@ export const startAsyncTask = createAsyncThunk(
         task_status: TaskStatus.PENDING,
         task_type: payload.taskType,
         selfie_url: payload.images?.[0], // 保存自拍图（图生图、图生视频）
+        scene_url: payload.images?.[1], // 兜底
         video_url: payload.videoUrl, // 保存视频URL（视频特效）
-        prompt_data: payload.promptData
+        prompt_data: payload.promptData,
+        price: payload.price || 0,
+        template_id: payload.templateId,
+        activity_id: payload.activityId,
+        activity_title: payload.activityTitle,
+        activity_image: coverImage,
+        video_params: payload.videoParams,
+        style_redraw_params: payload.styleRedrawParams,
+        audio_url: payload.audioUrl,
       };
 
       const workData: Omit<UserWorkModel, '_id'> = {
@@ -538,9 +555,9 @@ export const pollAsyncTask = createAsyncThunk(
       console.log('[Redux] 轮询响应:', response); // LOG: Query Task Response
 
       if (!response.success) {
-        // 查询失败暂不视为任务失败，可能是网络波动
+        // 查询失败暂不视为任务失败，可能是网络波动，不污染UI
         console.warn('[Redux] 轮询任务失败:', task.taskId, response.errorMsg);
-        return { ...task, error: response.errorMsg || '查询失败' };
+        return { ...task, error: undefined };
       }
 
       const taskStatus = response.data?.taskStatus || 'UNKNOWN';

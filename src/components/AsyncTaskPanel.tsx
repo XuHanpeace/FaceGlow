@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, FlatList, Image, Dimensions, ActivityIndicator } from 'react-native';
 import { useAppDispatch, useTypedSelector } from '../store/hooks';
 import { togglePanel, pollAsyncTask, removeTask } from '../store/slices/asyncTaskSlice';
@@ -9,7 +9,8 @@ import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { showSuccessToast } from '../utils/toast';
 import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 import { authService } from '../services/auth/authService';
-// import { navigate } from '../navigation/navigationUtils'; // Removed
+import { userWorkService } from '../services/database/userWorkService';
+import { navigate } from '../navigation/navigationUtils';
 
 // 辅助函数：从任务中获取 task_type
 function getTaskType(task: any): TaskType | null {
@@ -35,6 +36,41 @@ const AsyncTaskPanel: React.FC = () => {
   
   // 用于记录已完成的任务ID，避免重复提示
   const completedTaskIdsRef = useRef<Set<string>>(new Set());
+
+  // 反转任务列表，最新在最前
+  const reversedTasks = useMemo(() => [...tasks].reverse(), [tasks]);
+
+  // 过滤可忽略的错误
+  const isIgnorableError = (msg: string | undefined): boolean => {
+    if (!msg) return true;
+    const lower = msg.toLowerCase();
+    return lower.includes('network error') || lower.includes('timeout') || lower.includes('查询任务失败');
+  };
+
+  // 打开作品预览
+  const openWorkPreview = async (task: any) => {
+    try {
+      // 优先使用 task.updatedWork，否则通过 taskId 获取
+      let work = task.updatedWork;
+      if (!work && task.taskId) {
+        const result = await userWorkService.getWorkByTaskId(task.taskId);
+        if (result.success && result.data) {
+          const rawData = result.data as any;
+          work = rawData.record ? rawData.record : rawData;
+        }
+      }
+      
+      if (work) {
+        dispatch(togglePanel(false));
+        navigate('UserWorkPreview', { 
+          work, 
+          initialWorkId: work._id 
+        });
+      }
+    } catch (error) {
+      console.error('[AsyncTaskPanel] 打开预览失败:', error);
+    }
+  };
 
   const handleClose = () => {
     dispatch(togglePanel(false));
@@ -111,13 +147,40 @@ const AsyncTaskPanel: React.FC = () => {
         break;
     }
 
+    // 解析 selfieUrl
+    let selfieUrl: string | null = null;
+    try {
+      if (item.updatedWork?.ext_data) {
+        const extData = JSON.parse(item.updatedWork.ext_data);
+        selfieUrl = extData.selfie_url || null;
+      }
+    } catch (e) {
+      // 忽略解析错误
+    }
+
+    // 判断是否可打开预览
+    const canOpenPreview = item.status === TaskStatus.SUCCESS;
+
     return (
-      <View style={styles.taskItem}>
-        <Image source={{ uri: item.coverImage }} style={styles.coverImage} />
+      <TouchableOpacity 
+        style={[styles.taskItem, !canOpenPreview && styles.taskItemDisabled]}
+        activeOpacity={canOpenPreview ? 0.85 : 1}
+        onPress={canOpenPreview ? () => openWorkPreview(item) : undefined}
+      >
+        <View style={styles.coverWrap}>
+          <Image source={{ uri: item.coverImage }} style={styles.coverImage} />
+          {selfieUrl ? (
+            <View style={styles.selfieBadge}>
+              <Image source={{ uri: selfieUrl }} style={styles.selfieBadgeImg} />
+            </View>
+          ) : null}
+        </View>
         <View style={styles.taskInfo}>
           <Text style={styles.taskTitle} numberOfLines={1}>{item.activityTitle}</Text>
           <Text style={styles.taskStatus}>{statusText}</Text>
-          {item.error && <Text style={styles.errorText}>{item.error}</Text>}
+          {!!item.error && !isIgnorableError(item.error) && (
+            <Text style={styles.errorText}>{item.error}</Text>
+          )}
         </View>
         <View style={styles.statusIcon}>
             {statusIcon}
@@ -130,7 +193,7 @@ const AsyncTaskPanel: React.FC = () => {
                 <FontAwesome name="times" size={14} color="#999" />
             </TouchableOpacity>
         )}
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -154,7 +217,7 @@ const AsyncTaskPanel: React.FC = () => {
           </View>
           
           <FlatList
-            data={[...tasks].reverse()} // 最新在最前
+            data={reversedTasks}
             renderItem={renderItem}
             keyExtractor={item => item.taskId}
             contentContainerStyle={styles.listContent}
@@ -213,11 +276,33 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 10,
   },
+  taskItemDisabled: {
+    opacity: 0.75,
+  },
+  coverWrap: {
+    position: 'relative',
+    marginRight: 12,
+  },
   coverImage: {
     width: 48,
     height: 48,
     borderRadius: 8,
-    marginRight: 12,
+  },
+  selfieBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#1E1E1E',
+    overflow: 'hidden',
+    backgroundColor: '#2C2C2C',
+  },
+  selfieBadgeImg: {
+    width: '100%',
+    height: '100%',
   },
   taskInfo: {
     flex: 1,

@@ -26,12 +26,14 @@ import BackButton from '../components/BackButton';
 import LinearGradient from 'react-native-linear-gradient';
 import { UserWorkModel, TaskStatus } from '../types/model/user_works';
 import { useAppDispatch, useTypedSelector } from '../store/hooks';
-import { pollAsyncTask, AsyncTask } from '../store/slices/asyncTaskSlice';
+import { pollAsyncTask, AsyncTask, startAsyncTask, StartAsyncTaskPayload, AsyncTaskError } from '../store/slices/asyncTaskSlice';
 import { userWorkService } from '../services/database/userWorkService';
 import { fetchUserWorks } from '../store/slices/userWorksSlice';
 import { OneTimeReveal } from '../components/OneTimeReveal';
 import FastImage from 'react-native-fast-image';
 import Video from 'react-native-video';
+import { TaskType } from '../services/cloud/asyncTaskService';
+import { authService } from '../services/auth/authService';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -50,7 +52,8 @@ const ResultItem = React.memo(({
   onRefresh,
   coverImage,
   extData,
-  isVisible = true
+  isVisible = true,
+  onRegenerate
 }: { 
   item: any, 
   showComparison: boolean, 
@@ -62,7 +65,8 @@ const ResultItem = React.memo(({
   onRefresh?: () => void,
   coverImage?: string,
   extData?: any,
-  isVisible?: boolean
+  isVisible?: boolean,
+  onRegenerate?: () => void
 }) => {
   // 判断 result_image 是否是视频文件
   const isVideoUrl = (url?: string) => {
@@ -181,6 +185,16 @@ const ResultItem = React.memo(({
                 <View style={[styles.statusContainer, { position: 'absolute', width: '100%', height: '100%' }]}>
                     <FontAwesome name="exclamation-circle" size={50} color="#FF4D4F" />
                     <Text style={styles.statusTextBig}>作品生成失败</Text>
+                    {onRegenerate && (
+                      <View style={{ marginTop: 24 }}>
+                        <GradientButton
+                          title="重新生成"
+                          onPress={onRegenerate}
+                          variant="primary"
+                          size="medium"
+                        />
+                      </View>
+                    )}
                 </View>
             </View>
         );
@@ -387,14 +401,16 @@ const WorkSlide = React.memo(({
   onInteractionStart,
   onInteractionEnd,
   onRefresh,
-  isVisible = true
+  isVisible = true,
+  onRegenerate
 }: { 
   work: UserWorkModel,
   showComparison: boolean,
   onInteractionStart: () => void,
   onInteractionEnd: () => void,
   onRefresh: () => void,
-  isVisible?: boolean
+  isVisible?: boolean,
+  onRegenerate: () => void
 }) => {
   const [scrollEnabled, setScrollEnabled] = useState(true);
 
@@ -517,9 +533,10 @@ const WorkSlide = React.memo(({
         coverImage={coverImage}
         extData={extData}
         isVisible={isResultItemVisible}
+        onRegenerate={onRegenerate}
       />
     );
-  }, [showComparison, selfieUrl, handleInteractionStart, handleInteractionEnd, isAsyncTask, taskStatus, onRefresh, coverImage, extData, visibleResultIndex, isVisible]);
+  }, [showComparison, selfieUrl, handleInteractionStart, handleInteractionEnd, isAsyncTask, taskStatus, onRefresh, coverImage, extData, visibleResultIndex, isVisible, onRegenerate]);
 
   return (
     <View style={styles.workContainer}>
@@ -750,6 +767,125 @@ const UserWorkPreviewScreen: React.FC = () => {
       }
   }, [activeWork, dispatch]);
 
+  const handleRegenerateActiveWork = useCallback(async () => {
+    if (!activeWork || activeWork.activity_type !== 'asyncTask') {
+      return;
+    }
+
+    // 检查用户登录
+    const authResult = await authService.requireRealUser();
+    if (!authResult.success) {
+      if (authResult.error?.code === 'ANONYMOUS_USER' || authResult.error?.code === 'NOT_LOGGED_IN') {
+        navigation.navigate('NewAuth');
+      }
+      return;
+    }
+
+    // 解析 ext_data
+    let ext: any = {};
+    try {
+      if (activeWork.ext_data) {
+        ext = JSON.parse(activeWork.ext_data);
+      }
+    } catch (e) {
+      Alert.alert('错误', '缺少创作参数');
+      return;
+    }
+
+    // 获取关键字段
+    const taskType = ext.task_type as TaskType;
+    const prompt = ext.prompt_data?.text || '';
+    const selfieUrl = ext.selfie_url;
+    const sceneUrl = ext.scene_url || ext.prompt_data?.resultImage;
+    const videoUrl = ext.video_url;
+    const templateId = ext.template_id || activeWork.result_data?.[0]?.template_id || activeWork.activity_id || 'default';
+    const price = typeof ext.price === 'number' ? ext.price : 0;
+    const videoParams = ext.video_params;
+    const styleRedrawParams = ext.style_redraw_params;
+    const audioUrl = ext.audio_url;
+    const promptData = ext.prompt_data;
+
+    // 校验参数
+    if (!taskType) {
+      Alert.alert('错误', '缺少创作参数');
+      return;
+    }
+
+    if (taskType === TaskType.DOUBAO_IMAGE_TO_IMAGE) {
+      if (!prompt || !selfieUrl || !sceneUrl) {
+        Alert.alert('错误', '缺少创作参数（提示词、自拍图、场景图）');
+        return;
+      }
+    } else if (
+      taskType === TaskType.IMAGE_TO_IMAGE ||
+      taskType === TaskType.IMAGE_TO_VIDEO ||
+      taskType === TaskType.PORTRAIT_STYLE_REDRAW
+    ) {
+      if (!selfieUrl) {
+        Alert.alert('错误', '缺少创作参数（自拍图）');
+        return;
+      }
+    }
+
+    // 组装 images
+    let images: string[] = [];
+    if (taskType === TaskType.DOUBAO_IMAGE_TO_IMAGE) {
+      images = [selfieUrl, sceneUrl];
+    } else {
+      images = [selfieUrl];
+    }
+
+    // 构建 payload
+    const payload: StartAsyncTaskPayload = {
+      taskType,
+      prompt,
+      images,
+      videoUrl,
+      audioUrl,
+      activityId: activeWork.activity_id,
+      activityTitle: activeWork.activity_title,
+      activityDescription: activeWork.activity_description,
+      activityImage: activeWork.activity_image,
+      uid: activeWork.uid,
+      templateId,
+      price,
+      videoParams,
+      styleRedrawParams,
+      promptData,
+    };
+
+    try {
+      const pendingTask = await dispatch(startAsyncTask(payload)).unwrap();
+      if (pendingTask.updatedWork) {
+        navigation.replace('UserWorkPreview', {
+          work: pendingTask.updatedWork,
+          initialWorkId: pendingTask.updatedWork._id
+        });
+      }
+    } catch (error) {
+      if (error && typeof error === 'object' && 'errCode' in error) {
+        const asyncTaskError = error as AsyncTaskError;
+        if (asyncTaskError.errCode === 'INSUFFICIENT_BALANCE') {
+          const currentBalance = asyncTaskError.data?.currentBalance ?? 0;
+          const requiredAmount = asyncTaskError.data?.requiredAmount ?? 0;
+          Alert.alert(
+            '💎 余额不足',
+            `需要${requiredAmount}美美币，当前余额${currentBalance}美美币\n是否前往充值？`,
+            [
+              { text: '取消', style: 'cancel' },
+              {
+                text: '去充值',
+                onPress: () => navigation.navigate('CoinPurchase')
+              }
+            ]
+          );
+          return;
+        }
+      }
+      Alert.alert('错误', '重新生成失败');
+    }
+  }, [activeWork, dispatch, navigation]);
+
   const getShareOptions = () => [
     {
       id: 'save',
@@ -790,9 +926,10 @@ const UserWorkPreviewScreen: React.FC = () => {
         onInteractionEnd={handleInteractionEnd}
         onRefresh={handleRefreshTask}
         isVisible={isItemVisible}
+        onRegenerate={handleRegenerateActiveWork}
       />
     );
-  }, [showComparison, handleInteractionStart, handleInteractionEnd, handleRefreshTask, activeWorkIndex]);
+  }, [showComparison, handleInteractionStart, handleInteractionEnd, handleRefreshTask, activeWorkIndex, handleRegenerateActiveWork]);
 
   if (!activeWork) return null;
 
