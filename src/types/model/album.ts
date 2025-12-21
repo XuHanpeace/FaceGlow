@@ -162,6 +162,12 @@ export interface AlbumRecord {
   result_image?: string;
   
   /** 
+   * 是否排除 result_image（豆包图生图使用，默认 false 即包含 result_image，保持历史版本兼容）
+   * 可选字段，仅在 task_execution_type 为 'async_doubao_image_to_image' 时使用
+   */
+  exclude_result_image?: boolean;
+  
+  /** 
    * 提示词文本，用于图生图类型的相册
    * 可选字段，描述图片生成的要求和风格
    */

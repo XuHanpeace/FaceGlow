@@ -72,6 +72,11 @@ export interface StartAsyncTaskPayload {
   prompt: string;
   /** 图片URL数组（图生图、图生视频使用） */
   images?: string[];
+  /** 是否排除 result_image（豆包图生图使用，默认 false 即参考 result_image，保持历史版本兼容）
+   * - true：仅使用用户自拍图 + prompt 生图，不参考 result_image
+   * - false：使用用户自拍图 + result_image + prompt 生图（默认）
+   */
+  excludeResultImage?: boolean;
   /** 视频URL（视频特效使用） */
   videoUrl?: string;
   /** 音频URL（图生视频使用，可选） */
@@ -344,7 +349,8 @@ export const startAsyncTask = createAsyncThunk(
           task_status: TaskStatus.PENDING,
           task_type: payload.taskType,
           selfie_url: payload.images?.[0], // 保存图1（用户选择的自拍图）
-          scene_url: payload.images?.[1], // 保存图2（result_image，场景图）
+          scene_url: payload.images?.[1], // 保存图2（result_image，场景图，如果存在）
+          exclude_result_image: payload.excludeResultImage || false, // 保存是否排除 result_image 的标记位（true=仅使用用户自拍图+prompt，false=使用用户自拍图+result_image+prompt）
           prompt_data: payload.promptData,
           price: payload.price || 0,
           template_id: payload.templateId,

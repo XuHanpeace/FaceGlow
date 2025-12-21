@@ -3,7 +3,7 @@ import { View, Animated, StyleSheet, StyleProp, ImageStyle } from 'react-native'
 import FastImage, { FastImageProps, Source } from 'react-native-fast-image';
 import LinearGradient from 'react-native-linear-gradient';
 
-interface LoadingImageProps extends Omit<FastImageProps, 'source'> {
+interface LoadingImageProps extends Omit<Omit<FastImageProps, 'source'>, 'style'> {
   source: Source | number;
   style?: StyleProp<ImageStyle>;
   placeholderColor?: string;

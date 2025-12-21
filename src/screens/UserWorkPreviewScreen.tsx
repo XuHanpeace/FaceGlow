@@ -732,6 +732,23 @@ const UserWorkPreviewScreen: React.FC = () => {
     navigation.goBack();
   };
 
+  const handleDownloadPress = async () => {
+    const currentResultImage = activeWork?.result_data?.[0]?.result_image;
+    if (currentResultImage) {
+      try {
+        const result = await shareService.saveImageToAlbum(currentResultImage);
+        if (result.success) {
+          showSuccessToast('图片已保存到相册');
+        } else {
+          Alert.alert('下载失败', result.error || '保存图片失败');
+        }
+      } catch (error) {
+        console.error('下载失败:', error);
+        Alert.alert('下载失败', '保存图片时发生错误');
+      }
+    }
+  };
+
   const handleSharePress = () => {
     const currentResultImage = activeWork?.result_data?.[0]?.result_image;
     if (currentResultImage) {
@@ -811,9 +828,18 @@ const UserWorkPreviewScreen: React.FC = () => {
       return;
     }
 
+    // 读取 exclude_result_image 标记位（从 ext_data 中读取，默认 false 即参考 result_image）
+    // true：仅使用用户自拍图 + prompt，不参考 result_image
+    // false：使用用户自拍图 + result_image + prompt（默认）
+    const excludeResultImage = ext.exclude_result_image === true;
+
     if (taskType === TaskType.DOUBAO_IMAGE_TO_IMAGE) {
-      if (!prompt || !selfieUrl || !sceneUrl) {
-        Alert.alert('错误', '缺少创作参数（提示词、自拍图、场景图）');
+      // 如果 exclude_result_image 为 false（默认），则需要 sceneUrl（result_image）作为参考图
+      // 如果为 true，则不需要 sceneUrl，仅使用用户自拍图 + prompt
+      if (!prompt || !selfieUrl || (!excludeResultImage && !sceneUrl)) {
+        Alert.alert('错误', excludeResultImage 
+          ? '缺少创作参数（提示词、自拍图）' 
+          : '缺少创作参数（提示词、自拍图、场景参考图）');
         return;
       }
     } else if (
@@ -830,7 +856,13 @@ const UserWorkPreviewScreen: React.FC = () => {
     // 组装 images
     let images: string[] = [];
     if (taskType === TaskType.DOUBAO_IMAGE_TO_IMAGE) {
-      images = [selfieUrl, sceneUrl];
+      images = [selfieUrl];
+      // 根据 exclude_result_image 标记决定是否添加 sceneUrl（result_image）作为参考图
+      // exclude_result_image = false：添加 result_image 作为参考图（用户自拍图 + result_image + prompt）
+      // exclude_result_image = true：不添加 result_image，仅使用用户自拍图 + prompt
+      if (sceneUrl && !excludeResultImage) {
+        images.push(sceneUrl);
+      }
     } else {
       images = [selfieUrl];
     }
@@ -840,6 +872,7 @@ const UserWorkPreviewScreen: React.FC = () => {
       taskType,
       prompt,
       images,
+      excludeResultImage: taskType === TaskType.DOUBAO_IMAGE_TO_IMAGE ? excludeResultImage : undefined,
       videoUrl,
       audioUrl,
       activityId: activeWork.activity_id,
@@ -942,9 +975,7 @@ const UserWorkPreviewScreen: React.FC = () => {
         <Text style={styles.headerTitle} numberOfLines={1}>
           {activeWork.activity_title}
         </Text>
-        <TouchableOpacity style={styles.shareButton} onPress={handleSharePress}>
-          <FontAwesome name="share-alt" size={20} color="#fff" />
-        </TouchableOpacity>
+        <View style={{ width: 40 }} />
       </View>
 
       <FlatList
@@ -994,6 +1025,28 @@ const UserWorkPreviewScreen: React.FC = () => {
       </View>
       )}
 
+      {/* 下载/分享按钮区域（右下角偏上） */}
+      {activeWork?.result_data?.[0]?.result_image && (
+        <View style={[styles.actionButtonsContainer, { paddingBottom: Math.max(insets.bottom, 20) + 100 }]}>
+          <TouchableOpacity 
+            style={styles.actionButton} 
+            onPress={handleDownloadPress}
+            activeOpacity={0.7}
+          >
+            <FontAwesome name="download" size={20} color="#fff" />
+            <Text style={styles.actionButtonText}>下载</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.actionButton} 
+            onPress={handleSharePress}
+            activeOpacity={0.7}
+          >
+            <FontAwesome name="share-square" size={20} color="#fff" />
+            <Text style={styles.actionButtonText}>分享</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <ShareModal
         visible={showShareModal}
         onClose={() => setShowShareModal(false)}
@@ -1026,14 +1079,6 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  shareButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -1155,6 +1200,37 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  actionButtonsContainer: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    flexDirection: 'column',
+    zIndex: 10,
+  },
+  actionButton: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 });
 

@@ -493,20 +493,30 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
         }
 
         // 构建 images 数组
-        // 豆包图生图：使用用户选择的自拍图作为 images[0]（图1），result_image 作为 images[1]（图2）
+        // 豆包图生图：默认参考 result_image（保持历史版本兼容），可通过 exclude_result_image 标记排除
         // 其他任务：使用 selectedSelfieUrl
         let imagesArray: string[] = [];
+        // 从相册数据中读取 exclude_result_image 标记位（默认 false，即参考 result_image，保持历史版本兼容）
+        const excludeResultImage = albumRecord.exclude_result_image === true;
+        
         if (taskType === TaskType.DOUBAO_IMAGE_TO_IMAGE) {
           // 豆包图生图：按照标准顺序构建
           // images[0] = selectedSelfieUrl（用户选择的自拍图，图1 - 人物来源图）
-          // images[1] = result_image（结果图/场景图，图2 - 目标场景图）
-          imagesArray = [
-            selectedSelfieUrl!,          // 图1 - 用户选择的自拍图（人物来源图）
-            albumRecord.result_image!    // 图2 - 目标场景图
-          ];
+          // images[1] = result_image（结果图/场景图，图2 - 参考场景图，默认包含）
+          imagesArray = [selectedSelfieUrl!];
+          
+          // 默认参考 result_image（保持历史版本兼容），除非 exclude_result_image 为 true
+          // exclude_result_image = true 时：仅使用用户自拍图 + prompt，不参考 result_image
+          // exclude_result_image = false 时：使用用户自拍图 + result_image + prompt
+          if (albumRecord.result_image && !excludeResultImage) {
+            imagesArray.push(albumRecord.result_image);
+          }
+          
           console.log('[BeforeCreation] 豆包图生图 images 数组:', {
             'images[0] (图1 - 用户自拍图)': imagesArray[0],
-            'images[1] (图2 - 场景图)': imagesArray[1]
+            'excludeResultImage': excludeResultImage,
+            '生成方式': excludeResultImage ? '仅使用用户自拍图 + prompt' : '使用用户自拍图 + result_image + prompt',
+            ...(!excludeResultImage && albumRecord.result_image && { 'images[1] (图2 - 参考场景图)': imagesArray[1] })
           });
         } else {
           // 其他异步任务使用自拍图
@@ -517,6 +527,7 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
              taskType: taskType,
              prompt: finalPrompt || '', // 视频特效和人像风格重绘不需要prompt，但保持向后兼容
              images: imagesArray, // 根据任务类型构建不同的 images 数组
+             excludeResultImage: taskType === TaskType.DOUBAO_IMAGE_TO_IMAGE ? excludeResultImage : undefined, // 仅在豆包图生图时传递
              audioUrl: taskType === TaskType.IMAGE_TO_VIDEO ? albumRecord.audio_url : undefined, // 图生视频音频URL（如果相册数据中有）
              activityId: currentActivityId,
              activityTitle: albumRecord.album_name,
