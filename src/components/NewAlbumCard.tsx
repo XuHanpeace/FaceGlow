@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, Dimensions, Animated } from 'react-native';
-import { AlbumRecord, FunctionType } from '../types/model/album';
+import { AlbumRecord, TaskExecutionType } from '../types/model/album';
 import { CategoryConfigRecord, CategoryType } from '../types/model/config';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import LinearGradient from 'react-native-linear-gradient';
@@ -41,9 +41,11 @@ export const NewAlbumCard: React.FC<NewAlbumCardProps> = ({
   }, []);
 
   // 判断是否为视频类型相册
-  const isVideoAlbum = album.function_type === FunctionType.IMAGE_TO_VIDEO || 
-                       album.function_type === FunctionType.VIDEO_EFFECT;
-  const hasPreviewVideo = !!album.preview_video_url;
+  // 统一用 task_execution_type 判断（弃用 function_type）
+  const isVideoAlbum =
+    album.task_execution_type === TaskExecutionType.ASYNC_IMAGE_TO_VIDEO ||
+    album.task_execution_type === TaskExecutionType.ASYNC_VIDEO_EFFECT;
+  const hasPreviewVideo = typeof album.preview_video_url === 'string' && album.preview_video_url.length > 0;
 
   // Determine cover image
   const coverImage = album.template_list?.[0]?.template_url || album.album_image;
@@ -194,6 +196,8 @@ export const NewAlbumCard: React.FC<NewAlbumCardProps> = ({
             playInBackground={false}
             playWhenInactive={false}
             ignoreSilentSwitch="obey"
+            poster={coverImage}
+            posterResizeMode="cover"
             onError={(error) => {
               console.warn('视频播放错误:', error);
               setIsVideoPaused(true);
@@ -220,7 +224,7 @@ export const NewAlbumCard: React.FC<NewAlbumCardProps> = ({
         )}
         
         {/* Template count for template-based albums */}
-        {(!album.src_image && album.template_list && album.template_list.length > 0) && (
+        {(!isVideoAlbum && !album.src_image && album.template_list && album.template_list.length > 0) && (
           <View style={styles.templateCountBadge}>
             <Text style={styles.templateCountText}>
               {album.template_list.length} 模板
@@ -229,7 +233,8 @@ export const NewAlbumCard: React.FC<NewAlbumCardProps> = ({
         )}
         
         {/* Src Image for Image-to-Image albums */}
-        {album.src_image && (
+        {/* 如果是视频类型，不展示左下角原始图 */}
+        {album.src_image && !isVideoAlbum && (
           <View style={styles.srcImageContainer}>
             <LoadingImage 
               source={{ uri: album.src_image }} 
@@ -288,7 +293,7 @@ const styles = StyleSheet.create({
   videoBadge: {
     position: 'absolute',
     bottom: 6,
-    left: 6,
+    right: 6,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.6)',

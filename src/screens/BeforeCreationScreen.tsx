@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -25,15 +25,16 @@ import { AlbumWithActivityId, selectAllAlbums } from '../store/slices/activitySl
 import GradientButton from '../components/GradientButton';
 import BackButton from '../components/BackButton';
 import SelfieSelector from '../components/SelfieSelector';
-import { startAsyncTask, StartAsyncTaskPayload, AsyncTaskError } from '../store/slices/asyncTaskSlice';
+import { startAsyncTask, StartAsyncTaskPayload, AsyncTaskError, VideoParams, StyleRedrawParams } from '../store/slices/asyncTaskSlice';
 import { CrossFadeImage } from '../components/CrossFadeImage';
 import FastImage from 'react-native-fast-image';
 import { LoadingImage } from '../components/LoadingImage';
 import { useUser, useUserBalance, useUserSelfies } from '../hooks/useUser';
-import { AlbumRecord } from '../types/model/album';
+import { AlbumRecord, TaskExecutionType } from '../types/model/album';
 import { normalizeTaskExecutionType } from '../utils/albumUtils';
 import { aegisService } from '../services/monitoring/aegisService';
 import { TaskType } from '../services/cloud/asyncTaskService';
+import Video from 'react-native-video';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -47,7 +48,8 @@ const TemplateSlide = React.memo(({
   selectedSelfieUrl, 
   isFusionProcessing, 
   onUseStyle, 
-  onSelfieSelect
+  onSelfieSelect,
+  isVisible,
 }: { 
   template: Template, 
   album: Album, 
@@ -57,14 +59,64 @@ const TemplateSlide = React.memo(({
   onSelfieSelect: (url: string) => void,
   customPrompt: string,
   onCustomPromptChange: (text: string) => void,
+  isVisible: boolean,
 }) => {
   // 使用 AlbumRecord 结构中的 src_image 字段
-  const albumRecord = album as AlbumRecord;
+  const albumRecord = album as unknown as AlbumRecord;
   const srcImage = albumRecord.src_image;
+
+  // 视频类型：统一用 task_execution_type 判断（弃用 function_type）
+  const isVideoAlbum =
+    albumRecord.task_execution_type === TaskExecutionType.ASYNC_IMAGE_TO_VIDEO ||
+    albumRecord.task_execution_type === TaskExecutionType.ASYNC_VIDEO_EFFECT;
+  const previewVideoUrl =
+    typeof albumRecord.preview_video_url === 'string' && albumRecord.preview_video_url.length > 0
+      ? albumRecord.preview_video_url
+      : null;
+  const [videoFailed, setVideoFailed] = useState<boolean>(false);
+  const [isVideoReady, setIsVideoReady] = useState<boolean>(false);
 
   return (
     <View style={styles.pageContainer}>
-      {srcImage ? (
+      {/* 视频相册：优先展示预览视频 */}
+      {isVideoAlbum && previewVideoUrl && !videoFailed ? (
+        <View style={styles.mainImageContainer}>
+          {/* 占位封面：避免进入时短暂黑屏（直到 video ready 再隐藏） */}
+          {!isVideoReady ? (
+            <LoadingImage
+              source={{ uri: template.template_url }}
+              style={[styles.mainImage, styles.videoPlaceholder]}
+              resizeMode={FastImage.resizeMode.cover}
+              placeholderColor="#1A1A1A"
+              fadeDuration={150}
+            />
+          ) : null}
+          <Video
+            source={{ uri: previewVideoUrl }}
+            style={[styles.mainImage, styles.videoLayer]}
+            resizeMode="cover"
+            paused={!isVisible}
+            muted={true}
+            repeat={true}
+            playInBackground={false}
+            playWhenInactive={false}
+            ignoreSilentSwitch="obey"
+            poster={template.template_url}
+            posterResizeMode="cover"
+            onLoadStart={() => {
+              setIsVideoReady(false);
+            }}
+            onReadyForDisplay={() => {
+              setIsVideoReady(true);
+            }}
+            onError={(error) => {
+              console.warn('[BeforeCreation] 预览视频播放失败，回退图片:', error);
+              setVideoFailed(true);
+              setIsVideoReady(false);
+            }}
+          />
+        </View>
+      ) : srcImage ? (
         <CrossFadeImage
           image1={srcImage}
           image2={template.template_url}
@@ -186,7 +238,19 @@ const AlbumSlide = React.memo(({
         price: 0
       } as Template];
 
-  const renderTemplateItem = useCallback(({ item }: { item: Template }) => {
+  const [visibleTemplateIndex, setVisibleTemplateIndex] = useState<number>(0);
+
+  const onViewableTemplateItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
+      if (viewableItems.length > 0 && viewableItems[0].index !== null) {
+        setVisibleTemplateIndex(viewableItems[0].index);
+      }
+    }
+  ).current;
+
+  const templateViewabilityConfig = useRef({ itemVisiblePercentThreshold: 80 }).current;
+
+  const renderTemplateItem = useCallback(({ item, index }: { item: Template; index: number }) => {
     return (
       <TemplateSlide
         template={item}
@@ -197,9 +261,10 @@ const AlbumSlide = React.memo(({
         onSelfieSelect={onSelfieSelect}
         customPrompt={customPrompt}
         onCustomPromptChange={onCustomPromptChange}
+        isVisible={index === visibleTemplateIndex}
       />
     );
-  }, [album, selectedSelfieUrl, isFusionProcessing, onUseStyle, onSelfieSelect, customPrompt, onCustomPromptChange]);
+  }, [album, selectedSelfieUrl, isFusionProcessing, onUseStyle, onSelfieSelect, customPrompt, onCustomPromptChange, visibleTemplateIndex]);
 
   return (
     <View style={styles.albumContainer}>
@@ -217,6 +282,8 @@ const AlbumSlide = React.memo(({
         windowSize={3}
         removeClippedSubviews={true}
         nestedScrollEnabled={true}
+        onViewableItemsChanged={onViewableTemplateItemsChanged}
+        viewabilityConfig={templateViewabilityConfig}
       />
     </View>
   );
@@ -470,7 +537,7 @@ const BeforeCreationScreen: React.FC = () => {
         }
 
         // 构建视频参数（视频特效使用）
-        const videoParams: any = {};
+        const videoParams: VideoParams = {};
         if (taskType === TaskType.VIDEO_EFFECT) {
           videoParams.resolution = '720P'; // 默认720P
           videoParams.template = albumRecord.video_effect_template || 'flying';
@@ -480,7 +547,7 @@ const BeforeCreationScreen: React.FC = () => {
         }
 
         // 构建人像风格重绘参数
-        const styleRedrawParams: any = {};
+        const styleRedrawParams: StyleRedrawParams = {};
         if (taskType === TaskType.PORTRAIT_STYLE_REDRAW) {
           if (albumRecord.style_index !== undefined) {
             styleRedrawParams.style_index = albumRecord.style_index;
@@ -737,6 +804,17 @@ const styles = StyleSheet.create({
   mainImageContainer: {
     width: '100%',
     height: '100%',
+  },
+  videoLayer: {
+    backgroundColor: 'transparent',
+  },
+  videoPlaceholder: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
   },
   gradientOverlay: {
     position: 'absolute',

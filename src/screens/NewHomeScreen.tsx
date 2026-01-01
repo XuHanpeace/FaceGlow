@@ -236,7 +236,7 @@ const NewHomeScreen: React.FC = () => {
     }
 
     try {
-      const params: any = {
+      const params: Record<string, unknown> = {
         page: currentPage,
         page_size: 20,
         sort_by: 'default'
@@ -254,6 +254,25 @@ const NewHomeScreen: React.FC = () => {
       
       if (response.code === 200) {
         const newAlbums = response.data.albums;
+
+        // DEV: 打印相册列表，便于核对视频/图片判断字段
+        if (__DEV__) {
+          console.log('📋 [AlbumList] raw albums:', newAlbums);
+          console.log(
+            '📋 [AlbumList] summary:',
+            newAlbums.map(a => ({
+              album_id: a.album_id,
+              album_name: a.album_name,
+              task_execution_type: a.task_execution_type,
+              function_type: a.function_type,
+              preview_video_url: a.preview_video_url,
+              video_effect_template:
+                'video_effect_template' in a ? (a as AlbumRecord & { video_effect_template?: string }).video_effect_template : undefined,
+              style_index:
+                'style_index' in a ? (a as AlbumRecord & { style_index?: number }).style_index : undefined,
+            }))
+          );
+        }
         
         // 如果返回空数组且无缓存，显示友好提示
         if (reset && newAlbums.length === 0 && !hadAnyCache) {

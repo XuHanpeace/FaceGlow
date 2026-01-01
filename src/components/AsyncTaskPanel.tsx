@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, FlatList, Image, Dimensions, ActivityIndicator } from 'react-native';
 import { useAppDispatch, useTypedSelector } from '../store/hooks';
-import { togglePanel, pollAsyncTask, removeTask } from '../store/slices/asyncTaskSlice';
+import { togglePanel, pollAsyncTask, removeTask, type AsyncTask } from '../store/slices/asyncTaskSlice';
 import { fetchUserWorks } from '../store/slices/userWorksSlice';
-import { TaskStatus } from '../types/model/user_works';
+import { TaskStatus, type UserWorkModel } from '../types/model/user_works';
 import { TaskType } from '../services/cloud/asyncTaskService';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { showSuccessToast } from '../utils/toast';
@@ -13,19 +13,71 @@ import { userWorkService } from '../services/database/userWorkService';
 import { navigate } from '../navigation/navigationUtils';
 
 // 辅助函数：从任务中获取 task_type
-function getTaskType(task: any): TaskType | null {
+function getTaskType(task: AsyncTask): TaskType | null {
   // 优先从 updatedWork.ext_data 中获取
   if (task.updatedWork?.ext_data) {
     try {
-      const extData = JSON.parse(task.updatedWork.ext_data);
-      if (extData.task_type) {
-        return extData.task_type as TaskType;
+      const extData = JSON.parse(task.updatedWork.ext_data) as Record<string, unknown>;
+      const taskType = extData.task_type;
+      if (typeof taskType === 'string') {
+        return taskType as TaskType;
       }
     } catch (e) {
       // 忽略解析错误
     }
   }
   return null;
+}
+
+function isVideoUrl(url?: string): boolean {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+  return lower.endsWith('.mp4') || lower.includes('.mp4?');
+}
+
+function pickCoverImage(task: AsyncTask): string {
+  const coverFromTask = typeof task.coverImage === 'string' ? task.coverImage : '';
+  // 如果 coverImage 是视频（比如被错误设置为 preview_video_url），兜底到图片字段
+  if (coverFromTask && !isVideoUrl(coverFromTask)) return coverFromTask;
+
+  const work = task.updatedWork;
+  if (work) {
+    if (work.activity_image && !isVideoUrl(work.activity_image)) return work.activity_image;
+    const templateImage = work.result_data?.[0]?.template_image;
+    if (templateImage && !isVideoUrl(templateImage)) return templateImage;
+
+    // ext_data 里可能存 selfie_url
+    try {
+      const extData = JSON.parse(work.ext_data) as Record<string, unknown>;
+      const selfieUrl = extData.selfie_url;
+      if (typeof selfieUrl === 'string' && selfieUrl && !isVideoUrl(selfieUrl)) return selfieUrl;
+    } catch {
+      // ignore
+    }
+  }
+
+  // 最后兜底：空字符串（UI 将显示空态）
+  return '';
+}
+
+function pickSelfieBadgeUrl(task: AsyncTask): string | null {
+  const work = task.updatedWork;
+  if (!work?.ext_data) return null;
+  try {
+    const extData = JSON.parse(work.ext_data) as Record<string, unknown>;
+    const selfieUrl = extData.selfie_url;
+    return typeof selfieUrl === 'string' ? selfieUrl : null;
+  } catch {
+    return null;
+  }
+}
+
+function extractWorkRecord(data: unknown): UserWorkModel | null {
+  if (!data || typeof data !== 'object') return null;
+  const record = data as Record<string, unknown>;
+  const maybeRecord = record.record;
+  if (maybeRecord && typeof maybeRecord === 'object') return maybeRecord as UserWorkModel;
+  return data as UserWorkModel;
 }
 
 const { height } = Dimensions.get('window');
@@ -48,15 +100,14 @@ const AsyncTaskPanel: React.FC = () => {
   };
 
   // 打开作品预览
-  const openWorkPreview = async (task: any) => {
+  const openWorkPreview = async (task: AsyncTask) => {
     try {
       // 优先使用 task.updatedWork，否则通过 taskId 获取
-      let work = task.updatedWork;
+      let work: UserWorkModel | null = task.updatedWork ?? null;
       if (!work && task.taskId) {
         const result = await userWorkService.getWorkByTaskId(task.taskId);
         if (result.success && result.data) {
-          const rawData = result.data as any;
-          work = rawData.record ? rawData.record : rawData;
+          work = extractWorkRecord(result.data);
         }
       }
       
@@ -125,7 +176,7 @@ const AsyncTaskPanel: React.FC = () => {
     return () => clearInterval(intervalId);
   }, [tasks, dispatch]); // 移除 isPanelOpen 依赖
 
-  const renderItem = ({ item }: { item: any }) => {
+  const renderItem = ({ item }: { item: AsyncTask }) => {
     let statusIcon;
     let statusText;
 
@@ -144,16 +195,8 @@ const AsyncTaskPanel: React.FC = () => {
         break;
     }
 
-    // 解析 selfieUrl
-    let selfieUrl: string | null = null;
-    try {
-      if (item.updatedWork?.ext_data) {
-        const extData = JSON.parse(item.updatedWork.ext_data);
-        selfieUrl = extData.selfie_url || null;
-      }
-    } catch (e) {
-      // 忽略解析错误
-    }
+    const selfieUrl = pickSelfieBadgeUrl(item);
+    const coverImage = pickCoverImage(item);
 
     // 判断是否可打开预览
     const canOpenPreview = item.status === TaskStatus.SUCCESS;
@@ -165,7 +208,11 @@ const AsyncTaskPanel: React.FC = () => {
         onPress={canOpenPreview ? () => openWorkPreview(item) : undefined}
       >
         <View style={styles.coverWrap}>
-          <Image source={{ uri: item.coverImage }} style={styles.coverImage} />
+          {!!coverImage ? (
+            <Image source={{ uri: coverImage }} style={styles.coverImage} />
+          ) : (
+            <View style={[styles.coverImage, { backgroundColor: '#1A1A1A' }]} />
+          )}
           {selfieUrl ? (
             <View style={styles.selfieBadge}>
               <Image source={{ uri: selfieUrl }} style={styles.selfieBadgeImg} />

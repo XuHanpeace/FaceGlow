@@ -851,15 +851,31 @@ const UserWorkPreviewScreen: React.FC = () => {
     const currentResultImage = activeWork?.result_data?.[0]?.result_image;
     if (currentResultImage) {
       try {
-        const result = await shareService.saveImageToAlbum(currentResultImage);
+        const extData = (() => {
+          try {
+            return activeWork?.ext_data ? (JSON.parse(activeWork.ext_data) as Record<string, unknown>) : null;
+          } catch {
+            return null;
+          }
+        })();
+        const taskType = typeof extData?.task_type === 'string' ? extData.task_type : '';
+        const isVideo =
+          currentResultImage.toLowerCase().endsWith('.mp4') ||
+          currentResultImage.toLowerCase().includes('.mp4?') ||
+          taskType === 'image_to_video' ||
+          taskType === 'video_effect';
+
+        const result = isVideo
+          ? await shareService.saveVideoToAlbum(currentResultImage)
+          : await shareService.saveImageToAlbum(currentResultImage);
         if (result.success) {
-          showSuccessToast('图片已保存到相册');
+          showSuccessToast(isVideo ? '视频已保存到相册' : '图片已保存到相册');
         } else {
-          Alert.alert('下载失败', result.error || '保存图片失败');
+          Alert.alert('下载失败', result.error || (isVideo ? '保存视频失败' : '保存图片失败'));
         }
       } catch (error) {
         console.error('下载失败:', error);
-        Alert.alert('下载失败', '保存图片时发生错误');
+        Alert.alert('下载失败', '保存到相册时发生错误');
       }
     }
   };
@@ -1041,10 +1057,14 @@ const UserWorkPreviewScreen: React.FC = () => {
       iconColor: '#4CAF50', 
       label: '保存到相册',
       onPress: async () => {
-        const result = await shareService.saveImageToAlbum(shareImageUrl);
+        const lower = shareImageUrl.toLowerCase();
+        const isVideo = lower.endsWith('.mp4') || lower.includes('.mp4?');
+        const result = isVideo
+          ? await shareService.saveVideoToAlbum(shareImageUrl)
+          : await shareService.saveImageToAlbum(shareImageUrl);
         if (result.success) {
-          showSuccessToast('图片已保存到相册');
-        } 
+          showSuccessToast(isVideo ? '视频已保存到相册' : '图片已保存到相册');
+        }
       },
     },
   ];

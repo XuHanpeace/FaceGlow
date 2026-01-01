@@ -49,6 +49,11 @@ try {
 class ShareService {
   private showModalCallback: ((imageUrl: string) => void) | null = null;
 
+  private isVideoUrl(url: string): boolean {
+    const lower = url.toLowerCase();
+    return lower.endsWith('.mp4') || lower.includes('.mp4?');
+  }
+
   /**
    * 引导用户去设置中开启权限
    * @param permissionType 权限类型：'album' | 'camera'
@@ -118,6 +123,45 @@ class ShareService {
       }
     } catch (error) {
       console.error('请求存储权限失败:', error);
+      return false;
+    }
+  }
+
+  /**
+   * 请求存储权限（Android）- 视频保存
+   * Android 13+：READ_MEDIA_VIDEO
+   */
+  async requestVideoStoragePermission(): Promise<boolean> {
+    if (Platform.OS !== 'android') {
+      return true;
+    }
+
+    try {
+      if (Platform.Version >= 33) {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO,
+          {
+            title: '保存视频权限',
+            message: '美颜换换需要访问您的相册以保存视频',
+            buttonPositive: '允许',
+            buttonNegative: '拒绝',
+          }
+        );
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      }
+
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+        {
+          title: '保存视频权限',
+          message: '美颜换换需要访问您的相册以保存视频',
+          buttonPositive: '允许',
+          buttonNegative: '拒绝',
+        }
+      );
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    } catch (error) {
+      console.error('请求视频存储权限失败:', error);
       return false;
     }
   }
@@ -324,6 +368,77 @@ class ShareService {
         success: false,
         error: '没有相册访问权限，请在设置中开启权限',
       };
+    }
+  }
+
+  /**
+   * 保存视频到相册（mp4）
+   */
+  async saveVideoToAlbum(videoUrl: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('📥 [SaveVideo] 开始保存视频到相册');
+      console.log('📥 [SaveVideo] 原始视频URL:', videoUrl);
+
+      if (!this.isVideoUrl(videoUrl)) {
+        return { success: false, error: '不是有效的视频链接' };
+      }
+
+      if (!RNFetchBlob) {
+        return { success: false, error: 'RNFetchBlob模块初始化失败，请重启应用' };
+      }
+      if (!CameraRoll) {
+        return { success: false, error: 'CameraRoll模块初始化失败，请重启应用' };
+      }
+
+      const hasPermission = await this.requestVideoStoragePermission();
+      if (!hasPermission) {
+        this.guideToSettings('album');
+        return { success: false, error: '需要相册访问权限才能保存视频，请在设置中开启权限' };
+      }
+
+      const timestamp = Date.now();
+      const cacheDir = RNFetchBlob.fs.dirs.CacheDir;
+      const tempFilePath = `${cacheDir}/faceglow_${timestamp}.mp4`;
+
+      const response = await RNFetchBlob.config({
+        path: tempFilePath,
+        addAndroidDownloads: {
+          useDownloadManager: false,
+          notification: false,
+        },
+      }).fetch('GET', videoUrl);
+
+      const statusCode = response.info().status;
+      if (statusCode !== 200) {
+        try {
+          const exists = await RNFetchBlob.fs.exists(tempFilePath);
+          if (exists) await RNFetchBlob.fs.unlink(tempFilePath);
+        } catch (cleanupError) {
+          console.warn('清理失败文件时出错:', cleanupError);
+        }
+        throw new Error(`下载失败，状态码: ${statusCode}`);
+      }
+
+      await CameraRoll.save(tempFilePath, {
+        type: 'video',
+        album: '美颜换换',
+      });
+
+      // 清理临时文件
+      setTimeout(async () => {
+        try {
+          const exists = await RNFetchBlob.fs.exists(tempFilePath);
+          if (exists) await RNFetchBlob.fs.unlink(tempFilePath);
+        } catch (cleanupError) {
+          console.warn('清理临时文件失败:', cleanupError);
+        }
+      }, 2000);
+
+      return { success: true };
+    } catch (error: unknown) {
+      console.error('❌ [SaveVideo] 保存视频失败:', error);
+      this.guideToSettings('album');
+      return { success: false, error: '没有相册访问权限，请在设置中开启权限' };
     }
   }
 
