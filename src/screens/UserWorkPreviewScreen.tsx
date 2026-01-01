@@ -10,6 +10,7 @@ import {
   ViewToken,
   Animated,
   Easing,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -31,7 +32,7 @@ import { userWorkService } from '../services/database/userWorkService';
 import { fetchUserWorks } from '../store/slices/userWorksSlice';
 import { OneTimeReveal } from '../components/OneTimeReveal';
 import FastImage from 'react-native-fast-image';
-import Video from 'react-native-video';
+import Video, { type VideoRef } from 'react-native-video';
 import { TaskType } from '../services/cloud/asyncTaskService';
 import { authService } from '../services/auth/authService';
 
@@ -82,7 +83,13 @@ const ResultItem = React.memo(({
   
   // 视频播放状态管理
   const [isVideoPaused, setIsVideoPaused] = useState(!isVisible); // 默认根据可见性设置
-  const videoRef = useRef<any>(null);
+  const videoRef = useRef<VideoRef | null>(null);
+
+  // 视频加载/缓冲状态：用于优化“点进去等待一段时间才播放”的体验
+  const [isVideoLoading, setIsVideoLoading] = useState<boolean>(false);
+  const [isVideoBuffering, setIsVideoBuffering] = useState<boolean>(false);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const [videoReloadKey, setVideoReloadKey] = useState<number>(0);
   
   // 当可见性改变时，更新播放状态
   useEffect(() => {
@@ -90,12 +97,31 @@ const ResultItem = React.memo(({
       setIsVideoPaused(!isVisible);
     }
   }, [isVisible, isVideoResult]);
+
+  useEffect(() => {
+    if (!isVideoResult) return;
+    // 进入视频页时默认显示加载态，直到 onReadyForDisplay/onLoad 回调
+    setIsVideoLoading(true);
+    setIsVideoBuffering(false);
+    setVideoError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isVideoResult, resultImageUrl, videoReloadKey]);
   
   // 处理视频点击暂停/播放
   const handleVideoPress = () => {
     if (isVideoResult) {
+      // 如果在加载或缓冲中，点击给用户明确反馈：保持暂停/播放切换仍可用
       setIsVideoPaused(prev => !prev);
     }
+  };
+
+  const handleRetryVideo = () => {
+    if (!isVideoResult) return;
+    setVideoError(null);
+    setIsVideoLoading(true);
+    setIsVideoBuffering(false);
+    // 通过 key 触发 Video 重建，强制重新拉流
+    setVideoReloadKey((v) => v + 1);
   };
   // Hourglass Animation
   const spinValue = useRef(new Animated.Value(0)).current;
@@ -211,6 +237,7 @@ const ResultItem = React.memo(({
             {taskStatus === TaskStatus.SUCCESS && isVideoResult && resultImageUrl ? (
               <>
                 <Video
+                  key={`async-video-${videoReloadKey}`}
                   ref={videoRef}
                   source={{ uri: resultImageUrl }}
                   style={styles.resultImage}
@@ -222,10 +249,56 @@ const ResultItem = React.memo(({
                   playWhenInactive={false}
                   poster={coverImage}
                   posterResizeMode="cover"
+                  onLoadStart={() => {
+                    setIsVideoLoading(true);
+                    setIsVideoBuffering(false);
+                    setVideoError(null);
+                  }}
+                  onLoad={() => {
+                    setIsVideoLoading(false);
+                    setIsVideoBuffering(false);
+                  }}
+                  onReadyForDisplay={() => {
+                    // iOS 上更可靠：首帧可展示
+                    setIsVideoLoading(false);
+                    setIsVideoBuffering(false);
+                  }}
+                  onBuffer={(e) => {
+                    // e.isBuffering: boolean
+                    setIsVideoBuffering(!!e?.isBuffering);
+                  }}
                   onError={(error) => {
                     console.error('视频播放错误:', error);
+                    setIsVideoLoading(false);
+                    setIsVideoBuffering(false);
+                    setVideoError('视频加载失败，请检查网络后重试');
                   }}
                 />
+                {/* 加载/缓冲提示蒙层：让用户知道“正在加载视频”而不是卡住 */}
+                {(isVideoLoading || isVideoBuffering || !!videoError) && (
+                  <View style={styles.videoLoadingOverlay} pointerEvents="box-none">
+                    <View style={styles.videoLoadingCard}>
+                      {!!videoError ? (
+                        <>
+                          <FontAwesome name="exclamation-circle" size={18} color="#FF4D4F" />
+                          <Text style={styles.videoLoadingText}>{videoError}</Text>
+                          <TouchableOpacity onPress={handleRetryVideo} style={styles.videoRetryBtn}>
+                            <FontAwesome name="refresh" size={14} color="#fff" style={{ marginRight: 6 }} />
+                            <Text style={styles.videoRetryText}>点击重试</Text>
+                          </TouchableOpacity>
+                        </>
+                      ) : (
+                        <>
+                          <ActivityIndicator color="#fff" />
+                          <Text style={styles.videoLoadingText}>
+                            {isVideoBuffering ? '网络波动，正在缓冲...' : '正在加载视频...'}
+                          </Text>
+                          <Text style={styles.videoLoadingSubText}>首次加载可能需要几秒，请稍等</Text>
+                        </>
+                      )}
+                    </View>
+                  </View>
+                )}
                 {/* 播放/暂停按钮覆盖层 */}
                 {isVideoPaused ? (
                   <View style={styles.videoPlayButton}>
@@ -295,7 +368,7 @@ const ResultItem = React.memo(({
   
   // 非异步任务的视频播放状态管理
   const [isVideoSyncPaused, setIsVideoSyncPaused] = useState(!isVisible);
-  const videoSyncRef = useRef<any>(null);
+  const videoSyncRef = useRef<VideoRef | null>(null);
   
   useEffect(() => {
     if (isVideoSync) {
@@ -343,6 +416,7 @@ const ResultItem = React.memo(({
       ) : isVideoSync && resultImageSync ? (
         <>
           <Video
+            key={`sync-video-${videoReloadKey}`}
             ref={videoSyncRef}
             source={{ uri: resultImageSync }}
             style={styles.resultImage}
@@ -354,10 +428,53 @@ const ResultItem = React.memo(({
             playWhenInactive={false}
             poster={coverImage || item.template_image}
             posterResizeMode="cover"
+            onLoadStart={() => {
+              setIsVideoLoading(true);
+              setIsVideoBuffering(false);
+              setVideoError(null);
+            }}
+            onLoad={() => {
+              setIsVideoLoading(false);
+              setIsVideoBuffering(false);
+            }}
+            onReadyForDisplay={() => {
+              setIsVideoLoading(false);
+              setIsVideoBuffering(false);
+            }}
+            onBuffer={(e) => {
+              setIsVideoBuffering(!!e?.isBuffering);
+            }}
             onError={(error) => {
               console.error('视频播放错误:', error);
+              setIsVideoLoading(false);
+              setIsVideoBuffering(false);
+              setVideoError('视频加载失败，请检查网络后重试');
             }}
           />
+          {(isVideoLoading || isVideoBuffering || !!videoError) && (
+            <View style={styles.videoLoadingOverlay} pointerEvents="box-none">
+              <View style={styles.videoLoadingCard}>
+                {!!videoError ? (
+                  <>
+                    <FontAwesome name="exclamation-circle" size={18} color="#FF4D4F" />
+                    <Text style={styles.videoLoadingText}>{videoError}</Text>
+                    <TouchableOpacity onPress={handleRetryVideo} style={styles.videoRetryBtn}>
+                      <FontAwesome name="refresh" size={14} color="#fff" style={{ marginRight: 6 }} />
+                      <Text style={styles.videoRetryText}>点击重试</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <ActivityIndicator color="#fff" />
+                    <Text style={styles.videoLoadingText}>
+                      {isVideoBuffering ? '网络波动，正在缓冲...' : '正在加载视频...'}
+                    </Text>
+                    <Text style={styles.videoLoadingSubText}>首次加载可能需要几秒，请稍等</Text>
+                  </>
+                )}
+              </View>
+            </View>
+          )}
           {/* 播放/暂停按钮覆盖层 */}
           {isVideoSyncPaused ? (
             <View style={styles.videoPlayButton}>
@@ -877,7 +994,6 @@ const UserWorkPreviewScreen: React.FC = () => {
       activityTitle: activeWork.activity_title,
       activityDescription: activeWork.activity_description,
       activityImage: activeWork.activity_image,
-      uid: activeWork.uid,
       templateId,
       price,
       videoParams,
@@ -1198,6 +1314,52 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  videoLoadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+  },
+  videoLoadingCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.72)',
+    maxWidth: '82%',
+  },
+  videoLoadingText: {
+    marginTop: 10,
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  videoLoadingSubText: {
+    marginTop: 6,
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  videoRetryBtn: {
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  videoRetryText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   actionButtonsContainer: {
     position: 'absolute',
