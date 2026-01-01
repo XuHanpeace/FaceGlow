@@ -690,10 +690,8 @@ const UserWorkPreviewScreen: React.FC = () => {
                   return newList;
                });
 
-               // 同步更新全局 Redux userWorks 数据
-               if (newData.uid) {
-                   dispatch(fetchUserWorks({ uid: newData.uid }));
-               }
+               // 同步更新全局 Redux userWorks 数据（uid 在底层自动获取）
+               dispatch(fetchUserWorks());
           }
       } catch (e) {
           console.error('[Preview] 刷新失败', e);

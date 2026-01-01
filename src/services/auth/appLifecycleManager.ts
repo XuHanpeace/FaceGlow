@@ -74,12 +74,10 @@ export class AppLifecycleManager {
         console.log('📊 [RevenueCat] 当前订阅状态:', status);
 
         // 将订阅状态写入用户 Profile（自动续订 + 失效同步）
+        // 仅在已登录时同步；uid 由请求内部自动注入
         const currentUserId = authService.getCurrentUserId();
         if (currentUserId) {
-          await subscriptionDataService.syncSubscriptionStatusFromRemote(
-            currentUserId,
-            status
-          );
+          await subscriptionDataService.syncSubscriptionStatusFromRemote(status);
         }
       } catch (subscriptionError) {
         console.error('❌ [RevenueCat] 前台同步订阅状态失败:', subscriptionError);

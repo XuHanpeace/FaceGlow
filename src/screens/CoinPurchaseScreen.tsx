@@ -19,11 +19,10 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { NativeModules } from 'react-native';
 import { subscriptionDataService } from '../services/subscriptionDataService';
-import { useAuthState } from '../hooks/useAuthState';
+import { useSession } from '../hooks/useSession';
 import { coinPackages, CoinPackage } from '../config/revenueCatConfig';
 import { useAppDispatch } from '../store/hooks';
 import { fetchUserProfile } from '../store/middleware/asyncMiddleware';
-import { authService } from '../services/auth/authService';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import GradientButton from '../components/GradientButton';
 import { showSuccessToast, showInfoToast } from '../utils/toast';
@@ -64,7 +63,7 @@ const VIDEO_HEIGHT = SCREEN_WIDTH * (9 / 16);
 
 const CoinPurchaseScreen: React.FC = () => {
   const navigation = useNavigation<CoinPurchaseScreenNavigationProp>();
-  const { user } = useAuthState();
+  const { uid } = useSession();
   const dispatch = useAppDispatch();
   const [selectedPackage, setSelectedPackage] = useState<CoinPackage | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -197,21 +196,15 @@ const CoinPurchaseScreen: React.FC = () => {
       
       if (result.success) {
         // 更新用户数据库中的美美币信息
-        if (user?.uid && selectedPackage.coins) {
-          const updateSuccess = await subscriptionDataService.handleCoinPurchaseSuccess(
-            user.uid,
-            selectedPackage.coins
-          );
+        if (selectedPackage.coins) {
+          const updateSuccess = await subscriptionDataService.handleCoinPurchaseSuccess(selectedPackage.coins);
 
           if (updateSuccess) {
             console.log('用户美美币数据已更新到数据库');
             
             // 刷新本地用户数据，确保余额及时更新
             try {
-              const currentUserId = authService.getCurrentUserId();
-              if (currentUserId) {
-                await dispatch(fetchUserProfile({ userId: currentUserId }));
-              }
+              await dispatch(fetchUserProfile());
               console.log('用户数据已刷新，余额已更新');
             } catch (refreshError) {
               console.error('刷新用户数据失败:', refreshError);

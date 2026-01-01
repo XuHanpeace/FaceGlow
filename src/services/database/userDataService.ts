@@ -1,5 +1,6 @@
 import { databaseService, DatabaseResponse, DatabaseError, DatabaseUpdateResponse } from './databaseService';
 import { User } from '../../types/model/user';
+import { AUTO_UID } from '../http/interceptors/attachAutoUidInterceptor';
 
 // 创建用户文档请求参数
 export interface CreateUserRequest {
@@ -78,16 +79,18 @@ export class UserDataService {
     }
   }
 
-  // 根据UID获取用户信息
-  async getUserByUid(uid: string) {
+  // 根据UID获取用户信息（uid 不传则自动取当前登录用户）
+  async getUserByUid(uid?: string) {
     try {
+      const resolvedUid = uid ?? AUTO_UID;
+
       const response = await databaseService.post<DatabaseResponse<User>>(
         `/model/prod/${this.modelName}/get`,
         {
           filter: {
             where: {
               uid: {
-                $eq: uid
+                $eq: resolvedUid
               }
             }
           },
@@ -145,8 +148,10 @@ export class UserDataService {
   // 更新用户数据信息（支持多个字段）
   async updateUserData(userData: Partial<User>) {
     try {
+      const resolvedUid = userData.uid ?? AUTO_UID;
+
       // 构建更新数据，只包含非undefined的字段
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         updated_at: Date.now(),
       };
 
@@ -176,7 +181,7 @@ export class UserDataService {
           filter: {
             where: {
               uid: {
-                $eq: userData.uid || ''
+                $eq: resolvedUid
               }
             }
           },
@@ -213,7 +218,7 @@ export class UserDataService {
   }
 
   // 删除账户（软删除，将 accountStatus 设置为 1）
-  async deleteAccount(uid: string): Promise<{ success: boolean; error?: { code: string; message: string } }> {
+  async deleteAccount(uid?: string): Promise<{ success: boolean; error?: { code: string; message: string } }> {
     try {
       const updateData = {
         accountStatus: '1', // 1 表示已删除
@@ -226,7 +231,7 @@ export class UserDataService {
           filter: {
             where: {
               uid: {
-                $eq: uid
+                $eq: uid ?? AUTO_UID
               }
             }
           },

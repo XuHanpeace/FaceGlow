@@ -1,5 +1,4 @@
-import axios from 'axios';
-import { authService } from '../auth/authService';
+import { functionClient } from '../http/clients';
 import { aegisService } from '../monitoring/aegisService';
 
 /**
@@ -214,20 +213,13 @@ class AsyncTaskService {
   async callBailian(params: BailianParams): Promise<BailianResponse> {
     try {
       console.log('🔄 调用 callBailian 云函数:', params);
-      
-      const token = authService.getCurrentAccessToken();
-      const headers: any = { 'Content-Type': 'application/json' };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
 
-      const response = await axios.post(`${this.baseUrl}/callBailian`, {
+      const response = await functionClient.post('/callBailian', {
         data: {
           ...params,
           price: params.price || 0,
         }
       }, {
-        headers,
         timeout: 60000, // 60秒超时
       });
 
@@ -266,16 +258,9 @@ class AsyncTaskService {
    */
   async queryTask(taskId: string): Promise<TaskQueryResponse> {
     try {
-      const token = authService.getCurrentAccessToken();
-      const headers: any = { 'Content-Type': 'application/json' };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const response = await axios.post(`${this.baseUrl}/queryTask`, {
+      const response = await functionClient.post('/queryTask', {
         data: { taskId }
       }, {
-        headers,
         timeout: 15000,
       });
 

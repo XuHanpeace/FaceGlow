@@ -2,6 +2,8 @@ import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { getCloudbaseConfig } from '../../config/cloudbase';
 import { SendVerificationRequest, SendVerificationResponse } from '../../types/auth';
 import { aegisService } from '../monitoring/aegisService';
+import { attachAuthHeaderInterceptor } from '../http/interceptors/attachAuthHeaderInterceptor';
+import { attach401RefreshInterceptor } from '../http/interceptors/attach401RefreshInterceptor';
 
 // 获取腾讯云开发配置
 const CLOUDBASE_CONFIG = getCloudbaseConfig();
@@ -22,6 +24,17 @@ export class VerificationService {
         'Accept': 'application/json',
       },
     });
+
+    // 验证码相关接口：不需要 Authorization，且 401 不应触发 refresh-retry
+    this.axiosInstance.interceptors.request.use((config) => {
+      config._fgSkip401Refresh = true;
+      config._fgSkipAuthHeader = true;
+      return config;
+    });
+
+    // 保持出口点一致（skip 标记会让拦截器基本不生效）
+    attachAuthHeaderInterceptor(this.axiosInstance, () => null);
+    attach401RefreshInterceptor(this.axiosInstance, async () => false, () => {});
   }
 
   /**

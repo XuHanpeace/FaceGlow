@@ -7,12 +7,11 @@ import { transactionService } from './database/transactionService';
 class RewardService {
   /**
    * 判断是否为新用户（自拍数为0）
-   * @param uid 用户ID
    * @returns Promise<boolean>
    */
-  async isNewUser(uid: string): Promise<boolean> {
+  async isNewUser(): Promise<boolean> {
     try {
-      const userResult = await userDataService.getUserByUid(uid);
+      const userResult = await userDataService.getUserByUid();
       if (!userResult.success || !userResult.data?.record) {
         return false;
       }
@@ -27,10 +26,9 @@ class RewardService {
 
   /**
    * 为新用户发放首次上传自拍奖励（10美美币）
-   * @param uid 用户ID
    * @returns Promise<{ success: boolean; newBalance?: number; error?: string }>
    */
-  async grantFirstSelfieReward(uid: string): Promise<{
+  async grantFirstSelfieReward(): Promise<{
     success: boolean;
     newBalance?: number;
     error?: string;
@@ -40,7 +38,7 @@ class RewardService {
 
       // 使用 subscriptionDataService 的方法来增加余额（它会创建交易记录）
       // 但我们这里需要自定义交易类型为奖励
-      const currentUser = await userDataService.getUserByUid(uid);
+      const currentUser = await userDataService.getUserByUid();
       if (!currentUser.success || !currentUser.data?.record) {
         return {
           success: false,
@@ -54,7 +52,6 @@ class RewardService {
 
       // 更新用户余额
       const updateResult = await userDataService.updateUserData({
-        uid: uid,
         balance: newBalance,
       });
 
@@ -67,16 +64,16 @@ class RewardService {
 
       // 创建交易记录
       const transactionResult = await transactionService.createTransaction({
-        user_id: uid,
+        user_id: '__AUTO__',
         transaction_type: 'bonus',
         coin_amount: rewardAmount,
         payment_method: 'system_bonus',
         description: '新用户首次上传自拍奖励',
-        related_id: `first_selfie_reward_${uid}_${Date.now()}`,
+        related_id: `first_selfie_reward_${Date.now()}`,
       });
 
       if (transactionResult.success) {
-        console.log('✅ 新用户首次上传自拍奖励发放成功:', { uid, rewardAmount, newBalance });
+        console.log('✅ 新用户首次上传自拍奖励发放成功:', { rewardAmount, newBalance });
       } else {
         console.error('创建奖励交易记录失败:', transactionResult.error);
       }
@@ -96,19 +93,18 @@ class RewardService {
 
   /**
    * 测试用：直接发放美美币奖励（不检查是否为新用户）
-   * @param uid 用户ID
    * @param amount 奖励金额，默认10
    * @returns Promise<{ success: boolean; newBalance?: number; error?: string }>
    */
-  async grantTestReward(uid: string, amount: number = 10): Promise<{
+  async grantTestReward(amount: number = 10): Promise<{
     success: boolean;
     newBalance?: number;
     error?: string;
   }> {
     try {
-      console.log('🧪 测试：发放美美币奖励', { uid, amount });
+      console.log('🧪 测试：发放美美币奖励', { amount });
 
-      const currentUser = await userDataService.getUserByUid(uid);
+      const currentUser = await userDataService.getUserByUid();
       if (!currentUser.success || !currentUser.data?.record) {
         return {
           success: false,
@@ -121,7 +117,6 @@ class RewardService {
 
       // 更新用户余额
       const updateResult = await userDataService.updateUserData({
-        uid: uid,
         balance: newBalance,
       });
 
@@ -134,16 +129,16 @@ class RewardService {
 
       // 创建交易记录
       const transactionResult = await transactionService.createTransaction({
-        user_id: uid,
+        user_id: '__AUTO__',
         transaction_type: 'bonus',
         coin_amount: amount,
         payment_method: 'system_bonus',
         description: '测试奖励',
-        related_id: `test_reward_${uid}_${Date.now()}`,
+        related_id: `test_reward_${Date.now()}`,
       });
 
       if (transactionResult.success) {
-        console.log('✅ 测试奖励发放成功:', { uid, amount, newBalance });
+        console.log('✅ 测试奖励发放成功:', { amount, newBalance });
       } else {
         console.error('创建测试奖励交易记录失败:', transactionResult.error);
       }

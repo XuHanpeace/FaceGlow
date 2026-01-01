@@ -89,8 +89,6 @@ export interface StartAsyncTaskPayload {
   activityDescription?: string;
   /** 活动图片 */
   activityImage?: string;
-  /** 用户ID */
-  uid: string;
   /** 模板ID */
   templateId: string;
   /** 提示词数据（用于保存到数据库） */
@@ -323,7 +321,8 @@ export const startAsyncTask = createAsyncThunk(
           style_index: payload.styleRedrawParams?.style_index,
           style_ref_url: payload.styleRedrawParams?.style_ref_url,
         },
-        user_id: payload.uid,
+        // 统一由 HttpClient 拦截器注入 uid，避免业务层手动拼装
+        user_id: '__AUTO__',
         price: payload.price || 0,
       };
 
@@ -362,8 +361,7 @@ export const startAsyncTask = createAsyncThunk(
           audio_url: payload.audioUrl,
         };
 
-        const workData: Omit<UserWorkModel, '_id'> = {
-          uid: payload.uid,
+        const workData: Omit<UserWorkModel, '_id' | 'uid'> = {
           activity_id: payload.activityId,
           activity_type: 'asyncTask',
           activity_title: payload.activityTitle,
@@ -479,8 +477,7 @@ export const startAsyncTask = createAsyncThunk(
         audio_url: payload.audioUrl,
       };
 
-      const workData: Omit<UserWorkModel, '_id'> = {
-        uid: payload.uid,
+        const workData: Omit<UserWorkModel, '_id' | 'uid'> = {
         activity_id: payload.activityId,
         activity_type: 'asyncTask', // 异步任务统一使用 asyncTask，与同步任务（face fusion）区分
         activity_title: payload.activityTitle,
@@ -508,8 +505,7 @@ export const startAsyncTask = createAsyncThunk(
       const workId = createResult.data.id;
 
       // 3. 返回任务信息（包含 updatedWork，以便后续获取 task_type）
-      const workDataForTask: Omit<UserWorkModel, '_id'> = {
-        uid: payload.uid,
+      const workDataForTask: Omit<UserWorkModel, '_id' | 'uid'> = {
         activity_id: payload.activityId,
         activity_type: 'asyncTask',
         activity_title: payload.activityTitle,
@@ -726,11 +722,9 @@ export const pollAsyncTask = createAsyncThunk(
                   }
                 } catch(fetchError) {
                     console.error('[Redux] 拉取最新作品数据失败:', fetchError);
-                    // 如果拉取失败，仍然尝试刷新整个列表（作为兜底方案）
-                    if (work.record?.uid) {
-                      console.log('[Redux] 拉取失败，使用兜底方案刷新整个列表');
-                      dispatch(fetchUserWorks({ uid: work.record?.uid }));
-                    }
+                    // 如果拉取失败，仍然尝试刷新整个列表（作为兜底方案，uid 在底层自动获取）
+                    console.log('[Redux] 拉取失败，使用兜底方案刷新整个列表');
+                    dispatch(fetchUserWorks());
                 }
             }
           } else {

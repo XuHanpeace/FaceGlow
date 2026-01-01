@@ -73,6 +73,13 @@ export class LongTermAuthService {
    * 检查是否需要刷新token
    */
   private shouldRefreshToken(): boolean {
+    // 已退出登录（完全无 token）时，不应尝试刷新；避免退出后仍产生刷新噪音/无意义请求
+    const accessToken = storage.getString(STORAGE_KEYS.ACCESS_TOKEN);
+    const refreshToken = storage.getString(STORAGE_KEYS.REFRESH_TOKEN);
+    if (!accessToken && !refreshToken) {
+      return false;
+    }
+
     const expiresAt = storage.getNumber(STORAGE_KEYS.EXPIRES_AT);
     if (!expiresAt) {
       return true;

@@ -1,7 +1,8 @@
-import axios, { AxiosResponse } from 'axios';
+import axios from 'axios';
 import { getCloudbaseConfig } from '../../config/cloudbase';
 import { authService } from '../auth/authService';
 import { aegisService } from '../monitoring/aegisService';
+import { functionClient } from '../http/clients';
 
 // 获取腾讯云开发配置
 const CLOUDBASE_CONFIG = getCloudbaseConfig();
@@ -37,32 +38,19 @@ export const callFaceFusionCloudFunction = async (params: FusionParams): Promise
   try {
     console.log('🔄 调用人脸融合云函数:', params);
     
-    const token = authService.getCurrentAccessToken();
-    const userId = authService.getCurrentUserId();
-    const headers: any = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    };
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    // 使用axios调用本地CloudBase云函数
-    const baseUrl = 'https://startup-2gn33jt0ca955730-1257391807.ap-shanghai.app.tcloudbase.com';
-    const response: AxiosResponse<any> = await axios.post(
-      `${baseUrl}/fusion`,
+    const response = await functionClient.post(
+      '/fusion',
       {
         data: {
           projectId: params.projectId,
           modelId: params.modelId,
           imageUrl: params.imageUrl,
-          user_id: userId,
+          user_id: '__AUTO__',
           price: params.price || 0,
-        }
+        },
       },
       {
         timeout: CLOUDBASE_CONFIG.API.TIMEOUT * 2, // 增加超时时间，因为融合可能需要更长时间
-        headers,
       }
     );
 
@@ -71,17 +59,33 @@ export const callFaceFusionCloudFunction = async (params: FusionParams): Promise
     // 处理云函数返回的数据结构
     let fusedImage: string | undefined;
     
+    const rawData: unknown = response.data;
+
     // 如果响应是 body 字符串，需要解析
-    if (typeof response.data === 'string') {
+    if (typeof rawData === 'string') {
       try {
-        const parsedData = JSON.parse(response.data);
-        fusedImage = parsedData.Response?.FusedImage || parsedData.FusedImage;
-      } catch (e) {
+        const parsed: unknown = JSON.parse(rawData);
+        if (typeof parsed === 'object' && parsed !== null) {
+          const parsedObj = parsed as Record<string, unknown>;
+          const resp = parsedObj.Response;
+          const respObj = typeof resp === 'object' && resp !== null ? (resp as Record<string, unknown>) : null;
+          const fromResponse = respObj?.FusedImage;
+          const fromRoot = parsedObj.FusedImage;
+          fusedImage = typeof fromResponse === 'string' ? fromResponse : typeof fromRoot === 'string' ? fromRoot : undefined;
+        }
+      } catch (e: unknown) {
         console.error('解析响应数据失败:', e);
       }
     } else {
       // 如果响应是对象，直接获取
-      fusedImage = response.data?.Response?.FusedImage || response.data?.FusedImage;
+      if (typeof rawData === 'object' && rawData !== null) {
+        const obj = rawData as Record<string, unknown>;
+        const resp = obj.Response;
+        const respObj = typeof resp === 'object' && resp !== null ? (resp as Record<string, unknown>) : null;
+        const fromResponse = respObj?.FusedImage;
+        const fromRoot = obj.FusedImage;
+        fusedImage = typeof fromResponse === 'string' ? fromResponse : typeof fromRoot === 'string' ? fromRoot : undefined;
+      }
     }
 
     if (fusedImage) {
@@ -98,34 +102,66 @@ export const callFaceFusionCloudFunction = async (params: FusionParams): Promise
         message: '人脸融合失败：未返回结果图片',
       };
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ 人脸融合云函数调用失败:', error);
     
     // 上报接口错误到 Aegis
     const apiUrl = `/fusion`;
-    const errorMessage = error.response?.data?.message || error.message || '人脸融合调用失败';
-    const statusCode = error.response?.status;
+    const errorMessage =
+      axios.isAxiosError(error) && error.response
+        ? (typeof error.response.data === 'object' &&
+            error.response.data !== null &&
+            typeof (error.response.data as Record<string, unknown>).message === 'string' &&
+            (error.response.data as Record<string, unknown>).message) ||
+          (error.message || '人脸融合调用失败')
+        : error instanceof Error
+          ? error.message
+          : '人脸融合调用失败';
+    const statusCode = axios.isAxiosError(error) ? error.response?.status : undefined;
     aegisService.reportApiError(apiUrl, errorMessage, statusCode);
     
     // 处理axios错误
-    if (error.response) {
+    if (axios.isAxiosError(error) && error.response) {
       // 服务器响应了错误状态码
-      const errorData = error.response.data;
+      const errorData: unknown = error.response.data;
       // 处理余额不足错误
-      if (errorData?.code === -2 || errorData?.error === 'INSUFFICIENT_BALANCE') {
+      if (
+        typeof errorData === 'object' &&
+        errorData !== null &&
+        (((errorData as Record<string, unknown>).code === -2) ||
+          ((errorData as Record<string, unknown>).error === 'INSUFFICIENT_BALANCE'))
+      ) {
+        const currentBalance =
+          typeof (errorData as Record<string, unknown>).currentBalance === 'number'
+            ? (errorData as Record<string, unknown>).currentBalance
+            : undefined;
+        const requiredAmount =
+          typeof (errorData as Record<string, unknown>).requiredAmount === 'number'
+            ? (errorData as Record<string, unknown>).requiredAmount
+            : undefined;
         return {
           code: -2,
           message: '余额不足',
           error: 'INSUFFICIENT_BALANCE',
-          currentBalance: errorData.currentBalance,
-          requiredAmount: errorData.requiredAmount,
+          currentBalance,
+          requiredAmount,
         };
       }
       return {
-        code: errorData?.code || error.response.status,
-        message: errorData?.message || `服务器错误: ${error.response.status}`,
+        code:
+          typeof errorData === 'object' &&
+          errorData !== null &&
+          typeof (errorData as Record<string, unknown>).code === 'number'
+            ? ((errorData as Record<string, unknown>).code as number)
+            : error.response.status,
+        message:
+          typeof errorData === 'object' &&
+          errorData !== null &&
+          typeof (errorData as Record<string, unknown>).message === 'string'
+            ? ((errorData as Record<string, unknown>).message as string)
+            : `服务器错误: ${error.response.status}`,
       };
-    } else if (error.request) {
+    } else if (axios.isAxiosError(error) && error.request) {
       // 请求已发出但没有收到响应
       return {
         code: -1,
@@ -135,7 +171,7 @@ export const callFaceFusionCloudFunction = async (params: FusionParams): Promise
       // 其他错误
       return {
         code: -1,
-        message: error.message || '人脸融合调用失败',
+        message: error instanceof Error ? error.message : '人脸融合调用失败',
       };
     }
   }

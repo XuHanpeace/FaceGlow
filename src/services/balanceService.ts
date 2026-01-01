@@ -10,11 +10,11 @@ export interface BalanceCheckResult {
 }
 
 export interface DeductBalanceRequest {
-  userId: string;
+  userId?: string;
   amount: number;
   description: string;
   relatedId?: string;
-  metadata?: any;
+  metadata?: unknown;
 }
 
 export interface DeductBalanceResult {
@@ -31,7 +31,7 @@ class BalanceService {
   /**
    * 检查用户余额是否充足
    */
-  async checkBalance(userId: string, requiredAmount: number): Promise<BalanceCheckResult> {
+  async checkBalance(userId: string | undefined, requiredAmount: number): Promise<BalanceCheckResult> {
     try {
       console.log('检查用户余额:', { userId, requiredAmount });
 
@@ -99,7 +99,7 @@ class BalanceService {
 
       // 创建交易记录（先创建为待处理状态）
       const transactionResult = await transactionService.createTransaction({
-        user_id: userId,
+        user_id: '__AUTO__',
         transaction_type: 'coin_consumption',
         coin_amount: -amount,
         payment_method: 'internal',

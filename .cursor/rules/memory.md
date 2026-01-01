@@ -8,3 +8,4 @@ The user prefers to use axios for all network requests in the project. (ID: 7671
 The user prefers the assistant not to reference or mention resources that do not exist. (ID: 7612589)
 The user prefers that the assistant not immediately execute planned commands or actions unless explicitly requested. (ID: 7320943)
 Project Workflow: Photo template creation follows a specific 6-step process: 1. Create Activity in Face Fusion console. 2. Gen images via AI. 3. Upload to Face Fusion for Template ID. 4. Rename & Upload to COS. 5. Configure Database with Activity/Album/Template hierarchy. See `docs/template-creation-workflow.md` for details.
+

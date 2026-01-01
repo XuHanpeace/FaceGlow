@@ -1,14 +1,10 @@
-import axios from 'axios';
 import { getCloudbaseConfig } from '../../config/cloudbase';
-import { authService } from '../auth/authService';
+import { functionClient } from '../http/clients';
 import { AlbumListResponse } from '../../types/model/album';
 import { CategoryConfigResponse } from '../../types/model/config';
 
 // 获取腾讯云开发配置
 const CLOUDBASE_CONFIG = getCloudbaseConfig();
-
-// 云函数基础URL
-const CLOUD_FUNCTION_BASE_URL = 'https://startup-2gn33jt0ca955730-1257391807.ap-shanghai.app.tcloudbase.com';
 
 export interface GetAlbumListParams {
   page?: number;
@@ -26,15 +22,6 @@ export class AlbumService {
    */
   async getAlbumList(params: GetAlbumListParams): Promise<AlbumListResponse> {
     try {
-      const token = authService.getCurrentAccessToken();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
       const requestData = {
         page: params.page || 1,
         page_size: params.page_size || 20,
@@ -46,16 +33,9 @@ export class AlbumService {
 
       console.log('📤 请求 albumList:', requestData);
 
-      const response = await axios.post(
-        `${CLOUD_FUNCTION_BASE_URL}/getAlbumList`,
-        requestData,
-        {
-          timeout: CLOUDBASE_CONFIG.API.TIMEOUT,
-          headers,
-        }
-      );
-
-      console.log('📥 响应 albumList:', response.data);
+      const response = await functionClient.post('/getAlbumList', requestData, {
+        timeout: CLOUDBASE_CONFIG.API.TIMEOUT,
+      });
 
       if (response.data && response.data.code === 200) {
         return response.data;
@@ -81,27 +61,7 @@ export class AlbumService {
    */
   async getCategoryConfig(): Promise<CategoryConfigResponse> {
     try {
-      const token = authService.getCurrentAccessToken();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      console.log('📤 请求 category (getCategoryConfig)');
-
-      const response = await axios.post(
-        `${CLOUD_FUNCTION_BASE_URL}/getCategoryConfig`,
-        {},
-        {
-          timeout: CLOUDBASE_CONFIG.API.TIMEOUT,
-          headers,
-        }
-      );
-
-      console.log('📥 响应 category:', response.data);
+      const response = await functionClient.post('/getCategoryConfig', {}, { timeout: CLOUDBASE_CONFIG.API.TIMEOUT });
 
       if (response.data && response.data.code === 200) {
         return response.data;

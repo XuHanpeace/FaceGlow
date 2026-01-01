@@ -144,14 +144,21 @@ export const logoutUser = createAsyncThunk(
 // 获取用户个人信息
 export const fetchUserProfile = createAsyncThunk<
   User,
-  { userId: string },
+  { userId?: string } | void,
   { rejectValue: string }
 >(
   'user/fetchUserProfile',
-  async ({ userId }, { rejectWithValue }) => {
+  async (arg, { rejectWithValue }) => {
     try {
+      // 仅真实用户允许拉取 /model/prod/users/get；匿名或无有效登录态时直接拒绝，避免触发 Credentials missing
+      const authResult = await authService.requireRealUser();
+      if (!authResult.success || !authResult.data) {
+        return rejectWithValue(authResult.error?.message || '请先登录');
+      }
+
       // 使用真实的API调用获取用户信息
-      const result = await userDataService.getUserByUid(userId);
+      // uid 在 service 内部自动从当前登录态获取（业务层无需显式传 uid）
+      const result = await userDataService.getUserByUid((arg && typeof arg === 'object' ? arg.userId : undefined));
       
       if (result.success && result.data) {
         // 检查数据结构，可能是直接返回数据或包装在record中
@@ -164,8 +171,9 @@ export const fetchUserProfile = createAsyncThunk<
       } else {
         return rejectWithValue(result.error?.message || '获取用户信息失败');
       }
-    } catch (error: any) {
-      return rejectWithValue(error.message || '获取用户信息失败');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : '获取用户信息失败';
+      return rejectWithValue(message);
     }
   }
 );

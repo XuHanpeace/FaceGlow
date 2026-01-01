@@ -16,7 +16,6 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
-import { useAuthState } from '../hooks/useAuthState';
 import { authService, verificationService } from '../services/auth';
 import { Linking } from 'react-native';
 import GradientButton from '../components/GradientButton';
@@ -30,7 +29,6 @@ type VerificationCodeScreenRouteProp = RouteProp<RootStackParamList, 'Verificati
 const VerificationCodeScreen: React.FC = () => {
   const navigation = useNavigation<VerificationCodeScreenNavigationProp>();
   const route = useRoute<VerificationCodeScreenRouteProp>();
-  const { setAuthData } = useAuthState();
   
   const { phoneNumber, verificationId } = route.params;
   
@@ -123,7 +121,6 @@ const VerificationCodeScreen: React.FC = () => {
       
       // 登录成功
       if (loginResult.success && loginResult.data) {
-        setAuthData(loginResult.data);
         showSuccessToast('登录成功！');
         setTimeout(() => {
           navigation.popToTop();
@@ -155,7 +152,6 @@ const VerificationCodeScreen: React.FC = () => {
         );
         
         if (registerResult.success && registerResult.data) {
-          setAuthData(registerResult.data);
           showSuccessToast('注册成功！');
           setTimeout(() => {
             navigation.popToTop();

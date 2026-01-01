@@ -15,7 +15,6 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp, NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
-import { useAuthState } from '../hooks/useAuthState';
 import { authService, verificationService } from '../services/auth';
 import GradientButton from '../components/GradientButton';
 import BackButton from '../components/BackButton';
@@ -34,7 +33,6 @@ type AuthMode = 'phone-verify' | 'password' | 'register';
 const NewAuthScreen: React.FC = () => {
   const navigation = useNavigation<NewAuthScreenNavigationProp>();
   const route = useRoute<NewAuthScreenRouteProp>();
-  const { setAuthData } = useAuthState();
   
   // 判断初始模式：优先使用路由参数，否则根据是否曾经登录过决定默认模式
   // 曾经登录过 -> 默认手机号登录 (phone-verify)
@@ -167,7 +165,6 @@ const NewAuthScreen: React.FC = () => {
           console.error('保存用户名失败:', error);
         }
         
-        setAuthData(result.data);
         // 重置导航栈，关闭整个登录流程
         navigation.popToTop();
       } else {

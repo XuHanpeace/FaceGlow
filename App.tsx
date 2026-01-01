@@ -20,6 +20,7 @@ import { revenueCatService } from './src/services/revenueCat/revenueCatService';
 import { authService } from './src/services/auth/authService';
 import { loginPromptService } from './src/services/loginPromptService';
 import { aegisService } from './src/services/monitoring/aegisService';
+import { initHttpInterceptors } from './src/services/http/initHttpInterceptors';
 import LoginPromptManager from './src/components/LoginPromptManager';
 import AsyncTaskFloatBar from './src/components/AsyncTaskFloatBar';
 import AsyncTaskPanel from './src/components/AsyncTaskPanel';
@@ -52,6 +53,9 @@ function App(): JSX.Element {
   useEffect(() => {
     const initializeApp = async () => {
       try {
+        // 初始化全局 HTTP 拦截器（尽量早于任何网络请求）
+        initHttpInterceptors();
+
         // 初始化应用生命周期管理器（包括长期认证）
         console.log('🚀 初始化应用生命周期管理器...');
         await appLifecycleManager.initialize();

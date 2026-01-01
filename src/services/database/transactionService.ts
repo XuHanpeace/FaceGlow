@@ -1,5 +1,4 @@
-import axios from 'axios';
-import { authService } from '../auth/authService';
+import { functionClient } from '../http/clients';
 import { 
   Transaction, 
   CreateTransactionRequest
@@ -9,9 +8,6 @@ import {
  * 交易记录服务
  */
 class TransactionService {
-  // 云函数基础URL（用于创建交易）
-  private cloudFunctionBaseUrl = 'https://startup-2gn33jt0ca955730-1257391807.ap-shanghai.app.tcloudbase.com';
-
   /**
    * 创建交易记录（调用云函数）
    */
@@ -23,21 +19,12 @@ class TransactionService {
     try {
       console.log('创建交易记录:', request);
 
-      const token = authService.getCurrentAccessToken();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const response = await axios.post(
-        `${this.cloudFunctionBaseUrl}/createTransaction`,
+      const response = await functionClient.post(
+        '/createTransaction',
         {
           data: request
         },
         {
-          headers,
           timeout: 30000, // 30秒超时
         }
       );

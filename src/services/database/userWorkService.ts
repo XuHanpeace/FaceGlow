@@ -1,9 +1,10 @@
 import { databaseService, DatabaseResponse, DatabaseError, DatabaseUpdateResponse } from './databaseService';
 import { UserWorkModel } from '../../types/model/user_works';
+import { AUTO_UID } from '../http/interceptors/attachAutoUidInterceptor';
 
 // 查询用户作品请求参数
 export interface QueryUserWorksRequest {
-  uid: string;
+  uid?: string;
   is_public?: string;            // 可选：按公开状态筛选（CloudBase中为文本类型）
   limit?: number;                // 可选：限制返回数量
   offset?: number;               // 可选：偏移量
@@ -14,8 +15,10 @@ export class UserWorkService {
   private readonly modelName = 'user_works'; // 数据模型名称
 
   // 根据用户ID查询作品列表
-  async getUserWorks(query: QueryUserWorksRequest) {
+  async getUserWorks(query: QueryUserWorksRequest = {}) {
     try {
+      const resolvedUid = query.uid ?? AUTO_UID;
+
       // 构建查询参数
       const params = new URLSearchParams();
       params.append('pageSize', (query.limit || 20).toString());
@@ -26,7 +29,7 @@ export class UserWorkService {
       params.append('filter', JSON.stringify({
         where: {
           uid: {
-            $eq: query.uid
+            $eq: resolvedUid
           }
         }
       }));
@@ -98,15 +101,16 @@ export class UserWorkService {
     }
   }
 
-  // 创建新作品
-  async createWork(workData: Omit<UserWorkModel, '_id'>) {
+  // 创建新作品（uid 不传则由请求拦截器自动填充）
+  async createWork(workData: Omit<UserWorkModel, '_id' | 'uid'> & { uid?: string }) {
     try {
       const createData = {
         ...workData,
         activity_type: workData.activity_type || 'album',
         download_count: workData.download_count || '0',
         likes: workData.likes || '0',
-        uid: workData.uid,
+        // 若未传 uid，则使用 AUTO_UID，由 attachAutoUidInterceptor 在请求内自动替换
+        uid: workData.uid ?? AUTO_UID,
       };
 
       const response = await databaseService.post<DatabaseUpdateResponse<{ id: string }>>(

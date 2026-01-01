@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { userWorkService, QueryUserWorksRequest } from '../../services/database/userWorkService';
-import { UserWorkModel } from '../../types/model/user_works';
+import { TaskStatus, UserWorkModel } from '../../types/model/user_works';
+import { authService } from '../../services/auth/authService';
 
 interface UserWorksState {
   works: UserWorkModel[];
@@ -16,18 +17,55 @@ const initialState: UserWorksState = {
   hasMore: true,
 };
 
+function normalizeWorksPayload(payload: unknown): UserWorkModel[] {
+  if (Array.isArray(payload)) {
+    return payload as UserWorkModel[];
+  }
+
+  if (typeof payload !== 'object' || payload === null) return [];
+  const record = payload as Record<string, unknown>;
+
+  const records = record.records;
+  if (Array.isArray(records)) return records as UserWorkModel[];
+
+  const data = record.data;
+  if (Array.isArray(data)) return data as UserWorkModel[];
+
+  if (typeof data === 'object' && data !== null) {
+    const dataRecord = data as Record<string, unknown>;
+    const nestedRecords = dataRecord.records;
+    if (Array.isArray(nestedRecords)) return nestedRecords as UserWorkModel[];
+  }
+
+  return [];
+}
+
 // Fetch user works
-export const fetchUserWorks = createAsyncThunk(
+export const fetchUserWorks = createAsyncThunk<
+  unknown,
+  QueryUserWorksRequest | void,
+  { rejectValue: string }
+>(
   'userWorks/fetchUserWorks',
-  async (params: QueryUserWorksRequest, { rejectWithValue }) => {
+  async (params: QueryUserWorksRequest | void, { rejectWithValue }) => {
     try {
-      const response = await userWorkService.getUserWorks(params);
+      // 未登录/匿名时不请求用户作品，避免退出登录后出现异常日志/无意义请求
+      const authResult = await authService.requireRealUser();
+      if (!authResult.success || !authResult.data) {
+        return rejectWithValue(authResult.error?.message || '请先登录');
+      }
+
+      // uid 在 service 内部自动从当前登录态获取（业务层无需显式传 uid）
+      const response = await userWorkService.getUserWorks({
+        ...(params ?? {}),
+      });
       if (response.success) {
         return response.data;
       }
-      return rejectWithValue(response.error);
-    } catch (error: any) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(response.error?.message || '获取用户作品失败');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : '获取用户作品失败';
+      return rejectWithValue(message);
     }
   }
 );
@@ -88,31 +126,27 @@ const userWorksSlice = createSlice({
     builder
       .addCase(fetchUserWorks.pending, (state) => {
         state.status = 'loading';
+        state.error = null;
       })
       .addCase(fetchUserWorks.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        const payload = action.payload as any;
-        
-        let list: UserWorkModel[] = [];
-        
-        if (Array.isArray(payload)) {
-            list = payload;
-        } else if (payload && Array.isArray(payload.records)) {
-            // TCB list query returns { records: [...] }
-            list = payload.records;
-        } else if (payload && payload.data && Array.isArray(payload.data)) {
-            list = payload.data;
-        } else if (payload && payload.data && Array.isArray(payload.data.records)) {
-            list = payload.data.records;
-        }
+        const list = normalizeWorksPayload(action.payload);
         
         // 确保每个作品都有正确的 taskStatus 字段（从 ext_data 中提取）
-        list.forEach(work => {
+        list.forEach((work) => {
           if (!work.taskStatus && work.ext_data) {
             try {
               const extData = JSON.parse(work.ext_data);
-              if (extData.task_status) {
-                work.taskStatus = extData.task_status;
+              if (typeof extData === 'object' && extData !== null) {
+                const extRecord = extData as Record<string, unknown>;
+                const taskStatus = extRecord.task_status;
+                if (
+                  taskStatus === TaskStatus.PENDING ||
+                  taskStatus === TaskStatus.SUCCESS ||
+                  taskStatus === TaskStatus.FAILED
+                ) {
+                  work.taskStatus = taskStatus;
+                }
               }
             } catch (e) {
               // 忽略解析错误
@@ -166,7 +200,7 @@ const userWorksSlice = createSlice({
       })
       .addCase(fetchUserWorks.rejected, (state, action) => {
         state.status = 'failed';
-        state.error = action.payload as string;
+        state.error = action.payload ?? action.error.message ?? '获取用户作品失败';
       });
   },
 });

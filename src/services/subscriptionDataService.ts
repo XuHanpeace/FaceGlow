@@ -14,10 +14,7 @@ class SubscriptionDataService {
   /**
    * 处理订阅成功后的用户数据更新
    */
-  async handleSubscriptionSuccess(
-    uid: string, 
-    subscriptionData: SubscriptionUpdateData
-  ): Promise<boolean> {
+  async handleSubscriptionSuccess(subscriptionData: SubscriptionUpdateData): Promise<boolean> {
     try {
 
       // 计算过期时间戳
@@ -25,7 +22,6 @@ class SubscriptionDataService {
 
       // 准备更新数据
       const updateData: Partial<User> = {
-        uid,
         is_premium: true,
         premium_expires_at: expirationTimestamp,
         subscription_type: subscriptionData.subscriptionType,
@@ -34,7 +30,7 @@ class SubscriptionDataService {
         updated_at: Date.now(),
       };
 
-      console.log('开始更新用户订阅数据:', { uid, subscriptionData, updateData });
+      console.log('开始更新用户订阅数据:', { subscriptionData, updateData });
 
       // 更新用户数据
       const result = await userDataService.updateUserData(updateData);
@@ -57,12 +53,11 @@ class SubscriptionDataService {
   /**
    * 更新用户订阅的自动续订状态（willRenew）
    */
-  async updateSubscriptionRenewStatus(uid: string, willRenew: boolean): Promise<boolean> {
+  async updateSubscriptionRenewStatus(willRenew: boolean): Promise<boolean> {
     try {
-      console.log('更新用户订阅自动续订状态:', { uid, willRenew });
+      console.log('更新用户订阅自动续订状态:', { willRenew });
 
       const updateData: Partial<User> = {
-        uid,
         subscription_auto_renew: willRenew,
         updated_at: Date.now(),
       };
@@ -85,12 +80,12 @@ class SubscriptionDataService {
    * 根据 RevenueCat 返回的订阅状态同步用户数据
    * 用于前台同步（包括自动续订变更、会员失效等）
    */
-  async syncSubscriptionStatusFromRemote(uid: string, status: SubscriptionStatus): Promise<boolean> {
+  async syncSubscriptionStatusFromRemote(status: SubscriptionStatus): Promise<boolean> {
     try {
-      console.log('同步远端订阅状态到用户数据:', { uid, status });
+      console.log('同步远端订阅状态到用户数据:', { status });
 
       // 先获取当前用户数据，避免无意义更新
-      const currentUser = await userDataService.getUserByUid(uid);
+      const currentUser = await userDataService.getUserByUid();
       const record = currentUser?.data?.record;
 
       const currentIsPremium = record?.is_premium ?? false;
@@ -112,7 +107,6 @@ class SubscriptionDataService {
       }
 
       const updateData: Partial<User> = {
-        uid,
         is_premium: nextIsPremium,
         premium_expires_at: nextExpiresAt ?? undefined,
         subscription_auto_renew: nextAutoRenew,
@@ -138,15 +132,12 @@ class SubscriptionDataService {
   /**
    * 处理金币购买成功后的用户数据更新
    */
-  async handleCoinPurchaseSuccess(
-    uid: string, 
-    coinsAmount: number
-  ): Promise<boolean> {
+  async handleCoinPurchaseSuccess(coinsAmount: number): Promise<boolean> {
     try {
-      console.log('开始更新用户金币数据:', { uid, coinsAmount });
+      console.log('开始更新用户金币数据:', { coinsAmount });
 
       // 先获取当前用户数据
-      const currentUser = await userDataService.getUserByUid(uid);
+      const currentUser = await userDataService.getUserByUid();
       if (!currentUser) {
         console.error('用户不存在');
         return false;
@@ -158,16 +149,12 @@ class SubscriptionDataService {
       // 准备更新数据
       const updateData: Partial<User> = {
         balance: newCoinsAmount,
-        uid: uid,
       };
 
       console.log('金币更新数据:', updateData);
 
       // 更新用户数据
-      const result = await userDataService.updateUserData({
-        uid: uid,
-        balance: newCoinsAmount,
-      });
+      const result = await userDataService.updateUserData(updateData);
       
       if (result.success) {
         console.log('用户金币数据更新成功');
@@ -188,7 +175,7 @@ class SubscriptionDataService {
   /**
    * 检查用户订阅状态
    */
-  async checkUserSubscriptionStatus(uid: string): Promise<{
+  async checkUserSubscriptionStatus(): Promise<{
     isPremium: boolean;
     willRenew: boolean;
     subscriptionType: string | null;
@@ -196,7 +183,7 @@ class SubscriptionDataService {
     balance: number;
   }> {
     try {
-      const user = await userDataService.getUserByUid(uid);
+      const user = await userDataService.getUserByUid();
       if (!user) {
         return {
           isPremium: false,

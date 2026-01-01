@@ -1,6 +1,9 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { CLOUDBASE_CONFIG } from '../../config/cloudbase';
 import { authService } from '../auth/authService';
+import { attachAuthHeaderInterceptor } from '../http/interceptors/attachAuthHeaderInterceptor';
+import { attach401RefreshInterceptor } from '../http/interceptors/attach401RefreshInterceptor';
+import { attachAutoUidInterceptor } from '../http/interceptors/attachAutoUidInterceptor';
 
 // 数据库操作响应接口
 export interface DatabaseResponse<T> {
@@ -75,20 +78,29 @@ export class DatabaseService {
       },
     });
 
-    // 请求拦截器：添加认证头
-    this.axiosInstance.interceptors.request.use(
-      (config) => {
-        // 自动获取当前有效的accessToken
-        const currentToken = authService.getCurrentAccessToken();
-        if (currentToken) {
-          config.headers.Authorization = `Bearer ${currentToken}`;
-        }
-        return config;
+    // 统一拦截器：自动注入 Authorization + 401 refresh-retry
+    attachAuthHeaderInterceptor(this.axiosInstance, () => authService.getCurrentAccessToken());
+    attach401RefreshInterceptor(
+      this.axiosInstance,
+      async () => {
+        const result = await authService.refreshTokenIfNeeded('force');
+        return result.success;
       },
-      (error) => {
-        return Promise.reject(error);
+      () => {
+        const mod = require('../loginPromptService') as unknown as {
+          loginPromptService: { showManually: (reason: 'anonymous' | 'authLost') => void };
+        };
+        mod.loginPromptService.showManually('authLost');
       }
     );
+
+    // 请求拦截器：自动替换 data/params/url 中的 __AUTO__ 为当前 uid（缺失则弹登录引导）
+    attachAutoUidInterceptor(this.axiosInstance, () => authService.getCurrentUserId(), () => {
+      const mod = require('../loginPromptService') as unknown as {
+        loginPromptService: { showManually: (reason: 'anonymous' | 'authLost') => void };
+      };
+      mod.loginPromptService.showManually('anonymous');
+    });
 
     // 响应拦截器：统一错误处理
     this.axiosInstance.interceptors.response.use(
@@ -96,13 +108,12 @@ export class DatabaseService {
         return response;
       },
       async (error) => {
+        // 请求在发出前（request interceptor）失败的场景
+        if (error instanceof Error && error.message === 'MISSING_UID') {
+          throw new DatabaseError('请先登录', 'MISSING_UID');
+        }
+
         if (error.response) {
-          // 处理401错误：直接显示登录提示弹窗
-          if (error.response.status === 401) {
-              const { loginPromptService } = require('../loginPromptService');
-              loginPromptService.showManually('authLost');
-          }
-          
           // 服务器响应了错误状态码
           const errorData = error.response.data || {};
           throw new DatabaseError(

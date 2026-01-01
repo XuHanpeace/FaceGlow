@@ -97,12 +97,9 @@ const AsyncTaskPanel: React.FC = () => {
           console.warn('震动反馈失败:', error);
         }
         
-        // 刷新作品列表，确保状态更新
-        const currentUserId = authService.getCurrentUserId();
-        if (currentUserId) {
-          console.log('[AsyncTaskPanel] 任务完成，刷新作品列表');
-          dispatch(fetchUserWorks({ uid: currentUserId }));
-        }
+        // 刷新作品列表，确保状态更新（uid 在底层自动获取）
+        console.log('[AsyncTaskPanel] 任务完成，刷新作品列表');
+        dispatch(fetchUserWorks());
       }
     });
   }, [tasks, dispatch]);

@@ -4,6 +4,8 @@ import { getCloudbaseConfig } from '../../config/cloudbase';
 import { CloudBaseAuthResponse, RegisterRequest, LoginRequest, AuthCredentials, STORAGE_KEYS } from '../../types/auth';
 import { userDataService } from '../database/userDataService';
 import { aegisService } from '../monitoring/aegisService';
+import { attachAuthHeaderInterceptor } from '../http/interceptors/attachAuthHeaderInterceptor';
+import { attach401RefreshInterceptor } from '../http/interceptors/attach401RefreshInterceptor';
 
 // 获取腾讯云开发配置
 const CLOUDBASE_CONFIG = getCloudbaseConfig();
@@ -53,6 +55,18 @@ export class CloudBaseAuthService {
         'Accept': 'application/json',
       },
     });
+
+    // 对 auth/verification 相关接口：默认跳过 401 refresh（避免登录失败/验证码失败被误判成 authLost）
+    // 同时默认不自动注入 Authorization（这些接口通常不需要 bearer）。
+    this.axiosInstance.interceptors.request.use((config) => {
+      config._fgSkip401Refresh = true;
+      config._fgSkipAuthHeader = true;
+      return config;
+    });
+
+    // 仍挂载统一拦截器（保持出口点一致）；由于上面的 skip 标记，这里基本不会生效
+    attachAuthHeaderInterceptor(this.axiosInstance, () => null);
+    attach401RefreshInterceptor(this.axiosInstance, async () => false, () => {});
   }
 
   /**
@@ -122,7 +136,8 @@ export class CloudBaseAuthService {
             const originalUid = storage.getString(STORAGE_KEYS.UID);
             storage.set(STORAGE_KEYS.UID, response.data.sub);
             
-            const userResult = await userDataService.getUserByUid(response.data.sub);
+            // uid 已临时写入 storage，service 内部可自动获取，无需显式传 uid
+            const userResult = await userDataService.getUserByUid();
             
             // 恢复原始 token 和 UID（如果存在）或清除临时数据
             if (originalToken) {

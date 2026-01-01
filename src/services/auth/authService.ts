@@ -3,7 +3,6 @@ import { cloudBaseAuthService } from './cloudbaseAuthService';
 import { verificationService } from './verificationService';
 import { AuthCredentials, RegisterRequest, LoginRequest, AuthResponse, CloudBaseAuthResponse, SendVerificationResponse, STORAGE_KEYS } from '../../types/auth';
 import { userDataService } from '../database/userDataService';
-import { longTermAuthService } from './longTermAuthService';
 import { aegisService } from '../monitoring/aegisService';
 
 // 创建MMKV存储实例
@@ -322,9 +321,10 @@ export class AuthService {
    * @returns Promise<AuthResponse>
    */
   async refreshAccessToken(forceRefresh: boolean = false): Promise<AuthResponse> {
-    // 如果正在刷新且不是强制刷新，返回正在进行的刷新Promise
-    if (this.isRefreshing && !forceRefresh && this.refreshPromise) {
-      console.log('🔄 Token正在刷新中，返回现有刷新Promise');
+    // 防并发：无论是否 force，都必须复用正在进行的刷新 Promise
+    // force 的语义应是“跳过是否需要刷新判断”，而不是“允许并发刷新”。
+    if (this.isRefreshing && this.refreshPromise) {
+      console.log('🔄 Token正在刷新中，复用现有刷新Promise', { forceRefresh });
       return this.refreshPromise;
     }
 
@@ -364,8 +364,8 @@ export class AuthService {
       // 保存刷新前的匿名用户状态
       const wasAnonymous = this.isAnonymous();
       
-      // 获取当前的access_token用于Authorization头
-      const currentAccessToken = storage.getString(STORAGE_KEYS.ACCESS_TOKEN);
+      // 获取当前有效的 access_token（过期则返回 null），避免 refresh 时携带过期 Authorization
+      const currentAccessToken = this.getCurrentAccessToken() || undefined;
       
       // 调用腾讯云官方刷新API
       const response: CloudBaseAuthResponse = await cloudBaseAuthService.refreshToken(refreshToken, currentAccessToken);
@@ -390,14 +390,31 @@ export class AuthService {
         success: true,
         data: credentials,
       };
-    } catch (error: any) {
-      console.log('❌ AccessToken刷新失败:', error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : '令牌刷新失败';
+      const errorText = (() => {
+        if (typeof error === 'string') return error;
+        if (error instanceof Error) return error.message;
+        try {
+          return JSON.stringify(error);
+        } catch {
+          return String(error);
+        }
+      })();
+
+      console.log('❌ AccessToken刷新失败:', message);
+
+      // 若 refresh_token 无效（常见：并发刷新/被其它进程刷新/已失效），清理本地认证信息避免反复刷新死循环
+      if (errorText.includes('invalid_grant') || errorText.includes('invalid refresh token')) {
+        console.log('🧹 检测到 refresh_token 失效，清理本地认证信息');
+        this.clearAuthCredentials();
+      }
       
       return {
         success: false,
         error: {
           code: 'REFRESH_ERROR',
-          message: error.message || '令牌刷新失败',
+          message,
         },
       };
     }
@@ -416,8 +433,17 @@ export class AuthService {
       }
     } catch (error) {
       console.warn('Logout API call failed:', error);
+    } finally {
+      // 退出登录应清理本地认证信息（后续可由 ensureAuthenticated() 自动匿名登录）
+      this.clearAuthCredentials();
     }
-    // 注意：不删除storage中的认证信息，因为新账号登录时会重写这些数据
+  }
+
+  /**
+   * 兼容层：外部如果需要手动写入登录态（逐步废弃），统一走 authService 写入 MMKV。
+   */
+  setAuthCredentials(credentials: AuthCredentials): void {
+    this.saveAuthCredentials(credentials);
   }
 
   /**
@@ -765,6 +791,27 @@ export class AuthService {
   }
 
   /**
+   * 调试方法：强制将 access_token 置为过期（用于验证冷启动 refresh-retry）
+   * 仅开发环境生效。
+   */
+  debugExpireAccessTokenNow(): void {
+    if (!__DEV__) return;
+    const past = Date.now() - 60_000; // 1 分钟前
+    storage.set(STORAGE_KEYS.EXPIRES_AT, past);
+    console.log('🧪 已将 expiresAt 置为过去时间:', new Date(past).toISOString());
+  }
+
+  /**
+   * 调试方法：手动设置 expiresAt（毫秒时间戳）
+   * 仅开发环境生效。
+   */
+  debugSetExpiresAt(expiresAtMs: number): void {
+    if (!__DEV__) return;
+    storage.set(STORAGE_KEYS.EXPIRES_AT, expiresAtMs);
+    console.log('🧪 已设置 expiresAt:', new Date(expiresAtMs).toISOString());
+  }
+
+  /**
    * 检查用户是否曾经登录过
    * @returns boolean
    */
@@ -779,7 +826,7 @@ export class AuthService {
    * @returns Promise<AuthResponse>
    */
   async requireRealUser(): Promise<AuthResponse> {
-    console.log('👤 检查真实用户登录态（仅判断，不刷新token）...');
+    console.log('👤 检查真实用户登录态（允许刷新token）...');
     
     // 调试存储状态
     this.debugStorageState();
@@ -798,7 +845,19 @@ export class AuthService {
     
     // 检查是否已登录（isLoggedIn 已经排除了匿名用户）
     if (!this.isLoggedIn()) {
-      console.log('❌ 用户未登录');
+      // 如果有 refresh_token，允许在这里尝试刷新一次（避免“明明有 refresh_token 却被当未登录”）
+      const refreshToken = storage.getString(STORAGE_KEYS.REFRESH_TOKEN);
+      if (refreshToken) {
+        console.log('🔄 真实用户登录态无效，尝试刷新token...');
+        const refreshResult = await this.refreshTokenIfNeeded('check');
+        if (refreshResult.success && this.isLoggedIn()) {
+          console.log('✅ 刷新成功，真实用户登录态恢复');
+          return refreshResult;
+        }
+        console.log('❌ 刷新失败或仍未登录');
+      } else {
+        console.log('❌ 用户未登录（无 refresh_token）');
+      }
       return {
         success: false,
         error: {

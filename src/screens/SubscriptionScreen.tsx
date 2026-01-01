@@ -15,7 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { subscriptionDataService } from '../services/subscriptionDataService';
-import { useAuthState } from '../hooks/useAuthState';
+import { useSession } from '../hooks/useSession';
 import { useUser } from '../hooks/useUser';
 import { useAppDispatch } from '../store/hooks';
 import { fetchUserProfile } from '../store/middleware/asyncMiddleware';
@@ -33,14 +33,14 @@ type SubscriptionScreenNavigationProp = NativeStackNavigationProp<RootStackParam
 const SubscriptionScreen: React.FC = () => {
   const navigation = useNavigation<SubscriptionScreenNavigationProp>();
   const dispatch = useAppDispatch();
-  const { user } = useAuthState();
+  const { uid } = useSession();
   const { userProfile } = useUser();
   const {
     getOfferings,
     purchasePackage,
     restorePurchases,
     isPurchaseCancelled,
-  } = useRevenueCat(user?.uid);
+  } = useRevenueCat(uid ?? undefined);
   
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -179,7 +179,7 @@ const SubscriptionScreen: React.FC = () => {
       const entitlement = customerInfo.entitlements.active[ENTITLEMENTS.PRO];
       const isProActive = typeof entitlement !== 'undefined';
 
-      if (isProActive && user?.uid) {
+      if (isProActive) {
         const subscriptionType = subscriptionDataService.parseSubscriptionType(selectedPlan.productId);
         let expirationDate: Date;
         if (entitlement?.expirationDate) {
@@ -190,21 +190,16 @@ const SubscriptionScreen: React.FC = () => {
           expirationDate = new Date();
         }
 
-        await subscriptionDataService.handleSubscriptionSuccess(
-          user.uid,
-          {
-            subscriptionType: subscriptionType ?? 'monthly',
-            productId: selectedPlan.productId,
-            expirationDate,
-            willRenew: entitlement?.willRenew ?? true,
-          }
-        );
+        await subscriptionDataService.handleSubscriptionSuccess({
+          subscriptionType: subscriptionType ?? 'monthly',
+          productId: selectedPlan.productId,
+          expirationDate,
+          willRenew: entitlement?.willRenew ?? true,
+        });
         
         // 刷新用户数据，确保前端会员状态更新
-        if (user.uid) {
-          await dispatch(fetchUserProfile({ userId: user.uid }));
-          console.log('✅ [SubscriptionScreen] 用户数据已刷新');
-        }
+        await dispatch(fetchUserProfile());
+        console.log('✅ [SubscriptionScreen] 用户数据已刷新');
       }
 
       showSuccessToast(`恭喜您成功订阅${selectedPlan.title}！`);

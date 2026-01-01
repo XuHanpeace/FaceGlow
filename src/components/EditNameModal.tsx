@@ -70,18 +70,9 @@ export const EditNameModal = forwardRef<EditNameModalRef, EditNameModalProps>(({
       return;
     }
     
-    // 优先使用 Redux 中的用户信息，如果没有则从 authService 获取
-    const userId = user?.uid || authService.getCurrentUserId();
-    
-    if (!userId) {
-      Alert.alert('错误', '无法获取用户信息');
-      return;
-    }
-    
     setIsUpdatingName(true);
     try {
       const result = await userDataService.updateUserData({
-        uid: userId,
         name: trimmedName,
       });
       

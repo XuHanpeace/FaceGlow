@@ -279,8 +279,6 @@ const BeforeCreationScreen: React.FC = () => {
     });
   }, []);
 
-console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
-
   // 垂直滑动回调
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (viewableItems.length > 0 && viewableItems[0].index !== null) {
@@ -533,7 +531,6 @@ console.log('allAlbums', allAlbums, albumsWithCurrent, initialIndex);
              activityTitle: albumRecord.album_name,
              activityDescription: albumRecord.album_description,
              activityImage: albumRecord.preview_video_url || albumRecord.result_image || albumRecord.album_image,
-             uid: uid,
              templateId: currentTemplate?.template_id || albumRecord.album_id,
              price: totalPrice,
              videoParams: Object.keys(videoParams).length > 0 ? videoParams : undefined,

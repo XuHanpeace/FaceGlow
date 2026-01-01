@@ -372,11 +372,8 @@ const NewHomeScreen: React.FC = () => {
       const rewardAmount = data.rewardAmount;
       console.log('🎁 [NewHome] 收到显示奖励弹窗事件', { rewardAmount });
           
-          // 刷新用户数据
-      const currentUserId = authService.getCurrentUserId();
-      if (currentUserId) {
-        await dispatch(fetchUserProfile({ userId: currentUserId }));
-      }
+      // 刷新用户数据（uid 在底层自动获取）
+      await dispatch(fetchUserProfile());
           
           // 等待页面渲染完成，然后串行执行：展示弹窗 -> 播放coins动画
           setTimeout(() => {
@@ -408,11 +405,8 @@ const NewHomeScreen: React.FC = () => {
         // 保存当前余额
         const oldBalance = previousBalanceRef.current || 0;
         
-        // 刷新用户数据
-        const currentUserId = authService.getCurrentUserId();
-        if (currentUserId) {
-          await dispatch(fetchUserProfile({ userId: currentUserId }));
-        }
+        // 刷新用户数据（uid 在底层自动获取）
+        await dispatch(fetchUserProfile());
         
         // 等待数据更新后检查余额变化
         setTimeout(() => {
@@ -422,7 +416,7 @@ const NewHomeScreen: React.FC = () => {
             const currentUserId = authService.getCurrentUserId();
             if (currentUserId) {
               try {
-                const userResult = await userDataService.getUserByUid(currentUserId);
+                const userResult = await userDataService.getUserByUid();
                 const newBalance = userResult.data?.record?.balance || 0;
                 
                 if (newBalance > oldBalance && oldBalance >= 0) {

@@ -31,6 +31,8 @@ import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { showSuccessToast, showErrorToast, showInfoToast } from '../utils/toast';
 import BackButton from '../components/BackButton';
 import ReactNativeHapticFeedback from "react-native-haptic-feedback";
+import { useAppDispatch } from '../store/hooks';
+import { fetchUserWorks, updateWorkItem } from '../store/slices/userWorksSlice';
 
 // 启用 Android 上的布局动画
 if (
@@ -49,6 +51,7 @@ type CreationResultScreenRouteProp = RouteProp<RootStackParamList, 'CreationResu
 const CreationResultScreen: React.FC = () => {
   const navigation = useNavigation<CreationResultScreenNavigationProp>();
   const route = useRoute<CreationResultScreenRouteProp>();
+  const dispatch = useAppDispatch();
   const { albumData, selfieUrl, activityId } = route.params;
   
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
@@ -356,8 +359,7 @@ const CreationResultScreen: React.FC = () => {
       console.log('✅ 所有图片已上传到COS，开始保存作品记录...');
 
       // 3. 构建用户作品数据（使用COS URL）
-      const workData: Omit<UserWorkModel, '_id'> = {
-        uid: userId,
+      const workData: Omit<UserWorkModel, '_id' | 'uid'> = {
         activity_id: activityId || '',
         activity_type: 'fusion',
         activity_title: albumData.album_name, // 使用相册名称作为活动标题
@@ -380,7 +382,7 @@ const CreationResultScreen: React.FC = () => {
 
       const result = await userWorkService.createWork(workData);
 
-      if (result.success) {
+      if (result.success && result.data?.id) {
         // 埋点：作品保存成功（使用 fg_action_ 前缀，包含专辑标题）
         aegisService.reportUserAction('work_saved', {
           activity_id: activityId,
@@ -388,6 +390,22 @@ const CreationResultScreen: React.FC = () => {
           album_title: albumData?.album_name || '', // 专辑标题
           result_count: resultData.length,
         });
+        
+        // 构建完整作品对象，立即添加到 Redux store 顶部，确保新作品立即显示
+        // 这样即使服务器延迟或分页问题，用户也能立即看到新保存的作品
+        const now = Date.now();
+        const newWork: UserWorkModel = {
+          ...workData,
+          _id: result.data.id,
+          createdAt: now,
+          updatedAt: now,
+        };
+        
+        // 立即添加到 store 顶部（updateWorkItem 会自动处理排序）
+        dispatch(updateWorkItem(newWork));
+        
+        // 同时刷新作品列表，同步服务器数据（如果服务器返回的数据不同，会被合并）
+        dispatch(fetchUserWorks());
         
         showSuccessToast(`太棒了！已保存 ${resultData.length} 个作品到云端，可以在个人中心查看哦～`);
         // 保存成功后返回上一页

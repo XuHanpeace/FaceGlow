@@ -19,14 +19,13 @@ import { RootStackParamList } from '../types/navigation';
 import { useTypedSelector, useAppDispatch } from '../store/hooks';
 import { clearAllSelfies } from '../store/slices/selfieSlice';
 import { resetUser } from '../store/slices/userSlice';
-import { fetchUserWorks, removeWork } from '../store/slices/userWorksSlice'; // Added
+import { fetchUserWorks, removeWork, resetUserWorks } from '../store/slices/userWorksSlice'; // Added
 import { logoutUser, fetchUserProfile } from '../store/middleware/asyncMiddleware';
-import { authService } from '../services/auth/authService';
 import { useUser, useUserSelfies } from '../hooks/useUser';
 import UserAvatar from '../components/UserAvatar';
 import { userWorkService } from '../services/database/userWorkService';
 import { UserWorkModel } from '../types/model/user_works';
-import { useAuthState } from '../hooks/useAuthState';
+import { useSession } from '../hooks/useSession';
 import { userDataService } from '../services/database/userDataService';
 import UserWorkCard from '../components/UserWorkCard';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
@@ -53,16 +52,16 @@ const NewProfileScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('works');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isUpdatingAvatar, setIsUpdatingAvatar] = useState(false);
+  const [, setIsUpdatingAvatar] = useState(false);
   const [isEditingSelfies, setIsEditingSelfies] = useState(false);
-  const [isDeletingSelfie, setIsDeletingSelfie] = useState(false);
+  const [, setIsDeletingSelfie] = useState(false);
   
   const editNameModalRef = React.useRef<EditNameModalRef>(null);
   const avatarSelectorModalRef = React.useRef<AvatarSelectorModalRef>(null);
   
   // 使用用户hooks获取数据
   const { userInfo, isLoggedIn, userProfile } = useUser();
-  const { logout } = useAuthState();
+  const { logout: logoutSession } = useSession();
   const isAutoRenew = userInfo.subscriptionAutoRenew;
   
   // 获取当前会员状态
@@ -134,7 +133,7 @@ const NewProfileScreen: React.FC = () => {
 
   useEffect(() => {
     console.log('🔍 [NewProfileScreen] userProfile:', userProfile);
-    loadUserWorks(userProfile?.uid || '');
+    loadUserWorks();
 
   }, []);
 
@@ -166,10 +165,7 @@ const NewProfileScreen: React.FC = () => {
           selfie_url: selfieUrl || '',
         }));
         
-        const currentUserId = authService.getCurrentUserId();
-        if (currentUserId) {
-          await dispatch(fetchUserProfile({ userId: currentUserId }));
-        }
+        await dispatch(fetchUserProfile());
         
         showSuccessToast(selfieUrl ? '头像更新成功' : '已切换为默认头像');
       } else {
@@ -204,7 +200,7 @@ const NewProfileScreen: React.FC = () => {
     setActiveTab(tab);
     // 切换到"我的作品"时，如果已有缓存数据，不重新加载
     if (tab === 'works' && userWorks.length === 0) {
-      loadUserWorks(userProfile?.uid || '');
+      loadUserWorks();
     }
   };
   
@@ -253,10 +249,7 @@ const NewProfileScreen: React.FC = () => {
               
               if (result.success) {
                 dispatch(updateProfile(updateData));
-                const currentUserId = authService.getCurrentUserId();
-                if (currentUserId) {
-                  await dispatch(fetchUserProfile({ userId: currentUserId }));
-                }
+                await dispatch(fetchUserProfile());
                 showSuccessToast('删除成功');
                 
                 if (updatedSelfieList.length === 0) {
@@ -298,7 +291,7 @@ const NewProfileScreen: React.FC = () => {
               dispatch(logoutUser());
               
               // 执行登出
-              await logout();
+              await logoutSession();
               
               // 清除作品列表
               // setUserWorks([]);
@@ -333,8 +326,8 @@ const NewProfileScreen: React.FC = () => {
         dispatch(clearAllSelfies()); 
         dispatch(logoutUser()); 
         
-        await logout();
-        
+        await logoutSession();
+
         // setUserWorks([]); 
         setShowDeleteConfirm(false);
         
@@ -378,7 +371,7 @@ const NewProfileScreen: React.FC = () => {
         dispatch(removeWork(work._id));
         showSuccessToast('删除成功'); 
         // 然后重新获取数据以确保与服务器同步
-        loadUserWorks(userProfile?.uid || '');
+        loadUserWorks();
       } else {
         Alert.alert('删除失败', result.error?.message || '请稍后重试');
       }
@@ -388,20 +381,22 @@ const NewProfileScreen: React.FC = () => {
   };
 
   // 获取用户作品 (Redux)
-  const loadUserWorks = (uid: string) => {
+  const loadUserWorks = () => {
+    if (!isLoggedIn) {
+      // 退出登录后：清空作品列表且不再触发请求
+      dispatch(resetUserWorks());
+      return;
+    }
     console.log('🔄 开始获取用户作品(Redux)...');
-    dispatch(fetchUserWorks({ uid }));
+    dispatch(fetchUserWorks());
   };
 
   // Focus Effect: 从其他页面返回时刷新用户数据（特别是从购买页/订阅页返回）
   useFocusEffect(
     React.useCallback(() => {
-      const currentUserId = authService.getCurrentUserId();
-      if (currentUserId) {
-        dispatch(fetchUserProfile({ userId: currentUserId }));
-        // 刷新作品列表，确保异步任务状态更新
-        loadUserWorks(currentUserId);
-      }
+      dispatch(fetchUserProfile());
+      // 刷新作品列表，确保异步任务状态更新（uid 在底层自动获取）
+      loadUserWorks();
     }, [dispatch])
   );
 

@@ -3,12 +3,15 @@ import {
   View,
   Text,
   TouchableOpacity,
+  ScrollView,
   StyleSheet,
   StatusBar,
   Modal,
   Alert,
   Image,
+  Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import FastImage from 'react-native-fast-image';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -25,9 +28,57 @@ import { rewardService } from '../services/rewardService';
 import { eventService } from '../services/eventService';
 import GradientButton from '../components/GradientButton';
 import BackButton from '../components/BackButton';
-import { FadeInOutImage } from '../components/FadeInOutImage';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 type SelfieGuideScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+// 推荐示例数据
+const exampleSize = (screenWidth - 40 - 24) / 3;
+
+const goodExamples = [
+  {
+    id: '1',
+    image: require('../assets/good1.png'),
+    label: '清晰正脸',
+    description: '脸部清晰，表情自然',
+  },
+  {
+    id: '2',
+    image: require('../assets/good2.png'),
+    label: '半身照',
+    description: '避免逆光，肤色还原',
+  },
+  {
+    id: '3',
+    image: require('../assets/good3.png'),
+    label: '人像突出',
+    description: '背景干净，无强烈遮挡',
+  },
+];
+
+// 应避免示例数据
+const badExamples = [
+  {
+    id: '1',
+    image: require('../assets/bad1.png'),
+    label: '遮挡面部',
+    description: '避免墨镜、口罩、头发挡住脸部',
+  },
+  {
+    id: '2',
+    image: require('../assets/bad2.png'),
+    label: '未正对镜头',
+    description: '侧脸或拍摄角度过大影响识别',
+  },
+  {
+    id: '3',
+    image: require('../assets/bad3.png'),
+    label: '人像过小',
+    description: '人物过小、模糊或未出现在画面中心',
+  },
+];
 
 const SelfieGuideScreen: React.FC = () => {
   const navigation = useNavigation<SelfieGuideScreenNavigationProp>();
@@ -42,16 +93,15 @@ const SelfieGuideScreen: React.FC = () => {
   // 从路由参数获取是否为新用户
   const isNewUser = (route.params as { isNewUser?: boolean })?.isNewUser ?? false;
 
-  // 使用本地资源图片展示过程
-  const selfieImage = require('../assets/selfie.png');
-  const tempImages = [
-    { uri: 'https://myhh2-1257391807.cos.ap-nanjing.myqcloud.com/static/temp1.png' },
-    { uri: 'https://myhh2-1257391807.cos.ap-nanjing.myqcloud.com/static/temp2.png' },
-  ];
-  const aiResultImages = [
-    { uri: 'https://myhh2-1257391807.cos.ap-nanjing.myqcloud.com/static/ai-result1.png' },
-    { uri: 'https://myhh2-1257391807.cos.ap-nanjing.myqcloud.com/static/ai-result2.png' },
-  ];
+  const getErrorMessage = (error: unknown): string => {
+    if (error instanceof Error) {
+      return error.message;
+    }
+    if (typeof error === 'string') {
+      return error;
+    }
+    return '图片上传失败，请重试';
+  };
 
   const handleClosePress = () => {
     navigation.goBack();
@@ -274,14 +324,14 @@ const SelfieGuideScreen: React.FC = () => {
           console.log('开始更新用户信息');
           
           // 获取用户现有数据，更新自拍列表
-          const userResponse = await userDataService.getUserByUid(currentUserId);
+          const userResponse = await userDataService.getUserByUid();
           const existingSelfieList = userResponse.data?.record?.selfie_list || [];
           
           // 将新的自拍URL添加到列表中
           const updatedSelfieList = [...existingSelfieList, uploadResult.url];
           
+          // uid 在底层自动获取
           await userDataService.updateUserData({
-            uid: currentUserId,
             selfie_url: uploadResult.url,
             selfie_list: updatedSelfieList
           });
@@ -294,12 +344,10 @@ const SelfieGuideScreen: React.FC = () => {
           // 如果是新用户（进入页面时已判断），发放首次上传奖励
           if (isNewUser) {
             console.log('🎁 新用户首次上传自拍，发放奖励');
-            const rewardResult = await rewardService.grantFirstSelfieReward(currentUserId);
+            const rewardResult = await rewardService.grantFirstSelfieReward();
             if (rewardResult.success) {
-              // 刷新用户数据
-              if (currentUserId) {
-                await dispatch(fetchUserProfile({ userId: currentUserId }));
-              }
+              // 刷新用户数据（uid 在底层自动获取）
+              await dispatch(fetchUserProfile());
               console.log('✅ 新用户奖励发放成功，新余额:', rewardResult.newBalance);
               
               // 关闭上传页面
@@ -344,9 +392,9 @@ const SelfieGuideScreen: React.FC = () => {
         );
       }, 500);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('上传失败:', error);
-      Alert.alert('上传失败', error.message || '图片上传失败，请重试');
+      Alert.alert('上传失败', getErrorMessage(error));
       setIsUploading(false);
       setUploadProgress(0);
     }
@@ -355,73 +403,74 @@ const SelfieGuideScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent={true} backgroundColor="transparent" />
-      
-      {/* 关闭按钮 */}
-      <BackButton 
-        iconType="close" 
-        onPress={handleClosePress}
-        style={{ left: undefined, right: 20 }}
-      />
 
-      {/* 主要内容 */}
-      <View style={styles.content}>
-        {/* 标题 */}
-        <Text style={styles.title}>创作AI头像</Text>
-        <Text style={styles.subtitle}>AI写真就在这一瞬间</Text>
+      <SafeAreaView
+        style={[styles.safeAreaHeader, { paddingTop: 0 }]}
+      >
+        <View style={styles.headerRow}>
+        <View style={styles.headerPlaceholder} />
+        <Text style={styles.headerTitle}>自拍小贴士</Text>
+        <BackButton
+          iconType="close"
+          onPress={handleClosePress}
+          absolute={false}
+          style={styles.headerCloseButton}
+        />
+        </View>
+      </SafeAreaView>
 
-        {/* 过程展示区域 - selfie + temp = ai-result */}
-        <View style={styles.processShowcaseContainer}>
-          <View style={styles.processItem}>
-            <FastImage
-              source={selfieImage}
-              style={styles.processImage}
-              resizeMode={FastImage.resizeMode.cover}
-            />
-            <Text style={styles.processLabel}>你的自拍</Text>
-          </View>
-          
-          <View style={styles.processOperator}>
-              <Text style={styles.plusIcon}>+</Text>
-          </View>
-          
-          <View style={styles.processItem}>
-            <FadeInOutImage
-              images={tempImages}
-              width={85}
-              height={85}
-              duration={4000}
-              fadeDuration={600}
-            />
-            <Text style={styles.processLabel}>风格</Text>
-          </View>
-          
-          <View style={styles.processOperator}>
-              <Text style={styles.equalsIcon}>=</Text>
-          </View>
-          
-          <View style={styles.processItem}>
-            <FadeInOutImage
-              images={[aiResultImages[1], aiResultImages[0]]}
-              width={85}
-              height={85}
-              duration={4000}
-              fadeDuration={600}
-            />
-            <Text style={styles.processLabel}>你的写真</Text>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+
+        {/* 为获得最佳效果 */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>推荐拍摄案例</Text>
+          <View style={styles.examplesContainer}>
+            {goodExamples.map((example) => (
+              <View key={example.id} style={styles.exampleItem}>
+                <View style={styles.exampleImageContainer}>
+                  <FastImage
+                    source={example.image}
+                    style={styles.exampleImage}
+                    resizeMode={FastImage.resizeMode.cover}
+                  />
+                  <View style={styles.goodIconContainer}>
+                    <FontAwesome name="check" size={16} color="#fff" />
+                  </View>
+                </View>
+                <Text style={styles.exampleLabel}>{example.label}</Text>
+              </View>
+            ))}
           </View>
         </View>
 
-        {/* 结果说明 */}
-        {/* <Text style={styles.resultText}>AI写真就在这一瞬间</Text> */}
+        {/* 应避免的事项 */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>建议避开的姿势</Text>
+          <View style={styles.examplesContainer}>
+            {badExamples.map((example) => (
+              <View key={example.id} style={styles.exampleItem}>
+                <View style={styles.exampleImageContainer}>
+                  <FastImage
+                    source={example.image}
+                    style={styles.exampleImage}
+                    resizeMode={FastImage.resizeMode.cover}
+                  />
+                  <View style={styles.badIconContainer}>
+                    <FontAwesome name="close" size={16} color="#fff" />
+                  </View>
+                </View>
+                <Text style={styles.exampleLabel}>{example.label}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
 
-        {/* 引导文案 */}
-        <Text style={styles.guideText}>
-          💡 小贴士：清晰的自拍照或全身/半身照片，能让AI写真效果更出色哦
-        </Text>
-
-        {/* 展示用户选择的自拍 */}
-         {/* 照片预览区域 */}
-         {selectedImage && (
+        {/* 照片预览区域 */}
+        {selectedImage && (
           <View style={styles.previewContainer}>
             <Image
               source={{ uri: selectedImage.uri }}
@@ -437,7 +486,7 @@ const SelfieGuideScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
         )}
-      </View>
+      </ScrollView>
 
       {/* 底部按钮 */}
       <View style={styles.bottomContainer}>
@@ -486,7 +535,6 @@ const SelfieGuideScreen: React.FC = () => {
         )}
       </View>
 
-
       {/* 选择图片来源弹窗 */}
       <Modal
         visible={showModal}
@@ -534,41 +582,98 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#131313',
   },
-  closeButton: {
-    position: 'absolute',
-    top: 60,
-    left: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+  },
+  safeAreaHeader: {
+    backgroundColor: '#131313',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#fff',
+    textAlign: 'center',
+  },
+  headerPlaceholder: {
+    width: 32,
+    height: 32,
+  },
+  headerCloseButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 10,
   },
-  closeIcon: {
+  section: {
+    marginBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
     color: '#fff',
-    fontSize: 20,
-    fontWeight: '600',
+    marginBottom: 16,
   },
-  content: {
+  examplesContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  exampleItem: {
     flex: 1,
-    paddingTop: 120,
-    // paddingHorizontal: 20,
+    alignItems: 'center',
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-    textAlign: 'center',
+  exampleImageContainer: {
+    position: 'relative',
+    width: exampleSize,
+    height: exampleSize,
+    borderRadius: 12,
+    overflow: 'hidden',
     marginBottom: 8,
   },
-  subtitle: {
-    fontSize: 16,
+  exampleImage: {
+    width: '100%',
+    height: '100%',
+  },
+  goodIconContainer: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(76, 175, 80, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badIconContainer: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(244, 67, 54, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  exampleLabel: {
+    fontSize: 12,
     color: '#fff',
     textAlign: 'center',
-    marginBottom: 40,
-    opacity: 0.8,
+    opacity: 0.9,
   },
   previewContainer: {
     alignItems: 'center',
@@ -601,124 +706,11 @@ const styles = StyleSheet.create({
   changePhotoButtonDisabled: {
     opacity: 0.5,
   },
-  uploadedImageContainer: {
-    alignItems: 'center',
-    marginBottom: 30,
-    paddingVertical: 20,
-    paddingHorizontal: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  uploadedImageTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#4CAF50',
-    marginBottom: 15,
-    textAlign: 'center',
-  },
-  uploadedImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    marginBottom: 10,
-    borderWidth: 3,
-    borderColor: '#4CAF50',
-  },
-  uploadedImageSubtitle: {
-    fontSize: 14,
-    color: '#fff',
-    opacity: 0.8,
-    textAlign: 'center',
-  },
-  processShowcaseContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 30,
-    paddingVertical: 20,
-    paddingHorizontal: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  processItem: {
-    alignItems: 'center',
-    marginHorizontal: 8,
-  },
-  processImage: {
-    width: 85,
-    height: 85,
-    borderRadius: 40,
-    overflow: 'hidden',
-    backgroundColor: 'transparent',
-  },
-  processLabel: {
-    color: '#fff',
-    fontSize: 12,
-    marginTop: 8,
-    opacity: 0.8,
-  },
-  processOperator: {
-    marginHorizontal: 8,
-  },
-  operatorGradient: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  plusIcon: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  equalsIcon: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  selectedSelfieContainer: {
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 20,
-  },
-  selectedSelfieGradientBorder: {
-    width: 206,
-    height: 206,
-    borderRadius: 103,
-    padding: 3,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  selectedSelfieImage: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    overflow: 'hidden',
-  },
-  resultText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-    textAlign: 'center',
-    marginBottom: 30,
-  },
-  guideText: {
-    fontSize: 14,
-    color: '#fff',
-    textAlign: 'center',
-    marginBottom: 30,
-    marginHorizontal: 40,
-    opacity: 0.7,
-    lineHeight: 20,
-  },
   bottomContainer: {
     paddingHorizontal: 20,
     paddingBottom: 40,
+    paddingTop: 16,
+    backgroundColor: '#131313',
   },
   continueButton: {
     width: '100%',
