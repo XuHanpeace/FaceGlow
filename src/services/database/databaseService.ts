@@ -149,10 +149,16 @@ export class DatabaseService {
         ...response.data,
       };
     } catch (error) {
-      console.log('frog.error' + config.url, error);
-
+      // 统一：数据库层不要抛出异常导致 RN 红屏，转为标准返回体交由上层处理
       if (error instanceof DatabaseError) {
-        throw error;
+        // @ts-ignore
+        return {
+          success: false,
+          error: {
+            code: error.code || 'DATABASE_ERROR',
+            message: error.message || '数据库请求失败',
+          },
+        };
       }
 
       // @ts-ignore

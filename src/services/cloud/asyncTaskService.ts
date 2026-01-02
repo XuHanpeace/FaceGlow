@@ -20,6 +20,10 @@ export interface BailianParams {
   task_type: TaskType;
   /** 提示词文本 */
   prompt: string;
+  /** 是否启用自定义提示词（图生视频使用） */
+  enable_custom_prompt?: boolean;
+  /** 用户自定义提示词（图生视频使用） */
+  custom_prompt?: string;
   /** 
    * 图片URL数组（图生图、图生视频、豆包图生图使用）
    * 
@@ -256,10 +260,10 @@ class AsyncTaskService {
   /**
    * 调用 queryTask 云函数查询任务状态
    */
-  async queryTask(taskId: string): Promise<TaskQueryResponse> {
+  async queryTask(taskId: string, taskType?: TaskType): Promise<TaskQueryResponse> {
     try {
       const response = await functionClient.post('/queryTask', {
-        data: { taskId }
+        data: { taskId, ...(taskType ? { task_type: taskType } : {}) }
       }, {
         timeout: 15000,
       });

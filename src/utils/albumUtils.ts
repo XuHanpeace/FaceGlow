@@ -25,6 +25,11 @@ export type AlbumMediaInfo = {
   previewVideoUrl: string | null;
 };
 
+function isProbablyVideoUrl(url: string): boolean {
+  const lower = url.toLowerCase();
+  return lower.endsWith('.mp4') || lower.includes('.mp4?');
+}
+
 /**
  * 将 AlbumRecord 转换为 Album 格式
  * 用于兼容旧的 Activity 数据结构
@@ -188,11 +193,23 @@ export function isVideoAlbum(
  * - 兜底 `album_image`
  */
 export function getAlbumCoverImageUrl(
-  album: Pick<AlbumRecord, 'album_image' | 'template_list'>
+  album: Pick<AlbumRecord, 'album_image' | 'template_list' | 'src_image' | 'result_image'>
 ): string {
   const templateUrl = album.template_list?.[0]?.template_url;
-  if (typeof templateUrl === 'string' && templateUrl.length > 0) return templateUrl;
-  return album.album_image;
+  if (typeof templateUrl === 'string' && templateUrl.length > 0 && !isProbablyVideoUrl(templateUrl)) return templateUrl;
+
+  // 防御：有些历史/管理端数据可能把 album_image 写成了 mp4，封面必须回退到图片字段
+  const albumImage = album.album_image;
+  if (typeof albumImage === 'string' && albumImage.length > 0 && !isProbablyVideoUrl(albumImage)) return albumImage;
+
+  const srcImage = album.src_image;
+  if (typeof srcImage === 'string' && srcImage.length > 0 && !isProbablyVideoUrl(srcImage)) return srcImage;
+
+  const resultImage = album.result_image;
+  if (typeof resultImage === 'string' && resultImage.length > 0 && !isProbablyVideoUrl(resultImage)) return resultImage;
+
+  // 最后兜底：返回空字符串，让上层显示占位（避免把视频 URL 当图片用）
+  return '';
 }
 
 /**
@@ -214,7 +231,7 @@ export function getAlbumPreviewVideoUrl(
 export function getAlbumMediaInfo(
   album: Pick<
     AlbumRecord,
-    'album_image' | 'template_list' | 'task_execution_type' | 'function_type' | 'preview_video_url'
+    'album_image' | 'template_list' | 'task_execution_type' | 'function_type' | 'preview_video_url' | 'src_image' | 'result_image'
   >
 ): AlbumMediaInfo {
   return {

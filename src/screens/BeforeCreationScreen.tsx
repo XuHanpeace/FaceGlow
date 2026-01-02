@@ -11,6 +11,8 @@ import {
   ViewToken,
   KeyboardAvoidingView,
   Platform,
+  TextInput,
+  Keyboard,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -49,6 +51,8 @@ const TemplateSlide = React.memo(({
   isFusionProcessing, 
   onUseStyle, 
   onSelfieSelect,
+  customPrompt,
+  onCustomPromptChange,
   isVisible,
 }: { 
   template: Template, 
@@ -68,45 +72,49 @@ const TemplateSlide = React.memo(({
   // 统一入口：视频相册判断 + 封面/预览字段选择
   const { isVideoAlbum, coverImageUrl, previewVideoUrl } = getAlbumMediaInfo(albumRecord);
   const [videoFailed, setVideoFailed] = useState<boolean>(false);
-  const [isVideoReady, setIsVideoReady] = useState<boolean>(false);
+  const [keyboardHeight, setKeyboardHeight] = useState<number>(0);
+
+  // 监听键盘显示/隐藏
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        setKeyboardHeight(e.endCoordinates.height);
+      }
+    );
+    const hideSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0);
+      }
+    );
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   return (
     <View style={styles.pageContainer}>
       {/* 视频相册：优先展示预览视频 */}
       {isVideoAlbum && previewVideoUrl && !videoFailed ? (
         <View style={styles.mainImageContainer}>
-          {/* 占位封面：避免进入时短暂黑屏（直到 video ready 再隐藏） */}
-          {!isVideoReady ? (
-            <LoadingImage
-              source={{ uri: coverImageUrl }}
-              style={[styles.mainImage, styles.videoPlaceholder]}
-              resizeMode={FastImage.resizeMode.cover}
-              placeholderColor="#1A1A1A"
-              fadeDuration={150}
-            />
-          ) : null}
           <Video
             source={{ uri: previewVideoUrl }}
             style={[styles.mainImage, styles.videoLayer]}
             resizeMode="cover"
             paused={!isVisible}
-            muted={true}
+            muted={false}
             repeat={true}
             playInBackground={false}
             playWhenInactive={false}
-            ignoreSilentSwitch="obey"
+            ignoreSilentSwitch="ignore"
             poster={coverImageUrl}
             posterResizeMode="cover"
-            onLoadStart={() => {
-              setIsVideoReady(false);
-            }}
-            onReadyForDisplay={() => {
-              setIsVideoReady(true);
-            }}
             onError={(error) => {
               console.warn('[BeforeCreation] 预览视频播放失败，回退图片:', error);
               setVideoFailed(true);
-              setIsVideoReady(false);
             }}
           />
         </View>
@@ -135,7 +143,7 @@ const TemplateSlide = React.memo(({
         pointerEvents="none"
       />
 
-      <View style={styles.contentOverlay}>
+      <View style={[styles.contentOverlay, keyboardHeight > 0 && { paddingBottom: keyboardHeight + 20 }]}>
         <View style={styles.avatarContainer}>
           <SelfieSelector
             onSelfieSelect={onSelfieSelect}
@@ -151,12 +159,12 @@ const TemplateSlide = React.memo(({
           </Text>
         </View>
 
-        {/* 自定义提示词输入框（如果允许） */}
-        {/* {album.allow_custom_prompt && (
+        {/* 自定义提示词输入框（enable_custom_prompt=true 时展示） */}
+        {albumRecord.enable_custom_prompt === true ? (
           <View style={styles.promptInputContainer}>
             <TextInput
               style={styles.promptInput}
-              placeholder={album.custom_prompt_placeholder || "描述你想要的视频效果..."}
+              placeholder="你可以手动输入你想说的话（可选）"
               placeholderTextColor="rgba(255, 255, 255, 0.5)"
               value={customPrompt}
               onChangeText={onCustomPromptChange}
@@ -166,11 +174,18 @@ const TemplateSlide = React.memo(({
               textAlignVertical="top"
               editable={!isFusionProcessing}
             />
-            <Text style={styles.promptInputHint}>
-              {customPrompt.length}/200
-            </Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: albumRecord.custom_prompt_tips ? 6 : 0 }}>
+              {albumRecord.custom_prompt_tips ? (
+                <Text style={[styles.promptInputHint, { opacity: 0.9 }]}>
+                  小贴士：{albumRecord.custom_prompt_tips}
+                </Text>
+              ) : <View />}
+              <Text style={styles.promptInputHint}>
+                {customPrompt.length}/200
+              </Text>
+            </View>
           </View>
-        )} */}
+        ) : null}
 
         <GradientButton
           title="一键创作"
@@ -242,7 +257,7 @@ const AlbumSlide = React.memo(({
     }
   ).current;
 
-  const templateViewabilityConfig = useRef({ itemVisiblePercentThreshold: 80 }).current;
+  const templateViewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 }).current;
 
   const renderTemplateItem = useCallback(({ item, index }: { item: Template; index: number }) => {
     return (
@@ -272,9 +287,8 @@ const AlbumSlide = React.memo(({
         decelerationRate="fast"
         snapToInterval={screenWidth}
         snapToAlignment="start"
-        initialNumToRender={2}
+        initialNumToRender={1}
         windowSize={3}
-        removeClippedSubviews={true}
         nestedScrollEnabled={true}
         onViewableItemsChanged={onViewableTemplateItemsChanged}
         viewabilityConfig={templateViewabilityConfig}
@@ -328,6 +342,17 @@ const BeforeCreationScreen: React.FC = () => {
   const [selectedSelfieUrl, setSelectedSelfieUrl] = useState<string | null>(null);
   const [activeAlbumIndex, setActiveAlbumIndex] = useState(initialIndex);
   const [customPrompt, setCustomPrompt] = useState<string>('');
+
+  // 当切换相册时，若启用自定义提示词则默认填入 album.custom_prompt
+  useEffect(() => {
+    const currentAlbum = albumsWithCurrent[activeAlbumIndex];
+    const albumRecord = currentAlbum as unknown as AlbumRecord;
+    if (albumRecord.enable_custom_prompt === true) {
+      setCustomPrompt(typeof albumRecord.custom_prompt === 'string' ? albumRecord.custom_prompt : '');
+    } else {
+      setCustomPrompt('');
+    }
+  }, [activeAlbumIndex, albumsWithCurrent]);
 
   // 页面加载时上报埋点
   useEffect(() => {
@@ -477,11 +502,10 @@ const BeforeCreationScreen: React.FC = () => {
           taskType = TaskType.IMAGE_TO_IMAGE;
         }
 
-        // 合并提示词：默认提示词 + 用户自定义提示词
-        let finalPrompt = promptText;
-        if (albumRecord.allow_custom_prompt && customPrompt.trim()) {
-          finalPrompt = `${promptText} ${customPrompt.trim()}`;
-        }
+        // 自定义提示词：Seedance 图生视频由云函数拼接 prompt_text + custom_prompt
+        const enableCustomPrompt = albumRecord.enable_custom_prompt === true;
+        const trimmedCustomPrompt = customPrompt.trim();
+        const finalPrompt = promptText;
         
         // 豆包图生图需要 prompt_text、用户自拍图和 result_image
         if (taskType === TaskType.DOUBAO_IMAGE_TO_IMAGE) {
@@ -585,6 +609,8 @@ const BeforeCreationScreen: React.FC = () => {
         const taskParams: StartAsyncTaskPayload = {
              taskType: taskType,
              prompt: finalPrompt || '', // 视频特效和人像风格重绘不需要prompt，但保持向后兼容
+             enableCustomPrompt: enableCustomPrompt,
+             customPrompt: enableCustomPrompt ? trimmedCustomPrompt : '',
              images: imagesArray, // 根据任务类型构建不同的 images 数组
              excludeResultImage: taskType === TaskType.DOUBAO_IMAGE_TO_IMAGE ? excludeResultImage : undefined, // 仅在豆包图生图时传递
              audioUrl: taskType === TaskType.IMAGE_TO_VIDEO ? albumRecord.audio_url : undefined, // 图生视频音频URL（如果相册数据中有）
@@ -646,7 +672,7 @@ const BeforeCreationScreen: React.FC = () => {
           template_id: currentTemplate?.template_id || albumRecord.album_id,
           activity_id: currentActivityId,
           task_type: taskType,
-          has_custom_prompt: !!(albumRecord.allow_custom_prompt && customPrompt.trim()),
+          has_custom_prompt: !!(enableCustomPrompt && trimmedCustomPrompt),
         });
 
         // 豆包图生图虽然调用是同步的，但需要至少5秒，所以也当作异步任务展示
@@ -746,8 +772,8 @@ const BeforeCreationScreen: React.FC = () => {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
       <FlatList
         style={{ flex: 1 }}
@@ -770,7 +796,6 @@ const BeforeCreationScreen: React.FC = () => {
         initialNumToRender={1}
         maxToRenderPerBatch={2}
         windowSize={3}
-        removeClippedSubviews={true}
         nestedScrollEnabled={true}
       />
       </KeyboardAvoidingView>

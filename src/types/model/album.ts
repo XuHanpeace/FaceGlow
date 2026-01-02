@@ -195,17 +195,23 @@ export interface AlbumRecord {
   preview_video_url?: string;
   
   /** 
-   * 是否允许用户自定义提示词
+   * 是否启用自定义提示词
    * 如果为 true，则在 BeforeCreationScreen 中显示提示词输入框
-   * 默认为 false
+   * 默认为 false（不展示输入框）
    */
-  allow_custom_prompt?: boolean;
+  enable_custom_prompt?: boolean;
   
   /** 
-   * 自定义提示词的占位符文本
-   * 当 allow_custom_prompt 为 true 时使用
+   * 自定义提示词（默认值）
+   * 当 enable_custom_prompt 为 true 时，输入框默认填入该值（用户可修改）
    */
-  custom_prompt_placeholder?: string;
+  custom_prompt?: string;
+
+  /**
+   * 自定义提示词小贴士（可选）
+   * 仅当 enable_custom_prompt 为 true 时在 App 端展示
+   */
+  custom_prompt_tips?: string;
   
   /** 
    * 音频URL，用于图生视频类型的相册

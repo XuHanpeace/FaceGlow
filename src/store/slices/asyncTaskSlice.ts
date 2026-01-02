@@ -8,6 +8,7 @@ import { fetchUserWorks, updateWorkItem } from './userWorksSlice';
 export interface AsyncTask {
   taskId: string;
   workId: string; // 关联的作品ID
+  taskType: TaskType;
   status: TaskStatus;
   startTime: number;
   activityTitle: string;
@@ -70,6 +71,10 @@ export interface StartAsyncTaskPayload {
   taskType: TaskType;
   /** 提示词文本 */
   prompt: string;
+  /** 是否启用自定义提示词（图生视频使用） */
+  enableCustomPrompt?: boolean;
+  /** 用户自定义提示词（图生视频使用） */
+  customPrompt?: string;
   /** 图片URL数组（图生图、图生视频使用） */
   images?: string[];
   /** 是否排除 result_image（豆包图生图使用，默认 false 即参考 result_image，保持历史版本兼容）
@@ -306,6 +311,8 @@ export const startAsyncTask = createAsyncThunk(
       const bailianParams: BailianParams = {
         task_type: payload.taskType,
         prompt: payload.prompt,
+        enable_custom_prompt: payload.enableCustomPrompt,
+        custom_prompt: payload.customPrompt,
         images: payload.images,
         video_url: payload.videoUrl,
         audio_url: payload.audioUrl,
@@ -526,6 +533,7 @@ export const startAsyncTask = createAsyncThunk(
       return {
         taskId,
         workId,
+        taskType: payload.taskType,
         status: TaskStatus.PENDING,
         startTime: Date.now(),
         activityTitle: payload.activityTitle,
@@ -553,7 +561,7 @@ export const pollAsyncTask = createAsyncThunk(
   async (task: AsyncTask, { dispatch, rejectWithValue }) => {
     try {
       console.log('[Redux] 正在轮询任务:', task.taskId); // LOG: Query Task Start
-      const response = await asyncTaskService.queryTask(task.taskId);
+      const response = await asyncTaskService.queryTask(task.taskId, task.taskType);
       console.log('[Redux] 轮询响应:', response); // LOG: Query Task Response
 
       if (!response.success) {

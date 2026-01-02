@@ -271,7 +271,7 @@ export class CloudBaseAuthService {
         refresh_token: refreshToken
       };
       
-      const headers: any = {
+      const headers: Record<string, string> = {
         'x-device-id': deviceId,
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -293,10 +293,16 @@ export class CloudBaseAuthService {
       return response.data;
     } catch (error: any) {
       console.error('❌ Token刷新失败:', error.response?.data || error.message);
-      if (error.response?.data) {
+          try {
+            const mod = require('../loginPromptService') as unknown as {
+              loginPromptService: { showForAuthLost: () => void };
+            };
+            mod.loginPromptService.showForAuthLost();
+          } catch (e) {
+            // ignore
+          }
+
         throw new Error(error.response.data.error_description || error.response.data.error || '令牌刷新失败');
-      }
-      throw new Error('网络请求失败');
     }
   }
 
