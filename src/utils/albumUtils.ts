@@ -8,6 +8,23 @@ import { AlbumRecord } from '../types/model/album';
 import { Album } from '../types/model/activity';
 import { TaskExecutionType } from '../types/model/album';
 
+export type AlbumMediaInfo = {
+  /**
+   * 是否为“视频相册”（图生视频 / 视频特效）
+   * 注意：这里的判断会基于 normalizeTaskExecutionType 做兼容（旧数据 sync/async 也能稳定推断）
+   */
+  isVideoAlbum: boolean;
+  /**
+   * 相册封面图 URL（用于列表卡片、异步任务 activityImage 等）
+   * 规则：优先 template_list[0].template_url，其次 album_image；绝不返回视频 URL
+   */
+  coverImageUrl: string;
+  /**
+   * 视频预览 URL（仅视频相册可能有；为空表示没有可播放视频，UI 需回退到图片）
+   */
+  previewVideoUrl: string | null;
+};
+
 /**
  * 将 AlbumRecord 转换为 Album 格式
  * 用于兼容旧的 Activity 数据结构
@@ -149,6 +166,62 @@ export function normalizeTaskExecutionType(
 
   // 最终默认值：如果无法确定，默认使用同步个人写真
   return TaskExecutionType.SYNC_PORTRAIT;
+}
+
+/**
+ * 统一判断：是否为视频相册
+ * - 只通过“标准化后的 task_execution_type”判断（兼容旧数据/缺省字段）
+ */
+export function isVideoAlbum(
+  album: Pick<AlbumRecord, 'task_execution_type' | 'function_type'>
+): boolean {
+  const normalized = normalizeTaskExecutionType(album.task_execution_type, album.function_type);
+  return (
+    normalized === TaskExecutionType.ASYNC_IMAGE_TO_VIDEO ||
+    normalized === TaskExecutionType.ASYNC_VIDEO_EFFECT
+  );
+}
+
+/**
+ * 统一获取相册封面图（只返回图片 URL）
+ * - 优先 `template_list[0].template_url`
+ * - 兜底 `album_image`
+ */
+export function getAlbumCoverImageUrl(
+  album: Pick<AlbumRecord, 'album_image' | 'template_list'>
+): string {
+  const templateUrl = album.template_list?.[0]?.template_url;
+  if (typeof templateUrl === 'string' && templateUrl.length > 0) return templateUrl;
+  return album.album_image;
+}
+
+/**
+ * 统一获取视频预览 URL（仅视频相册且字段存在时返回）
+ */
+export function getAlbumPreviewVideoUrl(
+  album: Pick<AlbumRecord, 'task_execution_type' | 'function_type' | 'preview_video_url'>
+): string | null {
+  if (!isVideoAlbum(album)) return null;
+  const url = album.preview_video_url;
+  if (typeof url === 'string' && url.length > 0) return url;
+  return null;
+}
+
+/**
+ * 统一入口：一次性返回“是否视频相册 / 封面字段 / 预览字段”
+ * 用于避免各处自行拼装逻辑导致字段混淆。
+ */
+export function getAlbumMediaInfo(
+  album: Pick<
+    AlbumRecord,
+    'album_image' | 'template_list' | 'task_execution_type' | 'function_type' | 'preview_video_url'
+  >
+): AlbumMediaInfo {
+  return {
+    isVideoAlbum: isVideoAlbum(album),
+    coverImageUrl: getAlbumCoverImageUrl(album),
+    previewVideoUrl: getAlbumPreviewVideoUrl(album),
+  };
 }
 
 

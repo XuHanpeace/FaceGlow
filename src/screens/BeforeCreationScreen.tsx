@@ -30,8 +30,8 @@ import { CrossFadeImage } from '../components/CrossFadeImage';
 import FastImage from 'react-native-fast-image';
 import { LoadingImage } from '../components/LoadingImage';
 import { useUser, useUserBalance, useUserSelfies } from '../hooks/useUser';
-import { AlbumRecord, TaskExecutionType } from '../types/model/album';
-import { normalizeTaskExecutionType } from '../utils/albumUtils';
+import { AlbumRecord } from '../types/model/album';
+import { getAlbumMediaInfo, normalizeTaskExecutionType } from '../utils/albumUtils';
 import { aegisService } from '../services/monitoring/aegisService';
 import { TaskType } from '../services/cloud/asyncTaskService';
 import Video from 'react-native-video';
@@ -65,14 +65,8 @@ const TemplateSlide = React.memo(({
   const albumRecord = album as unknown as AlbumRecord;
   const srcImage = albumRecord.src_image;
 
-  // 视频类型：统一用 task_execution_type 判断（弃用 function_type）
-  const isVideoAlbum =
-    albumRecord.task_execution_type === TaskExecutionType.ASYNC_IMAGE_TO_VIDEO ||
-    albumRecord.task_execution_type === TaskExecutionType.ASYNC_VIDEO_EFFECT;
-  const previewVideoUrl =
-    typeof albumRecord.preview_video_url === 'string' && albumRecord.preview_video_url.length > 0
-      ? albumRecord.preview_video_url
-      : null;
+  // 统一入口：视频相册判断 + 封面/预览字段选择
+  const { isVideoAlbum, coverImageUrl, previewVideoUrl } = getAlbumMediaInfo(albumRecord);
   const [videoFailed, setVideoFailed] = useState<boolean>(false);
   const [isVideoReady, setIsVideoReady] = useState<boolean>(false);
 
@@ -84,7 +78,7 @@ const TemplateSlide = React.memo(({
           {/* 占位封面：避免进入时短暂黑屏（直到 video ready 再隐藏） */}
           {!isVideoReady ? (
             <LoadingImage
-              source={{ uri: template.template_url }}
+              source={{ uri: coverImageUrl }}
               style={[styles.mainImage, styles.videoPlaceholder]}
               resizeMode={FastImage.resizeMode.cover}
               placeholderColor="#1A1A1A"
@@ -101,7 +95,7 @@ const TemplateSlide = React.memo(({
             playInBackground={false}
             playWhenInactive={false}
             ignoreSilentSwitch="obey"
-            poster={template.template_url}
+            poster={coverImageUrl}
             posterResizeMode="cover"
             onLoadStart={() => {
               setIsVideoReady(false);
@@ -597,7 +591,8 @@ const BeforeCreationScreen: React.FC = () => {
              activityId: currentActivityId,
              activityTitle: albumRecord.album_name,
              activityDescription: albumRecord.album_description,
-             activityImage: albumRecord.preview_video_url || albumRecord.result_image || albumRecord.album_image,
+             // 封面统一只传图片 URL，避免把 preview_video_url 这种视频 URL 当封面导致任务面板黑屏
+             activityImage: getAlbumMediaInfo(albumRecord).coverImageUrl,
              templateId: currentTemplate?.template_id || albumRecord.album_id,
              price: totalPrice,
              videoParams: Object.keys(videoParams).length > 0 ? videoParams : undefined,

@@ -1,12 +1,13 @@
 import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, Dimensions, Animated } from 'react-native';
-import { AlbumRecord, TaskExecutionType } from '../types/model/album';
+import { AlbumRecord } from '../types/model/album';
 import { CategoryConfigRecord, CategoryType } from '../types/model/config';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import LinearGradient from 'react-native-linear-gradient';
 import FastImage from 'react-native-fast-image';
 import Video from 'react-native-video';
 import { LoadingImage } from './LoadingImage';
+import { getAlbumMediaInfo } from '../utils/albumUtils';
 
 const { width: screenWidth } = Dimensions.get('window');
 // 2 column layout: Screen Width / 2 - Padding
@@ -40,15 +41,9 @@ export const NewAlbumCard: React.FC<NewAlbumCardProps> = ({
     }).start();
   }, []);
 
-  // 判断是否为视频类型相册
-  // 统一用 task_execution_type 判断（弃用 function_type）
-  const isVideoAlbum =
-    album.task_execution_type === TaskExecutionType.ASYNC_IMAGE_TO_VIDEO ||
-    album.task_execution_type === TaskExecutionType.ASYNC_VIDEO_EFFECT;
-  const hasPreviewVideo = typeof album.preview_video_url === 'string' && album.preview_video_url.length > 0;
-
-  // Determine cover image
-  const coverImage = album.template_list?.[0]?.template_url || album.album_image;
+  // 统一入口：视频相册判断 + 封面/预览字段选择
+  const { isVideoAlbum, coverImageUrl, previewVideoUrl } = getAlbumMediaInfo(album);
+  const hasPreviewVideo = typeof previewVideoUrl === 'string' && previewVideoUrl.length > 0;
 
   // Generate aspect ratio with jitter based on album type
   const aspectRatio = useMemo(() => {
@@ -187,7 +182,7 @@ export const NewAlbumCard: React.FC<NewAlbumCardProps> = ({
         {/* 如果有预览视频，显示视频播放器；否则显示图片 */}
         {hasPreviewVideo && isVideoAlbum ? (
           <Video
-            source={{ uri: album.preview_video_url }}
+            source={{ uri: previewVideoUrl as string }}
             style={styles.video}
             resizeMode="cover"
             paused={isVideoPaused}
@@ -196,7 +191,7 @@ export const NewAlbumCard: React.FC<NewAlbumCardProps> = ({
             playInBackground={false}
             playWhenInactive={false}
             ignoreSilentSwitch="obey"
-            poster={coverImage}
+            poster={coverImageUrl}
             posterResizeMode="cover"
             onError={(error) => {
               console.warn('视频播放错误:', error);
@@ -205,7 +200,7 @@ export const NewAlbumCard: React.FC<NewAlbumCardProps> = ({
           />
         ) : (
           <LoadingImage
-            source={{ uri: coverImage }}
+            source={{ uri: coverImageUrl }}
             style={styles.image}
             resizeMode={FastImage.resizeMode.cover}
             placeholderColor="#2A2A2A"

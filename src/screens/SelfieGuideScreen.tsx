@@ -47,7 +47,7 @@ const goodExamples = [
   {
     id: '2',
     image: require('../assets/good2.png'),
-    label: '半身照',
+    label: '双人合照',
     description: '避免逆光，肤色还原',
   },
   {
