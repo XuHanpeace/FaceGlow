@@ -87,9 +87,18 @@ const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress, onDelete, ca
   const getCoverImage = () => {
     const resultImage = work.result_data?.[0]?.result_image;
     
-    // 如果 result_image 是视频文件，使用 activity_image 或 template_image 作为封面（不能使用视频URL作为封面）
+    // 如果 result_image 是视频文件，优先使用ext_data.prompt_data.srcImage作为兜底，否则使用 activity_image 或 template_image 作为封面（不能使用视频URL作为封面）
     if (resultImage && isVideoUrl(resultImage)) {
-      return work.activity_image || work.result_data?.[0]?.template_image || work.result_data?.[0]?.template_image || '';
+      let cover = work.activity_image || work.result_data?.[0]?.template_image || '';
+      // 尝试从extData.prompt_data.srcImage获取兜底图片
+      try {
+        if (extData?.prompt_data?.srcImage) {
+          cover = extData.prompt_data.srcImage;
+        }
+      } catch (e) {
+        console.error('获取视频兜底图片失败:', e);
+      }
+      return cover;
     }
     
     // 如果是 asyncTask 且 result_image 为空 (生成中/失败)，优先展示 activity_image 或 template_image
@@ -122,6 +131,23 @@ const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress, onDelete, ca
   const coverImage = getCoverImage();
   const videoUrl = getVideoUrl();
   const isVideoWork = !!videoUrl;
+  
+  // 视频加载失败状态
+  const [videoFailed, setVideoFailed] = React.useState(false);
+  
+  // 获取视频失败时的兜底图片（从ext_data.prompt_data.srcImage获取）
+  const getFallbackImage = () => {
+    try {
+      if (extData?.prompt_data?.srcImage) {
+        return extData.prompt_data.srcImage;
+      }
+    } catch (e) {
+      console.error('获取兜底图片失败:', e);
+    }
+    return null;
+  };
+  
+  const fallbackImage = getFallbackImage();
 
   // 格式化创建时间
   const formatDate = (timestamp?: number) => {
@@ -161,7 +187,7 @@ const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress, onDelete, ca
     >
       <View style={{ position: 'relative' }}>
         {/* 如果是视频作品，显示视频播放器；否则显示图片 */}
-        {isVideoWork && videoUrl ? (
+        {isVideoWork && videoUrl && !videoFailed ? (
           <Video
             source={{ uri: videoUrl }}
             style={[styles.workImage, { height: imageHeight }]}
@@ -173,10 +199,14 @@ const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress, onDelete, ca
             playWhenInactive={false}
             poster={coverImage}
             posterResizeMode="cover"
+            onError={(error) => {
+              console.error('视频播放错误:', error);
+              setVideoFailed(true);
+            }}
           />
         ) : (
           <FastImage 
-            source={{ uri: coverImage }} 
+            source={{ uri: videoFailed && fallbackImage ? fallbackImage : coverImage }} 
             style={[styles.workImage, { height: imageHeight }]}
             resizeMode={FastImage.resizeMode.cover}
           />

@@ -226,6 +226,7 @@ const AlbumSlide = React.memo(({
   onSelfieSelect,
   customPrompt,
   onCustomPromptChange,
+  isAlbumVisible,
 }: { 
   album: Album, 
   selectedSelfieUrl: string | null, 
@@ -234,6 +235,7 @@ const AlbumSlide = React.memo(({
   onSelfieSelect: (url: string) => void,
   customPrompt: string,
   onCustomPromptChange: (text: string) => void,
+  isAlbumVisible: boolean,
 }) => {
   
   // 如果是 asyncTask，可能 template_list 为空，构造一个虚拟 template
@@ -270,10 +272,10 @@ const AlbumSlide = React.memo(({
         onSelfieSelect={onSelfieSelect}
         customPrompt={customPrompt}
         onCustomPromptChange={onCustomPromptChange}
-        isVisible={index === visibleTemplateIndex}
+        isVisible={isAlbumVisible && index === visibleTemplateIndex}
       />
     );
-  }, [album, selectedSelfieUrl, isFusionProcessing, onUseStyle, onSelfieSelect, customPrompt, onCustomPromptChange, visibleTemplateIndex]);
+  }, [album, selectedSelfieUrl, isFusionProcessing, onUseStyle, onSelfieSelect, customPrompt, onCustomPromptChange, visibleTemplateIndex, isAlbumVisible]);
 
   return (
     <View style={styles.albumContainer}>
@@ -615,6 +617,7 @@ const BeforeCreationScreen: React.FC = () => {
              excludeResultImage: taskType === TaskType.DOUBAO_IMAGE_TO_IMAGE ? excludeResultImage : undefined, // 仅在豆包图生图时传递
              audioUrl: taskType === TaskType.IMAGE_TO_VIDEO ? albumRecord.audio_url : undefined, // 图生视频音频URL（如果相册数据中有）
              activityId: currentActivityId,
+             albumId: albumRecord.album_id,
              activityTitle: albumRecord.album_name,
              activityDescription: albumRecord.album_description,
              // 封面统一只传图片 URL，避免把 preview_video_url 这种视频 URL 当封面导致任务面板黑屏
@@ -737,7 +740,7 @@ const BeforeCreationScreen: React.FC = () => {
     setCustomPrompt(text);
   }, []);
 
-  const renderAlbumItem = useCallback(({ item }: { item: Album }) => {
+  const renderAlbumItem = useCallback(({ item, index }: { item: Album; index: number }) => {
     return (
       <AlbumSlide
         album={item}
@@ -747,9 +750,10 @@ const BeforeCreationScreen: React.FC = () => {
         onSelfieSelect={handleSelfieSelect}
         customPrompt={customPrompt}
         onCustomPromptChange={handleCustomPromptChange}
+        isAlbumVisible={index === activeAlbumIndex}
       />
     );
-  }, [selectedSelfieUrl, isFusionProcessing, handleUseStylePress, handleSelfieSelect, customPrompt, handleCustomPromptChange]);
+  }, [selectedSelfieUrl, isFusionProcessing, handleUseStylePress, handleSelfieSelect, customPrompt, handleCustomPromptChange, activeAlbumIndex]);
 
   // 如果没有数据，显示 Loading 或空状态
   if (!albumsWithCurrent || albumsWithCurrent.length === 0) {

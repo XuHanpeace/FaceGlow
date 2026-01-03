@@ -35,6 +35,9 @@ import FastImage from 'react-native-fast-image';
 import Video, { type VideoRef } from 'react-native-video';
 import { TaskType } from '../services/cloud/asyncTaskService';
 import { authService } from '../services/auth/authService';
+import { selectAllAlbums } from '../store/slices/activitySlice';
+import { AlbumLevel, Album } from '../types/model/activity';
+import { albumService } from '../services/database/albumService';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -54,7 +57,8 @@ const ResultItem = React.memo(({
   coverImage,
   extData,
   isVisible = true,
-  onRegenerate
+  onRegenerate,
+  onVideoExpiredChange
 }: { 
   item: any, 
   showComparison: boolean, 
@@ -67,7 +71,8 @@ const ResultItem = React.memo(({
   coverImage?: string,
   extData?: any,
   isVisible?: boolean,
-  onRegenerate?: () => void
+  onRegenerate?: () => void,
+  onVideoExpiredChange?: (expired: boolean) => void
 }) => {
   // 判断 result_image 是否是视频文件
   const isVideoUrl = (url?: string) => {
@@ -85,10 +90,12 @@ const ResultItem = React.memo(({
   const [isVideoPaused, setIsVideoPaused] = useState(!isVisible); // 默认根据可见性设置
   const videoRef = useRef<VideoRef | null>(null);
 
-  // 视频加载/缓冲状态：用于优化“点进去等待一段时间才播放”的体验
+  // 视频加载/缓冲状态：用于优化"点进去等待一段时间才播放"的体验
   const [isVideoLoading, setIsVideoLoading] = useState<boolean>(false);
   const [isVideoBuffering, setIsVideoBuffering] = useState<boolean>(false);
   const [videoError, setVideoError] = useState<string | null>(null);
+  const [isVideoExpired, setIsVideoExpired] = useState<boolean>(false); // 视频是否过期
+  const [videoFailed, setVideoFailed] = useState<boolean>(false); // 视频是否加载失败（非过期错误）
   const [videoReloadKey, setVideoReloadKey] = useState<number>(0);
   
   // 当可见性改变时，更新播放状态
@@ -104,6 +111,8 @@ const ResultItem = React.memo(({
     setIsVideoLoading(true);
     setIsVideoBuffering(false);
     setVideoError(null);
+    setIsVideoExpired(false);
+    onVideoExpiredChange?.(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVideoResult, resultImageUrl, videoReloadKey]);
   
@@ -118,10 +127,33 @@ const ResultItem = React.memo(({
   const handleRetryVideo = () => {
     if (!isVideoResult) return;
     setVideoError(null);
+    setIsVideoExpired(false);
+    setVideoFailed(false);
     setIsVideoLoading(true);
     setIsVideoBuffering(false);
     // 通过 key 触发 Video 重建，强制重新拉流
     setVideoReloadKey((v) => v + 1);
+  };
+  
+  // 获取视频失败时的兜底图片（从ext_data.prompt_data.srcImage获取）
+  const getFallbackImage = () => {
+    try {
+      if (extData?.prompt_data?.srcImage) {
+        return extData.prompt_data.srcImage;
+      }
+    } catch (e) {
+      console.error('获取兜底图片失败:', e);
+    }
+    return null;
+  };
+  
+  const fallbackImage = getFallbackImage();
+
+  // 处理视频过期：跳转到BeforeCreation页面重新生成
+  const handleRegenerateVideo = () => {
+    if (onRegenerate) {
+      onRegenerate();
+    }
   };
   // Hourglass Animation
   const spinValue = useRef(new Animated.Value(0)).current;
@@ -236,45 +268,81 @@ const ResultItem = React.memo(({
             {/* Main Content: 如果是视频，使用Video组件；否则使用OneTimeReveal */}
             {taskStatus === TaskStatus.SUCCESS && isVideoResult && resultImageUrl ? (
               <>
-                <Video
-                  key={`async-video-${videoReloadKey}`}
-                  ref={videoRef}
-                  source={{ uri: resultImageUrl }}
-                  style={styles.resultImage}
-                  resizeMode="cover"
-                  paused={isVideoPaused}
-                  muted={false}
-                  repeat={true}
-                  playInBackground={false}
-                  playWhenInactive={false}
-                  poster={coverImage}
-                  posterResizeMode="cover"
-                  onLoadStart={() => {
-                    setIsVideoLoading(true);
-                    setIsVideoBuffering(false);
-                    setVideoError(null);
-                  }}
-                  onLoad={() => {
-                    setIsVideoLoading(false);
-                    setIsVideoBuffering(false);
-                  }}
-                  onReadyForDisplay={() => {
-                    // iOS 上更可靠：首帧可展示
-                    setIsVideoLoading(false);
-                    setIsVideoBuffering(false);
-                  }}
-                  onBuffer={(e) => {
-                    // e.isBuffering: boolean
-                    setIsVideoBuffering(!!e?.isBuffering);
-                  }}
-                  onError={(error) => {
-                    console.error('视频播放错误:', error);
-                    setIsVideoLoading(false);
-                    setIsVideoBuffering(false);
-                    setVideoError('视频加载失败，请检查网络后重试');
-                  }}
-                />
-                {/* 加载/缓冲提示蒙层：让用户知道“正在加载视频”而不是卡住 */}
+                {!videoFailed ? (
+                  <Video
+                    key={`async-video-${videoReloadKey}`}
+                    ref={videoRef}
+                    source={{ uri: resultImageUrl }}
+                    style={styles.resultImage}
+                    resizeMode="cover"
+                    paused={isVideoPaused}
+                    muted={false}
+                    repeat={true}
+                    playInBackground={false}
+                    playWhenInactive={false}
+                    ignoreSilentSwitch="ignore"
+                    poster={coverImage}
+                    posterResizeMode="cover"
+                    onLoadStart={() => {
+                      setIsVideoLoading(true);
+                      setIsVideoBuffering(false);
+                      setVideoError(null);
+                    }}
+                    onLoad={() => {
+                      setIsVideoLoading(false);
+                      setIsVideoBuffering(false);
+                    }}
+                    onReadyForDisplay={() => {
+                      // iOS 上更可靠：首帧可展示
+                      setIsVideoLoading(false);
+                      setIsVideoBuffering(false);
+                    }}
+                    onBuffer={(e) => {
+                      // e.isBuffering: boolean
+                      setIsVideoBuffering(!!e?.isBuffering);
+                    }}
+                    onError={(error: any) => {
+                      console.error('视频播放错误:', error);
+                      setIsVideoLoading(false);
+                      setIsVideoBuffering(false);
+                      setVideoFailed(true);
+                      
+                      // 检测视频过期错误（火山引擎保护机制）
+                      const errorCode = error?.error?.code;
+                      const errorDomain = error?.error?.domain;
+                      if (errorCode === -1102 && errorDomain === 'NSURLErrorDomain') {
+                        // 视频已过期，提示用户重新生成
+                        setIsVideoExpired(true);
+                        setVideoError('为了保护您的隐私，当前视频已过期（视频有效期为24小时）');
+                        onVideoExpiredChange?.(true);
+                      } else {
+                        setVideoError('视频加载失败，请检查网络后重试');
+                        setIsVideoExpired(false);
+                        onVideoExpiredChange?.(false);
+                      }
+                    }}
+                  />
+                ) : null}
+                {/* 视频过期时显示模糊封面 */}
+                {isVideoExpired && coverImage ? (
+                  <View style={styles.videoExpiredOverlay} pointerEvents="none">
+                    <FastImage
+                      source={{ uri: coverImage }}
+                      style={styles.videoExpiredCover}
+                      resizeMode={FastImage.resizeMode.cover}
+                    />
+                    <View style={styles.videoExpiredBlur} />
+                  </View>
+                ) : null}
+                {/* 视频加载失败时显示兜底图片（非过期错误） */}
+                {videoFailed && !isVideoExpired && (fallbackImage || coverImage) ? (
+                  <FastImage
+                    source={{ uri: fallbackImage || coverImage }}
+                    style={styles.resultImage}
+                    resizeMode={FastImage.resizeMode.cover}
+                  />
+                ) : null}
+                {/* 加载/缓冲提示蒙层：让用户知道"正在加载视频"而不是卡住 */}
                 {(isVideoLoading || isVideoBuffering || !!videoError) && (
                   <View style={styles.videoLoadingOverlay} pointerEvents="box-none">
                     <View style={styles.videoLoadingCard}>
@@ -282,10 +350,17 @@ const ResultItem = React.memo(({
                         <>
                           <FontAwesome name="exclamation-circle" size={18} color="#FF4D4F" />
                           <Text style={styles.videoLoadingText}>{videoError}</Text>
-                          <TouchableOpacity onPress={handleRetryVideo} style={styles.videoRetryBtn}>
-                            <FontAwesome name="refresh" size={14} color="#fff" style={{ marginRight: 6 }} />
-                            <Text style={styles.videoRetryText}>点击重试</Text>
-                          </TouchableOpacity>
+                          {isVideoExpired ? (
+                            <TouchableOpacity onPress={handleRegenerateVideo} style={styles.videoRetryBtn}>
+                              <FontAwesome name="refresh" size={14} color="#fff" style={{ marginRight: 6 }} />
+                              <Text style={styles.videoRetryText}>重新生成</Text>
+                            </TouchableOpacity>
+                          ) : (
+                            <TouchableOpacity onPress={handleRetryVideo} style={styles.videoRetryBtn}>
+                              <FontAwesome name="refresh" size={14} color="#fff" style={{ marginRight: 6 }} />
+                              <Text style={styles.videoRetryText}>点击重试</Text>
+                            </TouchableOpacity>
+                          )}
                         </>
                       ) : (
                         <>
@@ -369,6 +444,7 @@ const ResultItem = React.memo(({
   // 非异步任务的视频播放状态管理
   const [isVideoSyncPaused, setIsVideoSyncPaused] = useState(!isVisible);
   const videoSyncRef = useRef<VideoRef | null>(null);
+  const [isVideoSyncExpired, setIsVideoSyncExpired] = useState<boolean>(false);
   
   useEffect(() => {
     if (isVideoSync) {
@@ -426,12 +502,15 @@ const ResultItem = React.memo(({
             repeat={true}
             playInBackground={false}
             playWhenInactive={false}
+            ignoreSilentSwitch="ignore"
             poster={coverImage || item.template_image}
             posterResizeMode="cover"
             onLoadStart={() => {
               setIsVideoLoading(true);
               setIsVideoBuffering(false);
               setVideoError(null);
+              setIsVideoSyncExpired(false);
+              onVideoExpiredChange?.(false);
             }}
             onLoad={() => {
               setIsVideoLoading(false);
@@ -444,13 +523,37 @@ const ResultItem = React.memo(({
             onBuffer={(e) => {
               setIsVideoBuffering(!!e?.isBuffering);
             }}
-            onError={(error) => {
+            onError={(error: any) => {
               console.error('视频播放错误:', error);
               setIsVideoLoading(false);
               setIsVideoBuffering(false);
-              setVideoError('视频加载失败，请检查网络后重试');
+              
+              // 检测视频过期错误（火山引擎保护机制）
+              const errorCode = error?.error?.code;
+              const errorDomain = error?.error?.domain;
+              if (errorCode === -1102 && errorDomain === 'NSURLErrorDomain') {
+                // 视频已过期，提示用户重新生成
+                setIsVideoSyncExpired(true);
+                setVideoError('为了保护您的隐私，当前视频已过期（视频有效期为24小时）');
+                onVideoExpiredChange?.(true);
+              } else {
+                setVideoError('视频加载失败，请检查网络后重试');
+                setIsVideoSyncExpired(false);
+                onVideoExpiredChange?.(false);
+              }
             }}
           />
+          {/* 视频过期时显示模糊封面 */}
+          {isVideoSyncExpired && (coverImage || item.template_image) ? (
+            <View style={styles.videoExpiredOverlay} pointerEvents="none">
+              <FastImage
+                source={{ uri: coverImage || item.template_image }}
+                style={styles.videoExpiredCover}
+                resizeMode={FastImage.resizeMode.cover}
+              />
+              <View style={styles.videoExpiredBlur} />
+            </View>
+          ) : null}
           {(isVideoLoading || isVideoBuffering || !!videoError) && (
             <View style={styles.videoLoadingOverlay} pointerEvents="box-none">
               <View style={styles.videoLoadingCard}>
@@ -458,10 +561,17 @@ const ResultItem = React.memo(({
                   <>
                     <FontAwesome name="exclamation-circle" size={18} color="#FF4D4F" />
                     <Text style={styles.videoLoadingText}>{videoError}</Text>
-                    <TouchableOpacity onPress={handleRetryVideo} style={styles.videoRetryBtn}>
-                      <FontAwesome name="refresh" size={14} color="#fff" style={{ marginRight: 6 }} />
-                      <Text style={styles.videoRetryText}>点击重试</Text>
-                    </TouchableOpacity>
+                    {isVideoSyncExpired ? (
+                      <TouchableOpacity onPress={handleRegenerateVideo} style={styles.videoRetryBtn}>
+                        <FontAwesome name="refresh" size={14} color="#fff" style={{ marginRight: 6 }} />
+                        <Text style={styles.videoRetryText}>重新生成</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity onPress={handleRetryVideo} style={styles.videoRetryBtn}>
+                        <FontAwesome name="refresh" size={14} color="#fff" style={{ marginRight: 6 }} />
+                        <Text style={styles.videoRetryText}>点击重试</Text>
+                      </TouchableOpacity>
+                    )}
                   </>
                 ) : (
                   <>
@@ -519,7 +629,8 @@ const WorkSlide = React.memo(({
   onInteractionEnd,
   onRefresh,
   isVisible = true,
-  onRegenerate
+  onRegenerate,
+  onVideoExpiredChange
 }: { 
   work: UserWorkModel,
   showComparison: boolean,
@@ -527,7 +638,8 @@ const WorkSlide = React.memo(({
   onInteractionEnd: () => void,
   onRefresh: () => void,
   isVisible?: boolean,
-  onRegenerate: () => void
+  onRegenerate: (albumId: string) => void,
+  onVideoExpiredChange?: (expired: boolean) => void
 }) => {
   const [scrollEnabled, setScrollEnabled] = useState(true);
 
@@ -594,9 +706,17 @@ const WorkSlide = React.memo(({
       extData?.task_type === 'video_effect'
     );
     
-    // 如果是视频，使用activity_image或template_image作为封面
+    // 如果是视频，优先使用ext_data.prompt_data.srcImage作为兜底，否则使用activity_image或template_image作为封面
     if (isVideo) {
-      const cover = work.activity_image || work.result_data?.[0]?.template_image || '';
+      let cover = work.activity_image || work.result_data?.[0]?.template_image || '';
+      // 尝试从extData.prompt_data.srcImage获取兜底图片
+      try {
+        if (extData?.prompt_data?.srcImage) {
+          cover = extData.prompt_data.srcImage;
+        }
+      } catch (e) {
+        console.error('获取视频兜底图片失败:', e);
+      }
       console.log('[WorkSlide] 视频作品，coverImage:', cover);
       return cover;
     }
@@ -650,10 +770,11 @@ const WorkSlide = React.memo(({
         coverImage={coverImage}
         extData={extData}
         isVisible={isResultItemVisible}
-        onRegenerate={onRegenerate}
+        onRegenerate={() => onRegenerate(work.album_id)}
+        onVideoExpiredChange={onVideoExpiredChange}
       />
     );
-  }, [showComparison, selfieUrl, handleInteractionStart, handleInteractionEnd, isAsyncTask, taskStatus, onRefresh, coverImage, extData, visibleResultIndex, isVisible, onRegenerate]);
+  }, [showComparison, selfieUrl, handleInteractionStart, handleInteractionEnd, isAsyncTask, taskStatus, onRefresh, coverImage, extData, visibleResultIndex, isVisible, onRegenerate, onVideoExpiredChange, work]);
 
   return (
     <View style={styles.workContainer}>
@@ -689,6 +810,7 @@ const UserWorkPreviewScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const { tasks } = useTypedSelector(state => state.asyncTask);
   const { works: globalUserWorks } = useTypedSelector(state => state.userWorks);
+  const allAlbums = useTypedSelector(selectAllAlbums);
   
   const [isVerticalScrollEnabled, setIsVerticalScrollEnabled] = useState(true);
 
@@ -712,12 +834,13 @@ const UserWorkPreviewScreen: React.FC = () => {
   const [showComparison, setShowComparison] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareImageUrl, setShareImageUrl] = useState('');
+  const [isVideoExpired, setIsVideoExpired] = useState(false); // 当前视频是否过期
   
   // 当前激活的作品
   const activeWork = worksList[activeWorkIndex];
 
   useEffect(() => {
-      console.log('[Preview] 当前激活作品变更:', activeWork?._id, 'TaskId:', activeWork?.taskId, 'Status:', activeWork?.taskStatus); // LOG
+      console.log('[Preview] 当前激活作品变更:', activeWork?._id, 'TaskId:', activeWork?.taskId, 'Status:', activeWork?.taskStatus, JSON.parse(activeWork?.ext_data || '{}')); // LOG
   }, [activeWork]);
 
   // 2. 监听 Redux 任务更新 (asyncTask)
@@ -842,6 +965,11 @@ const UserWorkPreviewScreen: React.FC = () => {
           }
       }
   }, [activeWork?._id]);
+  
+  // 当切换作品时，重置视频过期状态
+  useEffect(() => {
+    setIsVideoExpired(false);
+  }, [activeWork?._id]);
 
   const handleBackPress = () => {
     navigation.goBack();
@@ -915,139 +1043,27 @@ const UserWorkPreviewScreen: React.FC = () => {
       }
   }, [activeWork, dispatch]);
 
-  const handleRegenerateActiveWork = useCallback(async () => {
-    if (!activeWork || activeWork.activity_type !== 'asyncTask') {
+  const handleRegenerateActiveWork = useCallback((albumId: string) => {
+    if (!albumId) {
+      console.error('albumId 为空，无法跳转');
       return;
     }
 
-    // 检查用户登录
-    const authResult = await authService.requireRealUser();
-    if (!authResult.success) {
-      if (authResult.error?.code === 'ANONYMOUS_USER' || authResult.error?.code === 'NOT_LOGGED_IN') {
-        navigation.navigate('NewAuth');
-      }
+    // 直接从 redux 中查找对应的 album
+    const targetAlbum = allAlbums.find(album => album.album_id === albumId);
+    
+    if (!targetAlbum) {
+      console.error('未找到对应的相册数据，albumId:', albumId);
+      Alert.alert('错误', '未找到对应的相册数据，请稍后再试');
       return;
     }
 
-    // 解析 ext_data
-    let ext: any = {};
-    try {
-      if (activeWork.ext_data) {
-        ext = JSON.parse(activeWork.ext_data);
-      }
-    } catch (e) {
-      Alert.alert('错误', '缺少创作参数');
-      return;
-    }
-
-    // 获取关键字段
-    const taskType = ext.task_type as TaskType;
-    const prompt = ext.prompt_data?.text || '';
-    const selfieUrl = ext.selfie_url;
-    const sceneUrl = ext.scene_url || ext.prompt_data?.resultImage;
-    const videoUrl = ext.video_url;
-    const templateId = ext.template_id || activeWork.result_data?.[0]?.template_id || activeWork.activity_id || 'default';
-    const price = typeof ext.price === 'number' ? ext.price : 0;
-    const videoParams = ext.video_params;
-    const styleRedrawParams = ext.style_redraw_params;
-    const audioUrl = ext.audio_url;
-    const promptData = ext.prompt_data;
-
-    // 校验参数
-    if (!taskType) {
-      Alert.alert('错误', '缺少创作参数');
-      return;
-    }
-
-    // 读取 exclude_result_image 标记位（从 ext_data 中读取，默认 false 即参考 result_image）
-    // true：仅使用用户自拍图 + prompt，不参考 result_image
-    // false：使用用户自拍图 + result_image + prompt（默认）
-    const excludeResultImage = ext.exclude_result_image === true;
-
-    if (taskType === TaskType.DOUBAO_IMAGE_TO_IMAGE) {
-      // 如果 exclude_result_image 为 false（默认），则需要 sceneUrl（result_image）作为参考图
-      // 如果为 true，则不需要 sceneUrl，仅使用用户自拍图 + prompt
-      if (!prompt || !selfieUrl || (!excludeResultImage && !sceneUrl)) {
-        Alert.alert('错误', excludeResultImage 
-          ? '缺少创作参数（提示词、自拍图）' 
-          : '缺少创作参数（提示词、自拍图、场景参考图）');
-        return;
-      }
-    } else if (
-      taskType === TaskType.IMAGE_TO_IMAGE ||
-      taskType === TaskType.IMAGE_TO_VIDEO ||
-      taskType === TaskType.PORTRAIT_STYLE_REDRAW
-    ) {
-      if (!selfieUrl) {
-        Alert.alert('错误', '缺少创作参数（自拍图）');
-        return;
-      }
-    }
-
-    // 组装 images
-    let images: string[] = [];
-    if (taskType === TaskType.DOUBAO_IMAGE_TO_IMAGE) {
-      images = [selfieUrl];
-      // 根据 exclude_result_image 标记决定是否添加 sceneUrl（result_image）作为参考图
-      // exclude_result_image = false：添加 result_image 作为参考图（用户自拍图 + result_image + prompt）
-      // exclude_result_image = true：不添加 result_image，仅使用用户自拍图 + prompt
-      if (sceneUrl && !excludeResultImage) {
-        images.push(sceneUrl);
-      }
-    } else {
-      images = [selfieUrl];
-    }
-
-    // 构建 payload
-    const payload: StartAsyncTaskPayload = {
-      taskType,
-      prompt,
-      images,
-      excludeResultImage: taskType === TaskType.DOUBAO_IMAGE_TO_IMAGE ? excludeResultImage : undefined,
-      videoUrl,
-      audioUrl,
-      activityId: activeWork.activity_id,
-      activityTitle: activeWork.activity_title,
-      activityDescription: activeWork.activity_description,
-      activityImage: activeWork.activity_image,
-      templateId,
-      price,
-      videoParams,
-      styleRedrawParams,
-      promptData,
-    };
-
-    try {
-      const pendingTask = await dispatch(startAsyncTask(payload)).unwrap();
-      if (pendingTask.updatedWork) {
-        navigation.replace('UserWorkPreview', {
-          work: pendingTask.updatedWork,
-          initialWorkId: pendingTask.updatedWork._id
-        });
-      }
-    } catch (error) {
-      if (error && typeof error === 'object' && 'errCode' in error) {
-        const asyncTaskError = error as AsyncTaskError;
-        if (asyncTaskError.errCode === 'INSUFFICIENT_BALANCE') {
-          const currentBalance = asyncTaskError.data?.currentBalance ?? 0;
-          const requiredAmount = asyncTaskError.data?.requiredAmount ?? 0;
-          Alert.alert(
-            '💎 余额不足',
-            `需要${requiredAmount}美美币，当前余额${currentBalance}美美币\n是否前往充值？`,
-            [
-              { text: '取消', style: 'cancel' },
-              {
-                text: '去充值',
-                onPress: () => navigation.navigate('CoinPurchase')
-              }
-            ]
-          );
-          return;
-        }
-      }
-      Alert.alert('错误', '重新生成失败');
-    }
-  }, [activeWork, dispatch, navigation]);
+    // 跳转到BeforeCreation页面
+    navigation.navigate('BeforeCreation', {
+      albumData: targetAlbum,
+      activityId: targetAlbum.activityId,
+    });
+  }, [allAlbums, navigation]);
 
   const getShareOptions = () => [
     {
@@ -1094,6 +1110,7 @@ const UserWorkPreviewScreen: React.FC = () => {
         onRefresh={handleRefreshTask}
         isVisible={isItemVisible}
         onRegenerate={handleRegenerateActiveWork}
+        onVideoExpiredChange={setIsVideoExpired}
       />
     );
   }, [showComparison, handleInteractionStart, handleInteractionEnd, handleRefreshTask, activeWorkIndex, handleRegenerateActiveWork]);
@@ -1160,7 +1177,7 @@ const UserWorkPreviewScreen: React.FC = () => {
       )}
 
       {/* 下载/分享按钮区域（右下角偏上） */}
-      {activeWork?.result_data?.[0]?.result_image && (
+      {activeWork?.result_data?.[0]?.result_image && !isVideoExpired && (
         <View style={[styles.actionButtonsContainer, { paddingBottom: Math.max(insets.bottom, 20) + 100 }]}>
           <TouchableOpacity 
             style={styles.actionButton} 
@@ -1344,6 +1361,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    zIndex: 10,
   },
   videoLoadingCard: {
     alignItems: 'center',
@@ -1375,6 +1393,26 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
     backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  videoExpiredOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 0,
+  },
+  videoExpiredCover: {
+    width: '100%',
+    height: '100%',
+  },
+  videoExpiredBlur: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   videoRetryText: {
     color: '#fff',

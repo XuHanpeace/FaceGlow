@@ -88,6 +88,8 @@ export interface StartAsyncTaskPayload {
   audioUrl?: string;
   /** 活动ID */
   activityId: string;
+  /** 相册ID */
+  albumId?: string;
   /** 活动标题 */
   activityTitle: string;
   /** 活动描述 */
@@ -374,7 +376,7 @@ export const startAsyncTask = createAsyncThunk(
           activity_title: payload.activityTitle,
           activity_description: payload.activityDescription || '',
           activity_image: coverImage,
-          album_id: '',
+          album_id: payload.albumId || '',
           likes: '0',
           is_public: '0',
           download_count: '0',
