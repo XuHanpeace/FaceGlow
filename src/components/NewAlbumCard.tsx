@@ -39,6 +39,9 @@ export const NewAlbumCard: React.FC<NewAlbumCardProps> = ({
       duration: 300,
       useNativeDriver: true,
     }).start();
+    
+    // 确保视频自动播放
+    setIsVideoPaused(false);
   }, []);
 
   // 统一入口：视频相册判断 + 封面/预览字段选择
@@ -185,17 +188,16 @@ export const NewAlbumCard: React.FC<NewAlbumCardProps> = ({
             source={{ uri: previewVideoUrl as string }}
             style={styles.video}
             resizeMode="cover"
-            paused={isVideoPaused}
+            paused={false}
             muted={true}
             repeat={true}
             playInBackground={false}
             playWhenInactive={false}
-            ignoreSilentSwitch="obey"
+            ignoreSilentSwitch="ignore"
             poster={coverImageUrl}
             posterResizeMode="cover"
             onError={(error) => {
               console.warn('视频播放错误:', error);
-              setIsVideoPaused(true);
             }}
           />
         ) : (
@@ -229,16 +231,47 @@ export const NewAlbumCard: React.FC<NewAlbumCardProps> = ({
         
         {/* Src Image for Image-to-Image albums */}
         {/* 如果是视频类型，不展示左下角原始图 */}
-        {album.src_image && !isVideoAlbum && (
-          <View style={styles.srcImageContainer}>
-            <LoadingImage 
-              source={{ uri: album.src_image }} 
-              style={styles.srcImage} 
-              resizeMode={FastImage.resizeMode.contain}
-              placeholderColor="#1A1A1A"
-              fadeDuration={300}
-            />
-          </View>
+        {!isVideoAlbum && (
+          <>
+            {/* 多人合拍模式：显示两张 src_images */}
+            {album.is_multi_person === true && album.src_images && album.src_images.length >= 2 && (
+              <View style={styles.multiSrcImageContainer}>
+                <View style={styles.multiSrcImageItem}>
+                  <LoadingImage 
+                    source={{ uri: album.src_images[0] }} 
+                    style={styles.multiSrcImage} 
+                    resizeMode={FastImage.resizeMode.cover}
+                    placeholderColor="#1A1A1A"
+                    fadeDuration={300}
+                  />
+                </View>
+                <View style={styles.plusContainer}>
+                  <Text style={styles.plusText}>+</Text>
+                </View>
+                <View style={styles.multiSrcImageItem}>
+                  <LoadingImage 
+                    source={{ uri: album.src_images[1] }} 
+                    style={styles.multiSrcImage} 
+                    resizeMode={FastImage.resizeMode.cover}
+                    placeholderColor="#1A1A1A"
+                    fadeDuration={300}
+                  />
+                </View>
+              </View>
+            )}
+            {/* 单人模式或数据不完整：显示单张 src_image */}
+            {(!album.is_multi_person || !album.src_images || album.src_images.length < 2) && album.src_image && (
+              <View style={styles.srcImageContainer}>
+                <LoadingImage 
+                  source={{ uri: album.src_image }} 
+                  style={styles.srcImage} 
+                  resizeMode={FastImage.resizeMode.contain}
+                  placeholderColor="#1A1A1A"
+                  fadeDuration={300}
+                />
+              </View>
+            )}
+          </>
         )}
         
         {/* Likes - 放在右上角 */}
@@ -347,6 +380,54 @@ const styles = StyleSheet.create({
     borderColor: '#fff',
     overflow: 'hidden',
     backgroundColor: '#ccc',
+  },
+  multiSrcImageContainer: {
+    position: 'absolute',
+    bottom: '15%', // 中间偏下位置
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  multiSrcImageItem: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: '#fff',
+    overflow: 'hidden',
+    backgroundColor: '#ccc',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  multiSrcImage: {
+    width: '100%',
+    height: '100%',
+  },
+  plusContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  plusText: {
+    color: '#333',
+    fontSize: 18,
+    fontWeight: 'bold',
+    lineHeight: 20,
   },
   srcImage: {
     width: '100%',

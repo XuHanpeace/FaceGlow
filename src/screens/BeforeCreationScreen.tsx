@@ -37,8 +37,13 @@ import { getAlbumMediaInfo, normalizeTaskExecutionType } from '../utils/albumUti
 import { aegisService } from '../services/monitoring/aegisService';
 import { TaskType } from '../services/cloud/asyncTaskService';
 import Video from 'react-native-video';
+import { MMKV } from 'react-native-mmkv';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+// 创建MMKV存储实例用于保存自拍选择
+const storage = new MMKV();
+const STORAGE_KEY_SELECTED_SELFIES = 'beforeCreation_selectedSelfies';
 
 type BeforeCreationScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type BeforeCreationScreenRouteProp = RouteProp<RootStackParamList, 'BeforeCreation'>;
@@ -47,7 +52,7 @@ type BeforeCreationScreenRouteProp = RouteProp<RootStackParamList, 'BeforeCreati
 const TemplateSlide = React.memo(({ 
   template, 
   album, 
-  selectedSelfieUrl, 
+  selectedSelfies, 
   isFusionProcessing, 
   onUseStyle, 
   onSelfieSelect,
@@ -57,10 +62,10 @@ const TemplateSlide = React.memo(({
 }: { 
   template: Template, 
   album: Album, 
-  selectedSelfieUrl: string | null, 
+  selectedSelfies: string[], 
   isFusionProcessing: boolean, 
   onUseStyle: (template: Template) => void, 
-  onSelfieSelect: (url: string) => void,
+  onSelfieSelect: (index: number, url: string) => void,
   customPrompt: string,
   onCustomPromptChange: (text: string) => void,
   isVisible: boolean,
@@ -68,6 +73,9 @@ const TemplateSlide = React.memo(({
   // 使用 AlbumRecord 结构中的 src_image 字段
   const albumRecord = album as unknown as AlbumRecord;
   const srcImage = albumRecord.src_image;
+  
+  // 判断是否为多人合拍模式
+  const isMultiPerson = albumRecord.is_multi_person === true;
 
   // 统一入口：视频相册判断 + 封面/预览字段选择
   const { isVideoAlbum, coverImageUrl, previewVideoUrl } = getAlbumMediaInfo(albumRecord);
@@ -118,6 +126,17 @@ const TemplateSlide = React.memo(({
             }}
           />
         </View>
+      ) : isMultiPerson && albumRecord.result_image ? (
+        // 多人合拍模式：直接显示 result_image，不显示绿色条效果
+        <View style={styles.mainImageContainer}>
+          <LoadingImage
+            source={{ uri: albumRecord.result_image }}
+            style={styles.mainImage}
+            resizeMode={FastImage.resizeMode.cover}
+            placeholderColor="#1A1A1A"
+            fadeDuration={500}
+          />
+        </View>
       ) : srcImage ? (
         <CrossFadeImage
           image1={srcImage}
@@ -143,14 +162,50 @@ const TemplateSlide = React.memo(({
         pointerEvents="none"
       />
 
-      <View style={[styles.contentOverlay, keyboardHeight > 0 && { paddingBottom: keyboardHeight + 20 }]}>
-        <View style={styles.avatarContainer}>
-          <SelfieSelector
-            onSelfieSelect={onSelfieSelect}
-            selectedSelfieUrl={selectedSelfieUrl ?? undefined}
-            size={72}
-          />
+      {/* 多人合拍模式：自拍选择器显示在中间偏下 */}
+      {isMultiPerson && (
+        <View style={styles.multiSelfieContainer}>
+          <View style={styles.multiSelfieColumn}>
+            <View style={styles.personLabelContainer}>
+              <Text style={styles.personLabel}>人物1</Text>
+            </View>
+            <View style={styles.multiSelfieItem}>
+              <SelfieSelector
+                onSelfieSelect={(url: string) => onSelfieSelect(0, url)}
+                selectedSelfieUrl={selectedSelfies[0] ?? undefined}
+                size={72}
+              />
+            </View>
+          </View>
+          <View style={styles.plusContainer}>
+            <Text style={styles.plusText}>+</Text>
+          </View>
+          <View style={styles.multiSelfieColumn}>
+            <View style={styles.personLabelContainer}>
+              <Text style={styles.personLabel}>人物2</Text>
+            </View>
+            <View style={styles.multiSelfieItem}>
+              <SelfieSelector
+                onSelfieSelect={(url: string) => onSelfieSelect(1, url)}
+                selectedSelfieUrl={selectedSelfies[1] ?? undefined}
+                size={72}
+              />
+            </View>
+          </View>
         </View>
+      )}
+
+      <View style={[styles.contentOverlay, keyboardHeight > 0 && { paddingBottom: keyboardHeight + 20 }]}>
+        {/* 单人模式：自拍选择器显示在内容区域 */}
+        {!isMultiPerson && (
+          <View style={styles.avatarContainer}>
+            <SelfieSelector
+              onSelfieSelect={(url: string) => onSelfieSelect(0, url)}
+              selectedSelfieUrl={selectedSelfies[0] ?? undefined}
+              size={72}
+            />
+          </View>
+        )}
 
         <View style={styles.textContainer}>
           <Text style={styles.title}>{album.album_name}</Text>
@@ -212,6 +267,13 @@ const TemplateSlide = React.memo(({
             ) : null
           }
         />
+
+        {/* 多人合拍模式：显示小贴士（在按钮下方） */}
+        {isMultiPerson && (
+          <View style={styles.tipContainer}>
+            <Text style={styles.tipText}>💡小贴士: "多人合拍"需要上传至少两张自拍哦</Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -220,7 +282,7 @@ const TemplateSlide = React.memo(({
 // 单个相册组件（包含多个模版）
 const AlbumSlide = React.memo(({ 
   album, 
-  selectedSelfieUrl, 
+  selectedSelfies, 
   isFusionProcessing, 
   onUseStyle, 
   onSelfieSelect,
@@ -229,10 +291,10 @@ const AlbumSlide = React.memo(({
   isAlbumVisible,
 }: { 
   album: Album, 
-  selectedSelfieUrl: string | null, 
+  selectedSelfies: string[], 
   isFusionProcessing: boolean, 
   onUseStyle: (template: Template) => void, 
-  onSelfieSelect: (url: string) => void,
+  onSelfieSelect: (index: number, url: string) => void,
   customPrompt: string,
   onCustomPromptChange: (text: string) => void,
   isAlbumVisible: boolean,
@@ -266,7 +328,7 @@ const AlbumSlide = React.memo(({
       <TemplateSlide
         template={item}
         album={album}
-        selectedSelfieUrl={selectedSelfieUrl}
+        selectedSelfies={selectedSelfies}
         isFusionProcessing={isFusionProcessing}
         onUseStyle={onUseStyle}
         onSelfieSelect={onSelfieSelect}
@@ -275,7 +337,7 @@ const AlbumSlide = React.memo(({
         isVisible={isAlbumVisible && index === visibleTemplateIndex}
       />
     );
-  }, [album, selectedSelfieUrl, isFusionProcessing, onUseStyle, onSelfieSelect, customPrompt, onCustomPromptChange, visibleTemplateIndex, isAlbumVisible]);
+  }, [album, selectedSelfies, isFusionProcessing, onUseStyle, onSelfieSelect, customPrompt, onCustomPromptChange, visibleTemplateIndex, isAlbumVisible]);
 
   return (
     <View style={styles.albumContainer}>
@@ -341,20 +403,117 @@ const BeforeCreationScreen: React.FC = () => {
   }, [albumsWithCurrent, albumData, activityId]);
 
   const [isFusionProcessing, setIsFusionProcessing] = useState(false);
-  const [selectedSelfieUrl, setSelectedSelfieUrl] = useState<string | null>(null);
+  
+  // 从存储中恢复自拍选择
+  const getStoredSelectedSelfies = useCallback((): string[] => {
+    try {
+      const stored = storage.getString(STORAGE_KEY_SELECTED_SELFIES);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.every((item: unknown) => typeof item === 'string')) {
+          return parsed;
+        }
+      }
+    } catch (error) {
+      console.warn('读取存储的自拍选择失败:', error);
+    }
+    return [];
+  }, []);
+
+  // 保存自拍选择到存储
+  const saveSelectedSelfies = useCallback((selfies: string[]) => {
+    try {
+      storage.set(STORAGE_KEY_SELECTED_SELFIES, JSON.stringify(selfies));
+    } catch (error) {
+      console.warn('保存自拍选择失败:', error);
+    }
+  }, []);
+
+  const [selectedSelfies, setSelectedSelfies] = useState<string[]>(() => {
+    // 初始化时从存储中恢复
+    return getStoredSelectedSelfies();
+  });
   const [activeAlbumIndex, setActiveAlbumIndex] = useState(initialIndex);
   const [customPrompt, setCustomPrompt] = useState<string>('');
+
+  // 提取自拍URL数组，使用useMemo稳定引用
+  const selfieUrls = useMemo(() => {
+    return selfies.map(s => s.url);
+  }, [selfies.length, selfies[0]?.url, selfies[1]?.url]);
 
   // 当切换相册时，若启用自定义提示词则默认填入 album.custom_prompt
   useEffect(() => {
     const currentAlbum = albumsWithCurrent[activeAlbumIndex];
+    if (!currentAlbum) return;
+    
     const albumRecord = currentAlbum as unknown as AlbumRecord;
+    
+    // 更新自定义提示词
     if (albumRecord.enable_custom_prompt === true) {
-      setCustomPrompt(typeof albumRecord.custom_prompt === 'string' ? albumRecord.custom_prompt : '');
+      const newPrompt = typeof albumRecord.custom_prompt === 'string' ? albumRecord.custom_prompt : '';
+      setCustomPrompt(prev => prev !== newPrompt ? newPrompt : prev);
     } else {
-      setCustomPrompt('');
+      setCustomPrompt(prev => prev !== '' ? '' : prev);
     }
-  }, [activeAlbumIndex, albumsWithCurrent]);
+  }, [activeAlbumIndex, albumsWithCurrent.length]);
+
+  // 初始化自拍选择：只在首次加载或自拍列表变化时初始化，记住用户的选择
+  useEffect(() => {
+    if (selfieUrls.length === 0) {
+      return;
+    }
+
+    // 获取当前相册信息
+    const currentAlbum = albumsWithCurrent[activeAlbumIndex];
+    if (!currentAlbum) return;
+    
+    const albumRecord = currentAlbum as unknown as AlbumRecord;
+    const isMultiPerson = albumRecord.is_multi_person === true;
+    
+    // 检查当前选择是否与相册类型匹配
+    const needsMultiPerson = isMultiPerson;
+    const currentIsMultiPerson = selectedSelfies.length >= 2;
+    
+    // 如果选择的数量与相册类型匹配，且都有值，就保留选择
+    if (needsMultiPerson && currentIsMultiPerson && selectedSelfies[0] && selectedSelfies[1]) {
+      return; // 保留用户的选择
+    }
+    if (!needsMultiPerson && !currentIsMultiPerson && selectedSelfies[0]) {
+      return; // 保留用户的选择
+    }
+    
+    // 如果类型不匹配或没有选择，才初始化
+    if (isMultiPerson) {
+      // 多人合拍模式：填充第一张和第二张自拍
+      const newSelfies = [
+        selfieUrls[0] || '',
+        selfieUrls[1] || ''
+      ];
+      setSelectedSelfies(prev => {
+        // 如果之前是单人模式，需要扩展为多人模式，保留第一张自拍
+        if (prev.length === 1 && prev[0]) {
+          const result = [prev[0], newSelfies[1]];
+          saveSelectedSelfies(result);
+          return result;
+        }
+        saveSelectedSelfies(newSelfies);
+        return newSelfies;
+      });
+    } else {
+      // 单人模式：只填充第一张自拍
+      const newSelfies = [selfieUrls[0] || ''];
+      setSelectedSelfies(prev => {
+        // 如果之前是多人模式，保留第一张自拍
+        if (prev.length >= 1 && prev[0]) {
+          const result = [prev[0]];
+          saveSelectedSelfies(result);
+          return result;
+        }
+        saveSelectedSelfies(newSelfies);
+        return newSelfies;
+      });
+    }
+  }, [selfieUrls, activeAlbumIndex, albumsWithCurrent.length, saveSelectedSelfies]);
 
   // 页面加载时上报埋点
   useEffect(() => {
@@ -409,32 +568,57 @@ const BeforeCreationScreen: React.FC = () => {
       const currentAlbum = albumsWithCurrent[activeAlbumIndex];
       const currentActivityId = currentAlbum.activityId || activityId;
 
+      // 将 AlbumWithActivityId 转换为 AlbumRecord 进行类型检查
+      const albumRecord = currentAlbum as unknown as AlbumRecord;
+      const isMultiPerson = albumRecord.is_multi_person === true;
+      
       // 检查是否选择了自拍，如果没有则直接跳转到上传页面
-      if (!selectedSelfieUrl) {
-        // 埋点：缺少自拍照，跳转到上传页面
-        aegisService.reportUserAction('navigate_to_selfie_upload', {
-          album_id: currentAlbum?.album_id || '',
-          album_title: currentAlbum?.album_name || '',
-          reason: 'no_selfie_selected',
-        });
-        
-        // 再次确认真实用户（防止用户登出）
-        const uploadAuthResult = await authService.requireRealUser();
-        if (uploadAuthResult.success) {
-          // 判断是否为新用户（没有自拍）
-          const isNewUser = !hasSelfies || selfies.length === 0;
-          navigation.navigate('SelfieGuide', { isNewUser });
-        } else {
-          // 如果用户未登录，先跳转到登录页面
-          navigation.navigate('NewAuth');
+      if (isMultiPerson) {
+        // 多人合拍模式：需要2张自拍
+        if (selectedSelfies.length < 2 || !selectedSelfies[0] || !selectedSelfies[1]) {
+          // 埋点：缺少自拍照，跳转到上传页面
+          aegisService.reportUserAction('navigate_to_selfie_upload', {
+            album_id: currentAlbum?.album_id || '',
+            album_title: currentAlbum?.album_name || '',
+            reason: 'no_selfie_selected_multi',
+          });
+          
+          // 再次确认真实用户（防止用户登出）
+          const uploadAuthResult = await authService.requireRealUser();
+          if (uploadAuthResult.success) {
+            // 判断是否为新用户（没有自拍）
+            const isNewUser = !hasSelfies || selfies.length === 0;
+            navigation.navigate('SelfieGuide', { isNewUser });
+          } else {
+            // 如果用户未登录，先跳转到登录页面
+            navigation.navigate('NewAuth');
+          }
+          return;
         }
-        return;
+      } else {
+        // 单人模式：需要1张自拍
+        if (!selectedSelfies[0]) {
+          // 埋点：缺少自拍照，跳转到上传页面
+          aegisService.reportUserAction('navigate_to_selfie_upload', {
+            album_id: currentAlbum?.album_id || '',
+            album_title: currentAlbum?.album_name || '',
+            reason: 'no_selfie_selected',
+          });
+          
+          // 再次确认真实用户（防止用户登出）
+          const uploadAuthResult = await authService.requireRealUser();
+          if (uploadAuthResult.success) {
+            // 判断是否为新用户（没有自拍）
+            const isNewUser = !hasSelfies || selfies.length === 0;
+            navigation.navigate('SelfieGuide', { isNewUser });
+          } else {
+            // 如果用户未登录，先跳转到登录页面
+            navigation.navigate('NewAuth');
+          }
+          return;
+        }
       }
 
-      
-      // 将 AlbumWithActivityId 转换为 AlbumRecord 进行类型检查
-      // 注意：AlbumWithActivityId 可能不包含所有 AlbumRecord 字段，需要安全访问
-      const albumRecord = currentAlbum as unknown as AlbumRecord;
       
       // 获取价格信息（用于传递给云函数）
       const albumPrice = currentAlbum.price || 0;
@@ -516,18 +700,22 @@ const BeforeCreationScreen: React.FC = () => {
             setIsFusionProcessing(false);
             return;
           }
-          // 豆包图生图需要用户选择的自拍图
-          if (!selectedSelfieUrl) {
-            Alert.alert('错误', '请先选择自拍照（将作为图1）');
-            setIsFusionProcessing(false);
-            return;
+          // 多人合拍模式：验证2张自拍
+          if (isMultiPerson) {
+            if (selectedSelfies.length < 2 || !selectedSelfies[0] || !selectedSelfies[1]) {
+              Alert.alert('错误', '多人合拍需要选择2张自拍');
+              setIsFusionProcessing(false);
+              return;
+            }
+          } else {
+            // 单人模式：验证1张自拍
+            if (!selectedSelfies[0]) {
+              Alert.alert('错误', '请先选择自拍照');
+              setIsFusionProcessing(false);
+              return;
+            }
           }
-          // 豆包图生图需要 result_image 作为图2
-          if (!albumRecord.result_image) {
-            Alert.alert('错误', '缺少结果图片（result_image），无法进行豆包图生图');
-            setIsFusionProcessing(false);
-            return;
-          }
+          // 注意：result_image 不再是必填项，因为 exclude_result_image 可能为 true
         } else if (!finalPrompt && taskType !== TaskType.VIDEO_EFFECT) {
           // 其他任务（除了视频特效）也需要 prompt
           Alert.alert('错误', '缺少提示词数据，无法进行创作');
@@ -536,13 +724,13 @@ const BeforeCreationScreen: React.FC = () => {
         }
         
         // 验证必填参数
-        if ((taskType === TaskType.IMAGE_TO_IMAGE || taskType === TaskType.IMAGE_TO_VIDEO) && !selectedSelfieUrl) {
+        if ((taskType === TaskType.IMAGE_TO_IMAGE || taskType === TaskType.IMAGE_TO_VIDEO) && !selectedSelfies[0]) {
           Alert.alert('错误', '请先选择自拍照');
           setIsFusionProcessing(false);
           return;
         }
         
-        // 视频特效使用首帧图片（从selectedSelfieUrl或images获取）
+        // 视频特效使用首帧图片（从selectedSelfies[0]或images获取）
         // 不需要额外验证，因为视频特效实际上使用的是首帧图片URL
         
         console.log('[BeforeCreation] Starting AsyncTask:', { taskType, prompt: finalPrompt });
@@ -578,34 +766,45 @@ const BeforeCreationScreen: React.FC = () => {
         }
 
         // 构建 images 数组
-        // 豆包图生图：默认参考 result_image（保持历史版本兼容），可通过 exclude_result_image 标记排除
-        // 其他任务：使用 selectedSelfieUrl
+        // 豆包图生图：result_image 默认在第一位（如果存在且未排除），后续为用户自拍
+        // 其他任务：使用 selectedSelfies[0]
         let imagesArray: string[] = [];
         // 从相册数据中读取 exclude_result_image 标记位（默认 false，即参考 result_image，保持历史版本兼容）
         const excludeResultImage = albumRecord.exclude_result_image === true;
         
         if (taskType === TaskType.DOUBAO_IMAGE_TO_IMAGE) {
-          // 豆包图生图：按照标准顺序构建
-          // images[0] = selectedSelfieUrl（用户选择的自拍图，图1 - 人物来源图）
-          // images[1] = result_image（结果图/场景图，图2 - 参考场景图，默认包含）
-          imagesArray = [selectedSelfieUrl!];
-          
-          // 默认参考 result_image（保持历史版本兼容），除非 exclude_result_image 为 true
-          // exclude_result_image = true 时：仅使用用户自拍图 + prompt，不参考 result_image
-          // exclude_result_image = false 时：使用用户自拍图 + result_image + prompt
+          // 豆包图生图：按照新的顺序构建
+          // 1. 如果 exclude_result_image 为 false 且 result_image 存在，放在第一位
           if (albumRecord.result_image && !excludeResultImage) {
             imagesArray.push(albumRecord.result_image);
           }
           
+          // 2. 添加用户自拍（单人模式：1张，多人合拍：2张）
+          if (isMultiPerson) {
+            // 多人合拍：添加2张自拍
+            if (selectedSelfies.length >= 2 && selectedSelfies[0] && selectedSelfies[1]) {
+              imagesArray.push(selectedSelfies[0], selectedSelfies[1]);
+            }
+          } else {
+            // 单人模式：添加1张自拍
+            if (selectedSelfies[0]) {
+              imagesArray.push(selectedSelfies[0]);
+            }
+          }
+          
           console.log('[BeforeCreation] 豆包图生图 images 数组:', {
-            'images[0] (图1 - 用户自拍图)': imagesArray[0],
+            'isMultiPerson': isMultiPerson,
             'excludeResultImage': excludeResultImage,
-            '生成方式': excludeResultImage ? '仅使用用户自拍图 + prompt' : '使用用户自拍图 + result_image + prompt',
-            ...(!excludeResultImage && albumRecord.result_image && { 'images[1] (图2 - 参考场景图)': imagesArray[1] })
+            'imagesArray': imagesArray,
+            '生成方式': excludeResultImage 
+              ? (isMultiPerson ? '仅使用2张用户自拍图 + prompt' : '仅使用用户自拍图 + prompt')
+              : (isMultiPerson ? '使用 result_image + 2张用户自拍图 + prompt' : '使用 result_image + 用户自拍图 + prompt')
           });
         } else {
           // 其他异步任务使用自拍图
-          imagesArray = [selectedSelfieUrl!];
+          if (selectedSelfies[0]) {
+            imagesArray = [selectedSelfies[0]];
+          }
         }
 
         const taskParams: StartAsyncTaskPayload = {
@@ -628,8 +827,8 @@ const BeforeCreationScreen: React.FC = () => {
              styleRedrawParams: Object.keys(styleRedrawParams).length > 0 ? styleRedrawParams : undefined,
              promptData: {
                text: finalPrompt,
-               srcImage: selectedSelfieUrl, // 豆包图生图使用用户选择的自拍图作为图1
-               resultImage: albumRecord.result_image, // 图2 - 场景图
+               srcImage: selectedSelfies[0] || undefined, // 豆包图生图使用用户选择的自拍图（多人合拍时使用第一张）
+               resultImage: albumRecord.result_image, // 场景图（如果存在）
                styleTitle: albumRecord.album_name,
                styleDesc: albumRecord.album_description,
              }
@@ -714,7 +913,7 @@ const BeforeCreationScreen: React.FC = () => {
         // 跳转到CreationResult页面（换脸使用 templateId）
         navigation.navigate('CreationResult', {
           albumData: currentAlbum,
-          selfieUrl: selectedSelfieUrl,
+          selfieUrl: selectedSelfies[0] || undefined,
           activityId: currentActivityId, 
         });
       }
@@ -726,15 +925,21 @@ const BeforeCreationScreen: React.FC = () => {
     } finally {
       setIsFusionProcessing(false);
     }
-  }, [selectedSelfieUrl, customPrompt, navigation, activityId, albumsWithCurrent, activeAlbumIndex, activities, dispatch, user, userInfo, isVip, balance]);
+  }, [selectedSelfies, customPrompt, navigation, activityId, albumsWithCurrent, activeAlbumIndex, activities, dispatch, user, userInfo, isVip, balance]);
 
   const handleBackPress = () => {
     navigation.goBack();
   };
 
-  const handleSelfieSelect = useCallback((selfieUrl: string) => {
-    setSelectedSelfieUrl(selfieUrl);
-  }, []);
+  const handleSelfieSelect = useCallback((index: number, selfieUrl: string) => {
+    setSelectedSelfies(prev => {
+      const newSelfies = [...prev];
+      newSelfies[index] = selfieUrl;
+      // 保存到存储
+      saveSelectedSelfies(newSelfies);
+      return newSelfies;
+    });
+  }, [saveSelectedSelfies]);
 
   const handleCustomPromptChange = useCallback((text: string) => {
     setCustomPrompt(text);
@@ -744,7 +949,7 @@ const BeforeCreationScreen: React.FC = () => {
     return (
       <AlbumSlide
         album={item}
-        selectedSelfieUrl={selectedSelfieUrl}
+        selectedSelfies={selectedSelfies}
         isFusionProcessing={isFusionProcessing}
         onUseStyle={handleUseStylePress}
         onSelfieSelect={handleSelfieSelect}
@@ -753,7 +958,7 @@ const BeforeCreationScreen: React.FC = () => {
         isAlbumVisible={index === activeAlbumIndex}
       />
     );
-  }, [selectedSelfieUrl, isFusionProcessing, handleUseStylePress, handleSelfieSelect, customPrompt, handleCustomPromptChange, activeAlbumIndex]);
+  }, [selectedSelfies, isFusionProcessing, handleUseStylePress, handleSelfieSelect, customPrompt, handleCustomPromptChange, activeAlbumIndex]);
 
   // 如果没有数据，显示 Loading 或空状态
   if (!albumsWithCurrent || albumsWithCurrent.length === 0) {
@@ -858,6 +1063,75 @@ const styles = StyleSheet.create({
   avatarContainer: {
     marginBottom: 16,
     alignSelf: 'flex-start',
+  },
+  multiAvatarContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  multiSelfieContainer: {
+    position: 'absolute',
+    bottom: '20%', // 中间偏下位置
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    zIndex: 10,
+    marginBottom: 72, // 往上移动一张自拍的高度
+  },
+  multiSelfieColumn: {
+    alignItems: 'center',
+  },
+  multiSelfieItem: {
+    // 自拍选择器容器
+  },
+  personLabelContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginBottom: 8,
+  },
+  personLabel: {
+    color: '#fff',
+    fontSize: 10,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  plusContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 12,
+    marginBottom: 20, // 上移，与自拍选择器中心对齐（自拍选择器72px，中心在36px，+号32px，中心在16px，所以需要上移20px）
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  plusText: {
+    color: '#333',
+    fontSize: 20,
+    fontWeight: 'bold',
+    lineHeight: 22,
+  },
+  tipContainer: {
+    marginTop: 4,
+    marginBottom: 0,
+  },
+  tipText: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
   },
   textContainer: {
     marginBottom: 20,

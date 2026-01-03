@@ -72,6 +72,14 @@ export interface Album {
   template_list: Template[];
   /** 来源图片（用于异步任务展示） */
   srcImage?: string;
+  /** 源图片URL数组，用于多人合拍模式（is_multi_person=true）的相册 */
+  src_images?: string[];
+  /** 结果图片URL，用于图生图类型的相册展示效果 */
+  result_image?: string;
+  /** 是否排除 result_image（豆包图生图使用，默认 false 即包含 result_image，保持历史版本兼容） */
+  exclude_result_image?: boolean;
+  /** 是否为多人合拍模式（豆包图生图使用，默认 false 即单人模式） */
+  is_multi_person?: boolean;
 }
 
 /**

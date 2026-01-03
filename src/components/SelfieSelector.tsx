@@ -7,18 +7,19 @@ import {
   Modal,
   ScrollView,
   Dimensions,
-  Alert,
 } from 'react-native';
 import FastImage from 'react-native-fast-image';
 import { useUserSelfies } from '../hooks/useUser';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { authService } from '../services/auth/authService';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import GradientButton from './GradientButton';
+import { useAppDispatch } from '../store/hooks';
+import { fetchUserProfile } from '../store/middleware/asyncMiddleware';
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const { height: screenHeight } = Dimensions.get('window');
 
 type SelfieSelectorNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -34,10 +35,19 @@ const SelfieSelector: React.FC<SelfieSelectorProps> = ({
   size = 100,
 }) => {
   const navigation = useNavigation<SelfieSelectorNavigationProp>();
-  const { selfies, defaultSelfieUrl, setDefaultSelfieUrl } = useUserSelfies();
+  const dispatch = useAppDispatch();
+  const { selfies, defaultSelfieUrl } = useUserSelfies();
   const [showPanel, setShowPanel] = useState(false);
   const [currentSelectedSelfie, setCurrentSelectedSelfie] = useState<string | null>(selectedSelfieUrl || null);
   const [tempSelectedSelfie, setTempSelectedSelfie] = useState<string | null>(null);
+
+  // 当页面获得焦点时，刷新用户自拍列表
+  useFocusEffect(
+    React.useCallback(() => {
+      // 刷新用户数据以更新自拍列表
+      dispatch(fetchUserProfile());
+    }, [dispatch])
+  );
 
   // 初始化选中的自拍
   useEffect(() => {
@@ -88,12 +98,11 @@ const SelfieSelector: React.FC<SelfieSelectorProps> = ({
   };
 
   const handleAddSelfie = async () => {
-    setShowPanel(false);
-    
     // 检查登录态
     const authResult = await authService.requireRealUser();
     
     if (!authResult.success) {
+      setShowPanel(false);
       if (authResult.error?.code === 'ANONYMOUS_USER' || 
           authResult.error?.code === 'NOT_LOGGED_IN') {
             navigation.navigate('NewAuth') 
@@ -101,7 +110,11 @@ const SelfieSelector: React.FC<SelfieSelectorProps> = ({
       return;
     }
     
-    navigation.navigate('SelfieGuide');
+    // 关闭面板并导航到上传页面
+    setShowPanel(false);
+    // 判断是否为新用户（没有自拍）
+    const isNewUser = selfies.length === 0;
+    navigation.navigate('SelfieGuide', { isNewUser });
   };
 
   const renderSelfieContent = () => {
@@ -113,7 +126,7 @@ const SelfieSelector: React.FC<SelfieSelectorProps> = ({
             style={[styles.addButton, { width: size * 0.6, height: size * 0.6, borderRadius: size * 0.3 }]}
             onPress={handleSelfiePress}
           >
-            <FontAwesome name="plus" size={size * 0.3} color="rgba(255,255,255,0.6)" />
+            <FontAwesome name="plus" size={size * 0.3} color="#fff" />
           </TouchableOpacity>
         </View>
       );
@@ -149,21 +162,30 @@ const SelfieSelector: React.FC<SelfieSelectorProps> = ({
         animationType="slide"
         onRequestClose={() => setShowPanel(false)}
       >
-        <View style={styles.panelContainer}>
+        {/* 外部遮罩层，点击可关闭 */}
+        <TouchableOpacity
+          style={styles.mask}
+          activeOpacity={1}
+          onPress={() => setShowPanel(false)}
+        >
+          <View 
+            style={styles.panelContainer}
+            onStartShouldSetResponder={() => true}
+          >
             {/* 面板标题 */}
             <View style={styles.panelHeader}>
               <Text style={styles.panelTitle}>选择自拍</Text>
               <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setShowPanel(false)}
+                style={styles.addButton}
+                onPress={handleAddSelfie}
               >
-                <Text style={styles.closeIcon}>✕</Text>
+                <FontAwesome name="plus" size={18} color="#fff" />
               </TouchableOpacity>
             </View>
 
             {/* 自拍列表 */}
             <ScrollView style={styles.selfieList} showsVerticalScrollIndicator={false}>
-              {selfies.map((selfie, index) => (
+              {selfies.map((selfie) => (
                 <TouchableOpacity
                   key={selfie.id}
                   style={[
@@ -192,7 +214,6 @@ const SelfieSelector: React.FC<SelfieSelectorProps> = ({
               ))}
             </ScrollView>
 
-
             {/* 确认按钮 */}
             <View style={{ paddingHorizontal: 20, marginTop: 20 }}>
               <GradientButton
@@ -205,7 +226,8 @@ const SelfieSelector: React.FC<SelfieSelectorProps> = ({
                 borderRadius={28}
               />
             </View>
-        </View>
+          </View>
+        </TouchableOpacity>
       </Modal>
     </>
   );
@@ -221,11 +243,6 @@ const styles = StyleSheet.create({
   },
   selfieImage: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  addButton: {
-    backgroundColor: 'rgba(255, 107, 157, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   selectIndicator: {
     position: 'absolute',
@@ -268,18 +285,17 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
-  closeButton: {
+  mask: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    justifyContent: 'flex-end',
+  },
+  addButton: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  closeIcon: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
   selfieList: {
     paddingHorizontal: 20,

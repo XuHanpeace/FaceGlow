@@ -156,6 +156,13 @@ export interface AlbumRecord {
   src_image?: string;
   
   /** 
+   * 源图片URL数组，用于多人合拍模式（is_multi_person=true）的相册
+   * 可选字段，仅在 task_execution_type 为 'async_doubao_image_to_image' 且 is_multi_person 为 true 时使用
+   * 保留 src_image 作为向后兼容
+   */
+  src_images?: string[];
+  
+  /** 
    * 结果图片URL，用于图生图类型的相册展示效果
    * 可选字段，仅在 function_type 为 'image_to_image' 时使用
    */
@@ -166,6 +173,13 @@ export interface AlbumRecord {
    * 可选字段，仅在 task_execution_type 为 'async_doubao_image_to_image' 时使用
    */
   exclude_result_image?: boolean;
+  
+  /** 
+   * 是否为多人合拍模式（豆包图生图使用，默认 false 即单人模式）
+   * 可选字段，仅在 task_execution_type 为 'async_doubao_image_to_image' 时使用
+   * 当为 true 时，强制要求用户上传2张自拍
+   */
+  is_multi_person?: boolean;
   
   /** 
    * 提示词文本，用于图生图类型的相册

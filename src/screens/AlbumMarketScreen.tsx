@@ -128,7 +128,22 @@ const AlbumMarketScreen: React.FC = () => {
           )}
           
           {/* 异步任务源图片 */}
-          {srcImage && (
+          {/* 多人合拍模式：显示两张 src_images */}
+          {(albumItem as any).is_multi_person === true && (albumItem as any).src_images && (albumItem as any).src_images.length >= 2 && (
+            <View style={styles.multiSrcImageContainer}>
+              <View style={styles.multiSrcImageItem}>
+                <Image source={{ uri: (albumItem as any).src_images[0] }} style={styles.multiSrcImage} />
+              </View>
+              <View style={styles.plusContainer}>
+                <Text style={styles.plusText}>+</Text>
+              </View>
+              <View style={styles.multiSrcImageItem}>
+                <Image source={{ uri: (albumItem as any).src_images[1] }} style={styles.multiSrcImage} />
+              </View>
+            </View>
+          )}
+          {/* 单人模式或数据不完整：显示单张 srcImage */}
+          {(!(albumItem as any).is_multi_person || !(albumItem as any).src_images || (albumItem as any).src_images.length < 2) && srcImage && (
             <View style={styles.srcImageContainer}>
               <Image source={{ uri: srcImage }} style={styles.srcImage} />
             </View>
@@ -387,6 +402,54 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#fff',
     overflow: 'hidden',
+  },
+  multiSrcImageContainer: {
+    position: 'absolute',
+    bottom: '15%', // 中间偏下位置
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  multiSrcImageItem: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: '#fff',
+    overflow: 'hidden',
+    backgroundColor: '#ccc',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  multiSrcImage: {
+    width: '100%',
+    height: '100%',
+  },
+  plusContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  plusText: {
+    color: '#333',
+    fontSize: 18,
+    fontWeight: 'bold',
+    lineHeight: 20,
   },
   srcImage: {
     width: '100%',
