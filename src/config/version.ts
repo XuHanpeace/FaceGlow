@@ -1,2 +1,2 @@
-export const appVersion = '1.3.9';
-export const jsVersion = '1.3.25';
+export const appVersion = '1.3.10';
+export const jsVersion = '1.3.26';
