@@ -491,7 +491,7 @@ const SelfieGuideScreen: React.FC = () => {
       {/* 底部按钮 */}
       <View style={styles.bottomContainer}>
         {/* 新用户促销文案 */}
-        {isNewUser && !selectedImage && (
+        {true && (
           <View style={styles.promoContainer}>
             <View style={styles.promoText}>
               <Text style={styles.promoTextMain}>首次创作AI头像，立得</Text>
@@ -740,8 +740,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   promoCoinIcon: {
-    width: 16,
-    height: 16,
+    width: 12,
+    height: 12,
+    marginHorizontal: 2,
   },
   coinAmount: {
     color: '#fff',

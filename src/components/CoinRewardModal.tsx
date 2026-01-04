@@ -85,9 +85,7 @@ export const CoinRewardModal = forwardRef<CoinRewardModalRef, CoinRewardModalPro
                 </View>
 
                 {/* 说明文字 */}
-                <Text style={styles.description}>
-                  新用户首次创作AI头像奖励
-                </Text>
+                <Text style={styles.description}>美美币已存入你的账户，可在个人中心查看余额。</Text>
 
                 {/* 确认按钮 */}
                 <GradientButton
@@ -165,8 +163,9 @@ const styles = StyleSheet.create({
     color: '#FFD700',
   },
   coinIcon: {
-    width: 48,
-    height: 48,
+    width: 32,
+    height: 32,
+    marginLeft: 8,
   },
   rewardText: {
     fontSize: 18,

@@ -457,6 +457,13 @@ const BeforeCreationScreen: React.FC = () => {
     }
   }, [activeAlbumIndex, albumsWithCurrent.length]);
 
+  // 监听 selectedSelfies 变化并保存到存储
+  useEffect(() => {
+    if (selectedSelfies.length > 0) {
+      saveSelectedSelfies(selectedSelfies);
+    }
+  }, [selectedSelfies, saveSelectedSelfies]);
+
   // 初始化自拍选择：只在首次加载或自拍列表变化时初始化，记住用户的选择
   useEffect(() => {
     if (selfieUrls.length === 0) {
@@ -492,11 +499,8 @@ const BeforeCreationScreen: React.FC = () => {
       setSelectedSelfies(prev => {
         // 如果之前是单人模式，需要扩展为多人模式，保留第一张自拍
         if (prev.length === 1 && prev[0]) {
-          const result = [prev[0], newSelfies[1]];
-          saveSelectedSelfies(result);
-          return result;
+          return [prev[0], newSelfies[1]];
         }
-        saveSelectedSelfies(newSelfies);
         return newSelfies;
       });
     } else {
@@ -505,15 +509,12 @@ const BeforeCreationScreen: React.FC = () => {
       setSelectedSelfies(prev => {
         // 如果之前是多人模式，保留第一张自拍
         if (prev.length >= 1 && prev[0]) {
-          const result = [prev[0]];
-          saveSelectedSelfies(result);
-          return result;
+          return [prev[0]];
         }
-        saveSelectedSelfies(newSelfies);
         return newSelfies;
       });
     }
-  }, [selfieUrls, activeAlbumIndex, albumsWithCurrent.length, saveSelectedSelfies]);
+  }, [selfieUrls, activeAlbumIndex, albumsWithCurrent.length]);
 
   // 页面加载时上报埋点
   useEffect(() => {
@@ -935,11 +936,9 @@ const BeforeCreationScreen: React.FC = () => {
     setSelectedSelfies(prev => {
       const newSelfies = [...prev];
       newSelfies[index] = selfieUrl;
-      // 保存到存储
-      saveSelectedSelfies(newSelfies);
       return newSelfies;
     });
-  }, [saveSelectedSelfies]);
+  }, []);
 
   const handleCustomPromptChange = useCallback((text: string) => {
     setCustomPrompt(text);
@@ -1159,8 +1158,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   coinIcon: {
-    width: 22,
-    height: 22,
+    width: 16,
+    height: 16,
+    marginRight: 4,
   },
   priceText: {
     color: '#FFD700',

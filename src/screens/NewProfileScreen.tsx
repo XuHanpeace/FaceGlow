@@ -36,6 +36,9 @@ import { EditNameModal, EditNameModalRef } from '../components/EditNameModal';
 import AvatarSelectorModal, { AvatarSelectorModalRef } from '../components/AvatarSelectorModal';
 import { DeleteIcon } from '../components/DeleteIcon';
 import LinearGradient from 'react-native-linear-gradient';
+import { CheckInIcon } from '../components/CheckInIcon';
+import { useCheckInStatus } from '../hooks/useCheckInStatus';
+import { CheckInModal } from '../components/CheckInModal';
 
 type NewProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -55,6 +58,7 @@ const NewProfileScreen: React.FC = () => {
   const [, setIsUpdatingAvatar] = useState(false);
   const [isEditingSelfies, setIsEditingSelfies] = useState(false);
   const [, setIsDeletingSelfie] = useState(false);
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
   
   const editNameModalRef = React.useRef<EditNameModalRef>(null);
   const avatarSelectorModalRef = React.useRef<AvatarSelectorModalRef>(null);
@@ -87,6 +91,9 @@ const NewProfileScreen: React.FC = () => {
   
   const membershipStatus = getCurrentMembershipStatus();
   const { selfies, hasSelfies } = useUserSelfies();
+  
+  // 签到状态
+  const { showRedDot, shouldShake } = useCheckInStatus();
   
   // 用户作品状态 (Redux)
   const { works: userWorks, status: worksStatus } = useTypedSelector(state => state.userWorks);
@@ -407,7 +414,16 @@ const NewProfileScreen: React.FC = () => {
       {/* 头部导航 */}
       <SafeAreaView style={{ backgroundColor: '#131313'}}/>
       <View style={styles.header}>
-          <View style={styles.placeholder} />
+          <View style={styles.placeholder}>
+            {/* 签到入口 */}
+            <CheckInIcon
+              onPress={() => setShowCheckInModal(true)}
+              showRedDot={showRedDot}
+              shouldShake={shouldShake}
+              size={24}
+              iconColor="#fff"
+            />
+          </View>
           <Text style={styles.headerTitle}>简介</Text>
           <BackButton iconType="close" onPress={handleBackPress} absolute={false} />
         </View>
@@ -767,6 +783,11 @@ const NewProfileScreen: React.FC = () => {
       <EditNameModal ref={editNameModalRef} />
       <AvatarSelectorModal ref={avatarSelectorModalRef} onSelect={handleAvatarSelect} />
 
+      {/* 签到Modal */}
+      <CheckInModal
+        visible={showCheckInModal}
+        onClose={() => setShowCheckInModal(false)}
+      />
     </View>
   );
 };
@@ -1146,8 +1167,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   coinIcon: {
-    width: 24,
-    height: 24,
+    width: 18,
+    height: 18,
+    marginRight: 4,
   },
   balanceTitle: {
     color: '#fff',

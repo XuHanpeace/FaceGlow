@@ -1,10 +1,13 @@
-import { useRef, useImperativeHandle, forwardRef } from 'react';
+import { useRef, useImperativeHandle, forwardRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { useUserBalance } from '../hooks/useUser';
 import UserAvatar from './UserAvatar';
+import { CheckInIcon } from './CheckInIcon';
+import { useCheckInStatus } from '../hooks/useCheckInStatus';
+import { CheckInModal } from './CheckInModal';
 
 type HomeHeaderNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -19,9 +22,13 @@ interface HomeHeaderProps {
 const HomeHeader = forwardRef<HomeHeaderRef, HomeHeaderProps>((props, ref) => {
   const { onProfilePress } = props;
   const navigation = useNavigation<HomeHeaderNavigationProp>();
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
   
   // 使用用户hooks获取数据
   const { balanceFormatted } = useUserBalance();
+  
+  // 签到状态
+  const { showRedDot, shouldShake } = useCheckInStatus();
   
   // 美美币图标旋转动画
   const coinIconRotateY = useRef(new Animated.Value(0)).current;
@@ -57,10 +64,25 @@ const HomeHeader = forwardRef<HomeHeaderRef, HomeHeaderProps>((props, ref) => {
     }
   };
 
+  const handleCheckInPress = () => {
+    setShowCheckInModal(true);
+  };
+
   return (
     <View style={styles.container}>
       {/* 左侧品牌文本（带渐变效果） */}
-      <Text style={styles.brandText}>美颜换换</Text>
+      <View style={styles.leftContainer}>
+        <Text style={styles.brandText}>美颜换换</Text>
+        {/* 签到入口 */}
+        <CheckInIcon
+          onPress={handleCheckInPress}
+          showRedDot={showRedDot}
+          shouldShake={shouldShake}
+          size={24}
+          iconColor="#fff"
+          style={styles.checkInIcon}
+        />
+      </View>
 
       {/* 右侧头像按钮 */}
       <View style={styles.rightContainer}>
@@ -91,6 +113,12 @@ const HomeHeader = forwardRef<HomeHeaderRef, HomeHeaderProps>((props, ref) => {
           <UserAvatar size={36} />
         </TouchableOpacity>
       </View>
+
+      {/* 签到Modal */}
+      <CheckInModal
+        visible={showCheckInModal}
+        onClose={() => setShowCheckInModal(false)}
+      />
     </View>
   );
 });
@@ -102,6 +130,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 15,
+  },
+  leftContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   brandContainer: {
     flex: 1,
@@ -116,7 +149,9 @@ const styles = StyleSheet.create({
       android: 'sans-serif-condensed', // Android 使用紧凑型无衬线字体（更优雅）
     }),
     letterSpacing: 1, // 增加字间距，让文字更优雅
+    marginRight: 4,
   },
+  checkInIcon: {},
   gradientText: {
     justifyContent: 'center',
   },
@@ -158,14 +193,13 @@ const styles = StyleSheet.create({
   },
   balanceIconContainer: {
     position: 'relative',
-    width: 36,
-    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
   },
   balanceIcon: {
-    width: 36,
-    height: 36,
+    width: 20,
+    height: 20,
+    marginRight: 4,
   },
   rightContainer: {
     flexDirection: 'row',

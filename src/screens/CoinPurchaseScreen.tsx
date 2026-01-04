@@ -513,9 +513,9 @@ const styles = StyleSheet.create({
     borderColor: '#FFD700',
   },
   badgeIcon: {
-    width: 20,
-    height: 20,
-    marginRight: 2,
+    width: 12,
+    height: 12,
+    marginRight: 4,
   },
   badgeText: {
     color: '#fff',
@@ -645,8 +645,8 @@ const styles = StyleSheet.create({
     marginTop: 26,
   },
   coinIcon: {
-    width: 36,
-    height: 36,
+    width: 26,
+    height: 26,
     marginBottom: 6,
   },
   coinAmount: {

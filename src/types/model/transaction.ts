@@ -105,6 +105,7 @@ export interface CreateTransactionRequest {
   coin_amount: number;
   payment_method: PaymentMethod;
   description: string;
+  balance_before?: number; // 交易前余额（可选，如果不提供则从用户表查询）
   apple_transaction_id?: string;
   apple_product_id?: string;
   related_id?: string;

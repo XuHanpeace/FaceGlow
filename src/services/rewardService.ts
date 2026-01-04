@@ -92,17 +92,23 @@ class RewardService {
   }
 
   /**
-   * 测试用：直接发放美美币奖励（不检查是否为新用户）
-   * @param amount 奖励金额，默认10
+   * 通用奖励发放方法
+   * @param amount 奖励金额
+   * @param description 奖励描述
+   * @param relatedId 关联ID（可选）
    * @returns Promise<{ success: boolean; newBalance?: number; error?: string }>
    */
-  async grantTestReward(amount: number = 10): Promise<{
+  async grantReward(
+    amount: number,
+    description: string,
+    relatedId?: string
+  ): Promise<{
     success: boolean;
     newBalance?: number;
     error?: string;
   }> {
     try {
-      console.log('🧪 测试：发放美美币奖励', { amount });
+      console.log('🎁 发放美美币奖励:', { amount, description });
 
       const currentUser = await userDataService.getUserByUid();
       if (!currentUser.success || !currentUser.data?.record) {
@@ -115,32 +121,38 @@ class RewardService {
       const currentBalance = currentUser.data.record.balance || 0;
       const newBalance = currentBalance + amount;
 
-      // 更新用户余额
-      const updateResult = await userDataService.updateUserData({
-        balance: newBalance,
-      });
-
-      if (!updateResult.success) {
-        return {
-          success: false,
-          error: '更新用户余额失败',
-        };
-      }
-
-      // 创建交易记录
+      // 先创建交易记录（传入 balance_before，让云函数统一更新余额）
+      // 云函数会在 coin_amount > 0 时自动更新余额
       const transactionResult = await transactionService.createTransaction({
         user_id: '__AUTO__',
         transaction_type: 'bonus',
         coin_amount: amount,
         payment_method: 'system_bonus',
-        description: '测试奖励',
-        related_id: `test_reward_${Date.now()}`,
+        description,
+        related_id: relatedId || `reward_${Date.now()}`,
+        balance_before: currentBalance, // 传入交易前余额
       });
 
+      if (!transactionResult.success) {
+        console.error('创建奖励交易记录失败:', transactionResult.error);
+        // 如果交易记录创建失败，手动更新余额作为补偿
+        const updateResult = await userDataService.updateUserData({
+          balance: newBalance,
+        });
+        
+        if (!updateResult.success) {
+          return {
+            success: false,
+            error: '更新用户余额失败',
+          };
+        }
+      }
+      // 如果交易记录创建成功，云函数已经更新了余额，不需要再次更新
+
       if (transactionResult.success) {
-        console.log('✅ 测试奖励发放成功:', { amount, newBalance });
+        console.log('✅ 奖励发放成功:', { amount, newBalance, description });
       } else {
-        console.error('创建测试奖励交易记录失败:', transactionResult.error);
+        console.error('创建奖励交易记录失败:', transactionResult.error);
       }
 
       return {
@@ -148,12 +160,25 @@ class RewardService {
         newBalance,
       };
     } catch (error: any) {
-      console.error('发放测试奖励失败:', error);
+      console.error('发放奖励失败:', error);
       return {
         success: false,
         error: error.message || '发放奖励失败',
       };
     }
+  }
+
+  /**
+   * 测试用：直接发放美美币奖励（不检查是否为新用户）
+   * @param amount 奖励金额，默认10
+   * @returns Promise<{ success: boolean; newBalance?: number; error?: string }>
+   */
+  async grantTestReward(amount: number = 10): Promise<{
+    success: boolean;
+    newBalance?: number;
+    error?: string;
+  }> {
+    return this.grantReward(amount, '测试奖励', `test_reward_${Date.now()}`);
   }
 }
 

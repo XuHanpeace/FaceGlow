@@ -453,8 +453,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   coinIcon: {
-    width: 20,
-    height: 20,
+    width: 14,
+    height: 14,
+    marginRight: 4,
   },
   priceText: {
       color: '#FFD700',

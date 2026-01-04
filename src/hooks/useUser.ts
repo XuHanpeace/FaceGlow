@@ -163,15 +163,21 @@ export const useUserSelfies = () => {
       // 将默认自拍移到第一位
       const defaultIndex = reversedList.indexOf(defaultSelfieUrl);
       const defaultSelfie = reversedList.splice(defaultIndex, 1)[0];
-      return [defaultSelfie, ...reversedList];
+      const orderedList = [defaultSelfie, ...reversedList];
+      
+      return orderedList.map((url, index) => ({
+        id: `selfie_${index}`,
+        url,
+        source: { uri: url },
+      }));
     }
     
-    return reversedList;
-  }, [userProfile?.uid, userInfo.selfieList.length, defaultSelfieUrl]).map((url, index) => ({
-    id: `selfie_${index}`,
-    url,
-    source: { uri: url },
-  }));
+    return reversedList.map((url, index) => ({
+      id: `selfie_${index}`,
+      url,
+      source: { uri: url },
+    }));
+  }, [userProfile?.uid, userInfo.selfieList.length, defaultSelfieUrl]);
 
   return {
     selfies,
