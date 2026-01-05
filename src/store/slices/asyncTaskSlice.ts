@@ -352,11 +352,26 @@ export const startAsyncTask = createAsyncThunk(
           }
         ];
 
+        // 正确获取用户自拍图URL
+        // 对于豆包图生图：如果 exclude_result_image 为 false，result_image 在 images[0]，用户自拍在 images[1]；如果为 true，用户自拍在 images[0]
+        // 对于其他任务：用户自拍在 images[0]
+        let selfieUrl = payload.images?.[0];
+        if (payload.taskType === 'doubao_image_to_image' && payload.excludeResultImage === false && payload.images && payload.images.length > 1) {
+          // 豆包图生图且未排除 result_image：用户自拍在 images[1]
+          selfieUrl = payload.images[1];
+        } else if (payload.taskType === 'doubao_image_to_image' && payload.excludeResultImage === true) {
+          // 豆包图生图且排除 result_image：用户自拍在 images[0]
+          selfieUrl = payload.images?.[0];
+        } else {
+          // 其他任务：用户自拍在 images[0]
+          selfieUrl = payload.images?.[0];
+        }
+
         const extData = {
           task_id: taskId,
           task_status: TaskStatus.PENDING,
           task_type: payload.taskType,
-          selfie_url: payload.images?.[0], // 保存图1（用户选择的自拍图）
+          selfie_url: selfieUrl, // 保存用户选择的自拍图（正确获取）
           scene_url: payload.images?.[1], // 保存图2（result_image，场景图，如果存在）
           exclude_result_image: payload.excludeResultImage || false, // 保存是否排除 result_image 的标记位（true=仅使用用户自拍图+prompt，false=使用用户自拍图+result_image+prompt）
           prompt_data: payload.promptData,
@@ -468,11 +483,15 @@ export const startAsyncTask = createAsyncThunk(
         }
       ];
 
+      // 正确获取用户自拍图URL（同步任务）
+      // 对于同步任务，用户自拍在 images[0]
+      const selfieUrl = payload.images?.[0];
+
       const extData = {
         task_id: taskId,
         task_status: TaskStatus.PENDING,
         task_type: payload.taskType,
-        selfie_url: payload.images?.[0], // 保存自拍图（图生图、图生视频）
+        selfie_url: selfieUrl, // 保存用户选择的自拍图
         scene_url: payload.images?.[1], // 兜底
         video_url: payload.videoUrl, // 保存视频URL（视频特效）
         prompt_data: payload.promptData,

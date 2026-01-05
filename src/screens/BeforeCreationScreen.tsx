@@ -44,6 +44,8 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 // 创建MMKV存储实例用于保存自拍选择
 const storage = new MMKV();
 const STORAGE_KEY_SELECTED_SELFIES = 'beforeCreation_selectedSelfies';
+// 自定义提示词存储 key 前缀
+const STORAGE_KEY_CUSTOM_PROMPT_PREFIX = 'custom_prompt_';
 
 type BeforeCreationScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type BeforeCreationScreenRouteProp = RouteProp<RootStackParamList, 'BeforeCreation'>;
@@ -441,7 +443,36 @@ const BeforeCreationScreen: React.FC = () => {
     return selfies.map(s => s.url);
   }, [selfies.length, selfies[0]?.url, selfies[1]?.url]);
 
-  // 当切换相册时，若启用自定义提示词则默认填入 album.custom_prompt
+  // 从存储中恢复自定义提示词
+  const getStoredCustomPrompt = useCallback((albumId: string): string => {
+    try {
+      const key = `${STORAGE_KEY_CUSTOM_PROMPT_PREFIX}${albumId}`;
+      const stored = storage.getString(key);
+      if (stored && typeof stored === 'string') {
+        return stored;
+      }
+    } catch (error) {
+      console.warn('读取存储的自定义提示词失败:', error);
+    }
+    return '';
+  }, []);
+
+  // 保存自定义提示词到存储
+  const saveCustomPrompt = useCallback((albumId: string, prompt: string) => {
+    try {
+      const key = `${STORAGE_KEY_CUSTOM_PROMPT_PREFIX}${albumId}`;
+      if (prompt && prompt.trim()) {
+        storage.set(key, prompt.trim());
+      } else {
+        // 如果为空，删除存储
+        storage.delete(key);
+      }
+    } catch (error) {
+      console.warn('保存自定义提示词失败:', error);
+    }
+  }, []);
+
+  // 当切换相册时，若启用自定义提示词则优先使用本地存储的值，否则使用 album.custom_prompt
   useEffect(() => {
     const currentAlbum = albumsWithCurrent[activeAlbumIndex];
     if (!currentAlbum) return;
@@ -450,12 +481,19 @@ const BeforeCreationScreen: React.FC = () => {
     
     // 更新自定义提示词
     if (albumRecord.enable_custom_prompt === true) {
-      const newPrompt = typeof albumRecord.custom_prompt === 'string' ? albumRecord.custom_prompt : '';
-      setCustomPrompt(prev => prev !== newPrompt ? newPrompt : prev);
+      // 优先使用本地存储的值
+      const storedPrompt = getStoredCustomPrompt(albumRecord.album_id);
+      if (storedPrompt) {
+        setCustomPrompt(storedPrompt);
+      } else {
+        // 如果没有本地存储的值，使用相册默认值
+        const newPrompt = typeof albumRecord.custom_prompt === 'string' ? albumRecord.custom_prompt : '';
+        setCustomPrompt(newPrompt);
+      }
     } else {
-      setCustomPrompt(prev => prev !== '' ? '' : prev);
+      setCustomPrompt('');
     }
-  }, [activeAlbumIndex, albumsWithCurrent.length]);
+  }, [activeAlbumIndex, albumsWithCurrent.length, getStoredCustomPrompt]);
 
   // 监听 selectedSelfies 变化并保存到存储
   useEffect(() => {
@@ -839,6 +877,11 @@ const BeforeCreationScreen: React.FC = () => {
         try {
         await dispatch(startAsyncTask(taskParams)).unwrap();
         console.log('[BeforeCreation] AsyncTask started successfully');
+        
+        // 如果用户输入了自定义提示词，保存到本地存储
+        if (enableCustomPrompt && trimmedCustomPrompt) {
+          saveCustomPrompt(albumRecord.album_id, trimmedCustomPrompt);
+        }
         } catch (error) {
           // 处理余额不足错误（使用错误码判断）
           if (error && typeof error === 'object' && 'errCode' in error) {
