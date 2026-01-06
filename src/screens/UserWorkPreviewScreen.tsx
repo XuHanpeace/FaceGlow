@@ -11,7 +11,11 @@ import {
   Animated,
   Easing,
   ActivityIndicator,
+  Share,
+  Platform,
+  Linking,
 } from 'react-native';
+import Clipboard from '@react-native-clipboard/clipboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -21,6 +25,8 @@ import { shareService } from '../services/shareService';
 import { ShareModal } from '../components/ShareModal';
 import { Alert } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import Dialog from '../components/Dialog';
+import { functionClient } from '../services/http/clients';
 import GradientButton from '../components/GradientButton';
 import { showSuccessToast } from '../utils/toast';
 import BackButton from '../components/BackButton';
@@ -29,7 +35,8 @@ import { UserWorkModel, TaskStatus } from '../types/model/user_works';
 import { useAppDispatch, useTypedSelector } from '../store/hooks';
 import { pollAsyncTask, AsyncTask, startAsyncTask, StartAsyncTaskPayload, AsyncTaskError } from '../store/slices/asyncTaskSlice';
 import { userWorkService } from '../services/database/userWorkService';
-import { fetchUserWorks } from '../store/slices/userWorksSlice';
+import { fetchUserWorks, updateWorkItem } from '../store/slices/userWorksSlice';
+import { imageUploadService } from '../services/imageUploadService';
 import { OneTimeReveal } from '../components/OneTimeReveal';
 import FastImage from 'react-native-fast-image';
 import Video, { type VideoRef } from 'react-native-video';
@@ -833,8 +840,11 @@ const UserWorkPreviewScreen: React.FC = () => {
   const [activeWorkIndex, setActiveWorkIndex] = useState(initialIndex);
   const [showComparison, setShowComparison] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
-  const [shareImageUrl, setShareImageUrl] = useState('');
   const [isVideoExpired, setIsVideoExpired] = useState(false); // 当前视频是否过期
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [shareDialogTitle, setShareDialogTitle] = useState('');
+  const [shareDialogMessage, setShareDialogMessage] = useState('');
+  const [isCreatingPublicWork, setIsCreatingPublicWork] = useState(false);
   
   // 当前激活的作品
   const activeWork = worksList[activeWorkIndex];
@@ -1008,35 +1018,195 @@ const UserWorkPreviewScreen: React.FC = () => {
     }
   };
 
+  // 获取作品资源 URL（图片或视频）
+  const getWorkResourceUrl = () => {
+    if (!activeWork) return '';
+    const resultImage = activeWork.result_data?.[0]?.result_image;
+    
+    // 判断是否是视频
+    const extData = (() => {
+      try {
+        return activeWork?.ext_data ? (JSON.parse(activeWork.ext_data) as Record<string, unknown>) : null;
+      } catch {
+        return null;
+      }
+    })();
+    const taskType = typeof extData?.task_type === 'string' ? extData.task_type : '';
+    const isVideo =
+      resultImage?.toLowerCase().endsWith('.mp4') ||
+      resultImage?.toLowerCase().includes('.mp4?') ||
+      taskType === 'image_to_video' ||
+      taskType === 'video_effect';
+    
+    // 优先使用视频 URL，否则使用图片 URL，最后使用封面图
+    if (isVideo && resultImage) {
+      return resultImage;
+    }
+    if (resultImage && !isVideo) {
+      return resultImage;
+    }
+    return activeWork.activity_image || '';
+  };
+
+  // 创建公开作品并生成分享链接
+  const createPublicWorkAndGetShareUrl = async (): Promise<string | null> => {
+    if (!activeWork || !activeWork._id) {
+      return null;
+    }
+
+    try {
+      setIsCreatingPublicWork(true);
+      const workResourceUrl = getWorkResourceUrl();
+      if (!workResourceUrl) {
+        return null;
+      }
+
+      // 1. 判断 result_image 是否已经上传过 COS
+      // 如果包含 'myqcloud.com'，说明已经上传过 COS，直接使用
+      let persistentImageUrl = workResourceUrl;
+      const isAlreadyUploaded = workResourceUrl.includes('myqcloud.com');
+      
+      if (!isAlreadyUploaded) {
+        // 还未上传到 COS，需要先上传
+        console.log('🔄 开始上传作品资源到COS:', workResourceUrl);
+        
+        const uploadResult = await imageUploadService.uploadImageToCOS(
+          workResourceUrl,
+          'public_works',
+          activeWork.album_id
+        );
+
+        if (!uploadResult.success || !uploadResult.cosUrl) {
+          throw new Error(uploadResult.error || '上传作品资源到COS失败');
+        }
+
+        persistentImageUrl = uploadResult.cosUrl;
+        console.log('✅ 作品资源已上传到COS:', persistentImageUrl);
+      } else {
+        console.log('✅ 作品资源已是 COS 持久化 URL，直接使用:', persistentImageUrl);
+      }
+
+      // 2. 如果刚刚上传了新的 COS URL，更新 user_work 中的 result_image 为持久化的 image_url
+      if (!isAlreadyUploaded) {
+        const resultData = activeWork.result_data || [];
+        if (resultData.length > 0 && resultData[0].result_image) {
+          const updatedResultData = resultData.map((item, index) => {
+            if (index === 0 && item.result_image === workResourceUrl) {
+              return {
+                ...item,
+                result_image: persistentImageUrl,
+              };
+            }
+            return item;
+          });
+
+          const updateResult = await userWorkService.updateWork(activeWork._id, {
+            result_data: updatedResultData,
+          });
+
+          if (updateResult.success) {
+            console.log('✅ 已更新 user_work 中的 result_image 为持久化URL');
+            // 更新本地状态
+            const updatedWork: UserWorkModel = {
+              ...activeWork,
+              result_data: updatedResultData,
+            };
+            dispatch(updateWorkItem(updatedWork));
+          } else {
+            console.warn('⚠️ 更新 user_work 失败:', updateResult.error);
+            // 继续执行，不影响后续流程
+          }
+        }
+      }
+
+      // 3. 调用 createPublicWork 云函数，传入持久化的 image_url
+      const response = await functionClient.post('/createPublicWork', {
+        data: {
+          workId: activeWork._id,
+          workResourceUrl: persistentImageUrl, // 使用持久化的 COS URL
+        }
+      }, {
+        timeout: 60000, // 60秒超时
+      });
+
+      const responseData = response.data;
+      
+      // 处理响应数据
+      let workId: string | null = null;
+      if (responseData.code === 200 && responseData.data?.workId) {
+        workId = responseData.data.workId;
+      } else if (responseData.data?.workId) {
+        workId = responseData.data.workId;
+      }
+
+      if (!workId) {
+        throw new Error('云函数返回数据格式错误');
+      }
+
+      // 生成新的分享链接
+      const shareUrl = `https://faceglow.top/share?workId=${workId}`;
+      return shareUrl;
+    } catch (error: unknown) {
+      console.error('创建公开作品失败:', error);
+      const errorMessage = (error as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message 
+        || (error as { message?: string })?.message 
+        || '创建分享链接失败，请稍后重试';
+      throw new Error(errorMessage);
+    } finally {
+      setIsCreatingPublicWork(false);
+    }
+  };
+
+  // 生成分享文案（兼容旧版本，但实际不再使用）
+  const getShareText = () => {
+    if (!activeWork) return '';
+    const workResourceUrl = getWorkResourceUrl();
+    const encodedUrl = encodeURIComponent(workResourceUrl);
+    const shareUrl = `https://faceglow.top/share?workurl=${encodedUrl}`;
+    return `我在美颜换换创作了【${activeWork.activity_title}】，邀请你来装作同款！ ${shareUrl}`;
+  };
+
   const handleSharePress = () => {
     const currentResultImage = activeWork?.result_data?.[0]?.result_image;
-    if (currentResultImage) {
-      setShareImageUrl(currentResultImage);
-      setShowShareModal(true);
-    }
+    if (!currentResultImage) return;
+    
+    // 显示 ShareModal 而不是直接调用 Share.share()
+    setShowShareModal(true);
   };
 
   const handleRefreshTask = useCallback(() => {
       console.log('[Preview] 主动触发 handleRefreshTask'); // LOG
       try {
           let targetTaskId = activeWork?.taskId;
-          if (!targetTaskId && activeWork?.ext_data) {
+          let taskType: TaskType | null = null;
+          
+          if (activeWork?.ext_data) {
               try {
-                  const ext = JSON.parse(activeWork.ext_data);
-                  targetTaskId = ext.task_id;
-              } catch(e) {}
+                  const ext = JSON.parse(activeWork.ext_data) as Record<string, unknown>;
+                  if (!targetTaskId && ext.task_id) {
+                      targetTaskId = ext.task_id as string;
+                  }
+                  if (ext.task_type && typeof ext.task_type === 'string') {
+                      taskType = ext.task_type as TaskType;
+                  }
+              } catch(e) {
+                  console.warn('Failed to parse ext_data:', e);
+              }
           }
 
-          if (activeWork && targetTaskId) {
+          if (activeWork && targetTaskId && taskType) {
                const task: AsyncTask = {
                    taskId: targetTaskId,
                    workId: activeWork._id!,
+                   taskType: taskType,
                    status: TaskStatus.PENDING,
                    activityTitle: activeWork.activity_title || 'Task',
                    startTime: Date.now(),
                    coverImage: activeWork.activity_image
                };
                dispatch(pollAsyncTask(task));
+          } else {
+              console.warn('[Preview] 无法创建 AsyncTask: 缺少 taskId 或 taskType');
           }
       } catch (e) {
           console.error('Failed to parse ext_data for refresh', e);
@@ -1065,25 +1235,191 @@ const UserWorkPreviewScreen: React.FC = () => {
     });
   }, [allAlbums, navigation]);
 
-  const getShareOptions = () => [
-    {
-      id: 'save',
-      icon: '💾',
-      iconName: 'download',
-      iconColor: '#4CAF50', 
-      label: '保存到相册',
-      onPress: async () => {
-        const lower = shareImageUrl.toLowerCase();
-        const isVideo = lower.endsWith('.mp4') || lower.includes('.mp4?');
-        const result = isVideo
-          ? await shareService.saveVideoToAlbum(shareImageUrl)
-          : await shareService.saveImageToAlbum(shareImageUrl);
-        if (result.success) {
-          showSuccessToast(isVideo ? '视频已保存到相册' : '图片已保存到相册');
-        }
+  const getShareOptions = () => {
+    const options = [
+      {
+        id: 'copy-link',
+        iconName: 'weixin',
+        iconColor: '#1AAD19',
+        label: '分享至微信',
+        onPress: async () => {
+          try {
+            if (!activeWork || !activeWork._id) {
+              setShareDialogTitle('😔 获取失败');
+              setShareDialogMessage('暂时无法获取作品信息，请稍后再试');
+              setShowShareDialog(true);
+              return;
+            }
+
+            // 创建公开作品并获取分享链接
+            const shareUrl = await createPublicWorkAndGetShareUrl();
+            
+            if (!shareUrl) {
+              setShareDialogTitle('😔 分享失败');
+              setShareDialogMessage('暂时无法生成分享链接，请检查网络后重试');
+              setShowShareDialog(true);
+              return;
+            }
+
+            // 生成分享文案
+            const shareText = `我在美颜换换创作了【${activeWork.activity_title}】，邀请你来装作同款！ ${shareUrl}`;
+            
+            // 复制到剪贴板
+            await Clipboard.setString(shareText);
+            
+            // 显示 Dialog 提示
+            setShareDialogTitle('🎉 分享链接已复制');
+            setShareDialogMessage('分享链接已成功复制到剪贴板！\n点击下方按钮即可打开微信进行分享');
+            setShowShareDialog(true);
+          } catch (error) {
+            console.error('复制链接失败:', error);
+            const errorMessage = error instanceof Error ? error.message : '分享失败，请稍后重试';
+            setShareDialogTitle('😔 分享失败');
+            setShareDialogMessage(`${errorMessage}\n\n请检查网络连接后重试`);
+            setShowShareDialog(true);
+          }
+        },
       },
-    },
-  ];
+      {
+        id: 'share-to-social',
+        iconName: 'share-alt',
+        iconColor: '#FF6B6B',
+        label: '转发图片',
+        onPress: async () => {
+          try {
+            // 获取当前作品图片URL
+            const imageUrl = getWorkResourceUrl();
+            if (!imageUrl) {
+              Alert.alert('错误', '无法获取作品图片');
+              return;
+            }
+            
+            let shareUrl = imageUrl;
+            
+            // iOS 需要先下载图片到本地才能分享
+            // Android 也需要下载添加水印
+            if (Platform.OS === 'ios' || Platform.OS === 'android') {
+              try {
+                // 安全导入 RNFetchBlob
+                const RNFetchBlob = require('rn-fetch-blob').default;
+                
+                // 下载图片到临时目录
+                const timestamp = Date.now();
+                const cacheDir = RNFetchBlob.fs.dirs.CacheDir;
+                const tempFilePath = `${cacheDir}/share_${timestamp}.png`;
+                
+                console.log('📥 [Share] 开始下载图片到本地:', imageUrl);
+                const response = await RNFetchBlob.config({
+                  path: tempFilePath,
+                }).fetch('GET', imageUrl);
+                
+                const statusCode = response.info().status;
+                if (statusCode !== 200) {
+                  // 清理失败的文件
+                  try {
+                    const exists = await RNFetchBlob.fs.exists(tempFilePath);
+                    if (exists) {
+                      await RNFetchBlob.fs.unlink(tempFilePath);
+                    }
+                  } catch (cleanupError) {
+                    console.warn('清理失败文件时出错:', cleanupError);
+                  }
+                  throw new Error(`下载失败，状态码: ${statusCode}`);
+                }
+                
+                console.log('✅ [Share] 图片下载成功');
+                
+                // 添加水印
+                let finalImagePath = tempFilePath;
+                try {
+                  const { addWatermarkToImage } = require('../utils/watermarkUtils');
+                  console.log('🎨 [Share] 开始为分享图片添加水印...');
+                  finalImagePath = await addWatermarkToImage(tempFilePath);
+                  
+                  // 如果生成了新的水印图片，清理原临时文件
+                  if (finalImagePath !== tempFilePath) {
+                    setTimeout(async () => {
+                      try {
+                        const exists = await RNFetchBlob.fs.exists(tempFilePath);
+                        if (exists) {
+                          await RNFetchBlob.fs.unlink(tempFilePath);
+                          console.log('🗑️ [Share] 原临时文件已清理');
+                        }
+                      } catch (cleanupError) {
+                        console.warn('清理原临时文件失败:', cleanupError);
+                      }
+                    }, 1000);
+                  }
+                } catch (watermarkError) {
+                  console.warn('⚠️ [Share] 添加水印失败，使用原图:', watermarkError);
+                  // 如果添加水印失败，继续使用原图
+                }
+                
+                // iOS 需要使用 file:// 前缀，Android 直接使用路径
+                shareUrl = Platform.OS === 'ios' ? `file://${finalImagePath}` : finalImagePath;
+                console.log('✅ [Share] 带水印图片准备完成，本地路径:', shareUrl);
+                
+                // 延迟清理临时文件（分享完成后）
+                setTimeout(async () => {
+                  try {
+                    const exists = await RNFetchBlob.fs.exists(finalImagePath);
+                    if (exists) {
+                      await RNFetchBlob.fs.unlink(finalImagePath);
+                      console.log('🗑️ [Share] 临时文件已清理');
+                    }
+                  } catch (cleanupError) {
+                    console.warn('清理临时文件失败:', cleanupError);
+                  }
+                }, 10000); // 10秒后清理，确保分享完成
+              } catch (downloadError) {
+                console.error('❌ [Share] 下载图片失败:', downloadError);
+                // 如果下载失败，尝试直接使用 URL（可能在某些情况下仍然有效）
+                console.warn('⚠️ [Share] 尝试直接使用远程 URL 分享');
+              }
+            }
+            
+            // 调用 Share.share() 分享图片
+            // 系统会自动显示支持图片分享的应用（包括微信和小红书）
+            const result = await Share.share({
+              url: shareUrl,
+              message: Platform.OS === 'android' ? undefined : '', // Android 不需要 message
+            });
+            
+            if (result.action === Share.sharedAction) {
+              showSuccessToast('分享成功');
+            } else if (result.action === Share.dismissedAction) {
+              // 用户取消分享，不显示提示
+            }
+          } catch (error) {
+            console.error('分享失败:', error);
+            Alert.alert('分享失败', '请稍后重试');
+          }
+        },
+      },
+      {
+        id: 'save',
+        icon: '💾',
+        iconName: 'download',
+        iconColor: '#4CAF50', 
+        label: '保存到相册',
+        onPress: async () => {
+          const currentResultImage = activeWork?.result_data?.[0]?.result_image;
+          if (!currentResultImage) return;
+          
+          const lower = currentResultImage.toLowerCase();
+          const isVideo = lower.endsWith('.mp4') || lower.includes('.mp4?');
+          const result = isVideo
+            ? await shareService.saveVideoToAlbum(currentResultImage)
+            : await shareService.saveImageToAlbum(currentResultImage);
+          if (result.success) {
+            showSuccessToast(isVideo ? '视频已保存到相册' : '图片已保存到相册');
+          }
+        },
+      },
+    ];
+    
+    return options;
+  };
 
   const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (viewableItems.length > 0 && viewableItems[0].index !== null) {
@@ -1203,6 +1539,38 @@ const UserWorkPreviewScreen: React.FC = () => {
         onClose={() => setShowShareModal(false)}
         options={getShareOptions()}
         title="分享作品"
+      />
+
+      <Dialog
+        visible={showShareDialog}
+        title={shareDialogTitle}
+        message={shareDialogMessage}
+        confirmText="打开微信"
+        cancelText="稍后"
+        loading={isCreatingPublicWork}
+        onConfirm={async () => {
+          setShowShareDialog(false);
+          try {
+            // 尝试打开微信
+            const weixinUrl = 'weixin://';
+            const canOpen = await Linking.canOpenURL(weixinUrl);
+            if (canOpen) {
+              await Linking.openURL(weixinUrl);
+            } else {
+              setShareDialogTitle('📱 未检测到微信');
+              setShareDialogMessage('未检测到微信应用，请先安装微信后再试');
+              setShowShareDialog(true);
+            }
+          } catch (error) {
+            console.error('打开微信失败:', error);
+            setShareDialogTitle('😔 打开失败');
+            setShareDialogMessage('暂时无法打开微信，请确保已安装微信应用');
+            setShowShareDialog(true);
+          }
+        }}
+        onCancel={() => {
+          setShowShareDialog(false);
+        }}
       />
     </View>
   );

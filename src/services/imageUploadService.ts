@@ -136,9 +136,37 @@ class ImageUploadService {
       
       // 1. 下载图片到临时文件
       const tempFilePath = await this.downloadImageToTemp(imageUrl);
+      let finalImagePath = tempFilePath;
       
       try {
-        // 2. 生成COS文件名（包含 album_id，强制使用 PNG 格式）
+        // 2. 添加水印
+        try {
+          const { addWatermarkToImage } = require('../utils/watermarkUtils');
+          console.log('🎨 [Upload] 开始为图片添加水印...');
+          finalImagePath = await addWatermarkToImage(tempFilePath);
+          
+          // 如果生成了新的水印图片，清理原临时文件
+          if (finalImagePath !== tempFilePath) {
+            const RNFS = require('react-native-fs').default;
+            setTimeout(async () => {
+              try {
+                const exists = await RNFS.exists(tempFilePath);
+                if (exists) {
+                  await RNFS.unlink(tempFilePath);
+                  console.log('🗑️ [Upload] 原临时文件已清理');
+                }
+              } catch (cleanupError) {
+                console.warn('清理原临时文件失败:', cleanupError);
+              }
+            }, 1000);
+          }
+        } catch (watermarkError) {
+          console.warn('⚠️ [Upload] 添加水印失败，使用原图:', watermarkError);
+          // 如果添加水印失败，继续使用原图
+          finalImagePath = tempFilePath;
+        }
+        
+        // 3. 生成COS文件名（包含 album_id，强制使用 PNG 格式）
         const timestamp = Date.now();
         const randomStr = Math.random().toString(36).substring(2, 15);
         // 强制使用 PNG 格式
@@ -146,9 +174,9 @@ class ImageUploadService {
           ? `work_${albumId}_${timestamp}_${randomStr}.png`
           : `work_${timestamp}_${randomStr}.png`;
         
-        // 3. 上传到COS
+        // 4. 上传到COS
         console.log('📤 上传到COS，文件夹:', folder, '文件名:', cosFileName);
-        const uploadResult = await cosService.uploadFile(tempFilePath, cosFileName, folder);
+        const uploadResult = await cosService.uploadFile(finalImagePath, cosFileName, folder);
         
         if (uploadResult.success && uploadResult.url) {
           console.log('✅ 图片上传到COS成功:', uploadResult.url);
@@ -184,15 +212,25 @@ class ImageUploadService {
           throw new Error(uploadResult.error || '上传到COS失败');
         }
       } finally {
-        // 4. 清理临时文件
+        // 5. 清理临时文件（包括水印文件）
         try {
+          const RNFS = require('react-native-fs').default;
+          // 清理水印文件（如果与原文件不同）
+          if (finalImagePath !== tempFilePath) {
+            const exists = await RNFS.exists(finalImagePath);
+            if (exists) {
+              await RNFS.unlink(finalImagePath);
+              console.log('🗑️ [Upload] 水印临时文件已清理:', finalImagePath);
+            }
+          }
+          // 如果原文件还存在（添加水印失败的情况），也清理
           const exists = await RNFS.exists(tempFilePath);
           if (exists) {
             await RNFS.unlink(tempFilePath);
-            console.log('🗑️ 临时文件已清理:', tempFilePath);
+            console.log('🗑️ [Upload] 临时文件已清理:', tempFilePath);
           }
         } catch (cleanupError) {
-          console.warn('⚠️ 清理临时文件失败:', cleanupError);
+          console.warn('⚠️ [Upload] 清理临时文件失败:', cleanupError);
         }
       }
     } catch (error: any) {

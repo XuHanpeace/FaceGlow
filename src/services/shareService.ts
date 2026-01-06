@@ -167,11 +167,13 @@ class ShareService {
   }
 
   /**
-   * 为图片添加水印
+   * 为图片添加水印（内部方法，使用统一的工具函数）
    * @param imagePath 本地图片路径
    * @returns Promise<string> 返回带水印的图片路径
    */
   private async addWatermarkToImage(imagePath: string): Promise<string> {
+    const { addWatermarkToImage: addWatermark } = require('../utils/watermarkUtils');
+    return addWatermark(imagePath);
     try {
       if (!ImageMarker || !Position || !ImageFormat || !TextBackgroundType) {
         console.warn('⚠️ [Watermark] react-native-image-marker不可用，跳过水印');

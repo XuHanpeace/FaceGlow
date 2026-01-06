@@ -441,7 +441,7 @@ const BeforeCreationScreen: React.FC = () => {
   // 提取自拍URL数组，使用useMemo稳定引用
   const selfieUrls = useMemo(() => {
     return selfies.map(s => s.url);
-  }, [selfies.length, selfies[0]?.url, selfies[1]?.url]);
+  }, [selfies]);
 
   // 从存储中恢复自定义提示词
   const getStoredCustomPrompt = useCallback((albumId: string): string => {
@@ -483,17 +483,19 @@ const BeforeCreationScreen: React.FC = () => {
     if (albumRecord.enable_custom_prompt === true) {
       // 优先使用本地存储的值
       const storedPrompt = getStoredCustomPrompt(albumRecord.album_id);
-      if (storedPrompt) {
-        setCustomPrompt(storedPrompt);
-      } else {
-        // 如果没有本地存储的值，使用相册默认值
-        const newPrompt = typeof albumRecord.custom_prompt === 'string' ? albumRecord.custom_prompt : '';
-        setCustomPrompt(newPrompt);
-      }
+      const targetPrompt = storedPrompt || (typeof albumRecord.custom_prompt === 'string' ? albumRecord.custom_prompt : '');
+      
+      setCustomPrompt(prev => {
+        if (prev === targetPrompt) return prev;
+        return targetPrompt;
+      });
     } else {
-      setCustomPrompt('');
+      setCustomPrompt(prev => {
+        if (prev === '') return prev;
+        return '';
+      });
     }
-  }, [activeAlbumIndex, albumsWithCurrent.length, getStoredCustomPrompt]);
+  }, [activeAlbumIndex, albumsWithCurrent, getStoredCustomPrompt]);
 
   // 监听 selectedSelfies 变化并保存到存储
   useEffect(() => {
@@ -537,8 +539,13 @@ const BeforeCreationScreen: React.FC = () => {
       setSelectedSelfies(prev => {
         // 如果之前是单人模式，需要扩展为多人模式，保留第一张自拍
         if (prev.length === 1 && prev[0]) {
-          return [prev[0], newSelfies[1]];
+          const result = [prev[0], newSelfies[1]];
+          // Check if result is different from prev
+          if (prev.length === result.length && prev[0] === result[0] && prev[1] === result[1]) return prev;
+          return result;
         }
+        // Check if newSelfies is different from prev
+        if (prev.length === newSelfies.length && prev[0] === newSelfies[0] && prev[1] === newSelfies[1]) return prev;
         return newSelfies;
       });
     } else {
@@ -547,12 +554,15 @@ const BeforeCreationScreen: React.FC = () => {
       setSelectedSelfies(prev => {
         // 如果之前是多人模式，保留第一张自拍
         if (prev.length >= 1 && prev[0]) {
-          return [prev[0]];
+          const result = [prev[0]];
+          if (prev.length === result.length && prev[0] === result[0]) return prev;
+          return result;
         }
+        if (prev.length === newSelfies.length && prev[0] === newSelfies[0]) return prev;
         return newSelfies;
       });
     }
-  }, [selfieUrls, activeAlbumIndex, albumsWithCurrent.length]);
+  }, [selfieUrls, activeAlbumIndex, albumsWithCurrent]);
 
   // 页面加载时上报埋点
   useEffect(() => {

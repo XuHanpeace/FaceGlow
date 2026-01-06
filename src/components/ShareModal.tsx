@@ -14,11 +14,11 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 interface ShareOption {
   id: string;
-  icon: string;
+  icon?: string; // 可选：emoji 图标
   iconName?: string; // FontAwesome 图标名称
   iconColor?: string; // 图标颜色
   label: string;
-  onPress: () => void;
+  onPress: () => void | Promise<void>; // 支持异步操作
 }
 
 interface ShareModalProps {
@@ -70,12 +70,18 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     }
   }, [visible]);
 
-  const handleOptionPress = (option: ShareOption) => {
-    option.onPress();
-    // 延迟关闭，让用户看到点击反馈
-    setTimeout(() => {
+  const handleOptionPress = async (option: ShareOption) => {
+    try {
+      // 先关闭模态框，避免与原生分享面板冲突
       onClose();
-    }, 200);
+      // 等待一小段时间确保模态框关闭动画完成
+      await new Promise(resolve => setTimeout(resolve, 100));
+      // 执行分享操作
+      await option.onPress();
+    } catch (error) {
+      console.error('分享操作失败:', error);
+      // 如果出错，模态框已经关闭，不需要额外处理
+    }
   };
 
   return (

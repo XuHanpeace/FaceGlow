@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   Alert,
   ActivityIndicator,
 } from 'react-native';
@@ -57,20 +56,20 @@ const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress, onDelete, ca
       ]
     );
   };
-
-  // 解析 ext_data
-  const getExtData = () => {
-    try {
-      if (work.ext_data) {
-        return JSON.parse(work.ext_data);
-      }
-    } catch (e) {
-      console.error('Failed to parse ext_data', e);
+  
+// 解析 ext_data
+const getExtData = () => {
+  try {
+    if (work.ext_data) {
+      return JSON.parse(work.ext_data);
     }
-    return {};
-  };
+  } catch (e) {
+    console.error('Failed to parse ext_data', e);
+  }
+  return {};
+};
 
-  const extData = getExtData();
+const extData = getExtData();
   // 优先使用顶层 taskStatus，兼容旧数据 ext_data.task_status
   const taskStatus = work.taskStatus || extData.task_status;
   // 增强 selfieUrl 获取逻辑：优先 ext_data，其次尝试取 result_data 中的 template_image (原图)
@@ -131,7 +130,6 @@ const UserWorkCard: React.FC<UserWorkCardProps> = ({ work, onPress, onDelete, ca
   const coverImage = getCoverImage();
   const videoUrl = getVideoUrl();
   const isVideoWork = !!videoUrl;
-  
   // 视频加载失败状态
   const [videoFailed, setVideoFailed] = React.useState(false);
   
