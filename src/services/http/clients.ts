@@ -23,7 +23,8 @@ const auth = {
     return result.success;
   },
   onAuthLost: () => {
-    getLoginPromptService().showManually('authLost');
+    // 不再为 token 刷新失败自动显示登录提示，允许匿名用户继续使用应用（符合 App Store 审核指南 5.1.1）
+    // getLoginPromptService().showManually('authLost');
   },
 };
 
@@ -32,8 +33,9 @@ export const dbClient: AxiosInstance = createHttpClient({
   timeout: CLOUDBASE_CONFIG.DATABASE_API.TIMEOUT,
   auth,
 });
+// 不再为匿名用户自动显示登录提示，允许匿名用户使用应用（符合 App Store 审核指南 5.1.1）
 attachAutoUidInterceptor(dbClient, () => authService.getCurrentUserId(), () => {
-  getLoginPromptService().showManually('anonymous');
+  // getLoginPromptService().showManually('anonymous');
 });
 
 export const functionClient: AxiosInstance = createHttpClient({
@@ -41,8 +43,9 @@ export const functionClient: AxiosInstance = createHttpClient({
   timeout: CLOUDBASE_CONFIG.API.TIMEOUT,
   auth,
 });
+// 不再为匿名用户自动显示登录提示，允许匿名用户使用应用（符合 App Store 审核指南 5.1.1）
 attachAutoUidInterceptor(functionClient, () => authService.getCurrentUserId(), () => {
-  getLoginPromptService().showManually('anonymous');
+  // getLoginPromptService().showManually('anonymous');
 });
 
 export const authClient: AxiosInstance = createHttpClient({

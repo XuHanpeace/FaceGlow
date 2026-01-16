@@ -108,33 +108,41 @@ const SelfieGuideScreen: React.FC = () => {
   };
 
   const handleChangePhoto = async () => {
-    // 检查是否是真实用户
-    const authResult = await authService.requireRealUser();
-    
-    if (!authResult.success) {
-      if (authResult.error?.code === 'ANONYMOUS_USER' || 
-          authResult.error?.code === 'NOT_LOGGED_IN') {
-            navigation.navigate('NewAuth') 
+    try {
+      // 检查登录态，"选择自拍"需要登录
+      const authResult = await authService.requireRealUser();
+      
+      if (!authResult.success) {
+        // 未登录时直接跳转到登录页
+        navigation.navigate('NewAuth');
+        return;
       }
-      return;
+      
+      setShowModal(true);
+    } catch (error) {
+      console.error('检查登录态失败:', error);
+      // 发生异常时也跳转到登录页
+      navigation.navigate('NewAuth');
     }
-    
-    setShowModal(true);
   };
 
   const handleContinuePress = async () => {
-    // 检查是否是真实用户
-    const authResult = await authService.requireRealUser();
-    
-    if (!authResult.success) {
-      if (authResult.error?.code === 'ANONYMOUS_USER' || 
-          authResult.error?.code === 'NOT_LOGGED_IN') {
-            navigation.navigate('NewAuth') 
+    try {
+      // 检查登录态，"选择自拍"需要登录
+      const authResult = await authService.requireRealUser();
+      
+      if (!authResult.success) {
+        // 未登录时直接跳转到登录页
+        navigation.navigate('NewAuth');
+        return;
       }
-      return;
+      
+      setShowModal(true);
+    } catch (error) {
+      console.error('检查登录态失败:', error);
+      // 发生异常时也跳转到登录页
+      navigation.navigate('NewAuth');
     }
-    
-    setShowModal(true);
   };
 
   const handleModalClose = () => {

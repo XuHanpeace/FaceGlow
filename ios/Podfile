@@ -34,7 +34,10 @@ target 'MyCrossPlatformApp' do
   post_install do |installer|
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
-        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '18.6' # 确保版本号与你项目的一致
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.1' # 匹配项目设置
+        
+        # 移除模拟器的 arm64 排除设置，让 Xcode 自动选择正确的架构
+        config.build_settings.delete('EXCLUDED_ARCHS[sdk=iphonesimulator*]')
         
         # 生成dSYM文件配置
         config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf-with-dsym'
@@ -45,6 +48,22 @@ target 'MyCrossPlatformApp' do
         if target.name == 'React-jsinspector' || target.name.include?('hermes')
           config.build_settings['OTHER_LDFLAGS'] ||= ['$(inherited)']
           config.build_settings['OTHER_LDFLAGS'] << '-ObjC'
+        end
+      end
+    end
+    
+    # 修复 xcconfig 文件中的 EXCLUDED_ARCHS 设置
+    installer.pods_project.build_configurations.each do |config|
+      config.build_settings.delete('EXCLUDED_ARCHS[sdk=iphonesimulator*]')
+    end
+    
+    # 直接修改所有生成的 xcconfig 文件，移除 EXCLUDED_ARCHS 设置
+    Dir.glob(File.join(installer.sandbox.root, 'Target Support Files', '**', '*.xcconfig')).each do |xcconfig_path|
+      if File.exist?(xcconfig_path)
+        xcconfig_content = File.read(xcconfig_path)
+        if xcconfig_content.include?('EXCLUDED_ARCHS[sdk=iphonesimulator*] = arm64')
+          xcconfig_content.gsub!(/^EXCLUDED_ARCHS\[sdk=iphonesimulator\*\] = arm64$/, '')
+          File.write(xcconfig_path, xcconfig_content)
         end
       end
     end

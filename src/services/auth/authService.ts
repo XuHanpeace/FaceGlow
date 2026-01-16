@@ -229,9 +229,9 @@ export class AuthService {
       };
     } catch (error: any) {
       // 检查是否是用户不存在的错误
-      const errorCode = error.error_code;
-      const errorType = error.error;
-      const errorMessage = error.message || error.error_description || '登录失败';
+      const errorCode = error?.error_code;
+      const errorType = error?.error;
+      const errorMessage = error?.message || error?.error_description || '登录失败';
       
       // 埋点：手机号登录失败
       aegisService.reportError('fg_error_login_failed', {
@@ -391,22 +391,57 @@ export class AuthService {
         data: credentials,
       };
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : '令牌刷新失败';
-      const errorText = (() => {
-        if (typeof error === 'string') return error;
-        if (error instanceof Error) return error.message;
-        try {
-          return JSON.stringify(error);
-        } catch {
-          return String(error);
+      // 提取错误信息
+      let message = '令牌刷新失败';
+      let errorText = '';
+      
+      // 处理 AxiosError 或其他包含 response.data 的错误
+      if (error && typeof error === 'object') {
+        const anyError = error as any;
+        // 优先从 response.data 中提取错误信息
+        if (anyError.response?.data) {
+          const errorData = anyError.response.data;
+          if (typeof errorData === 'object') {
+            message = errorData.error_description || errorData.error || message;
+            errorText = JSON.stringify(errorData);
+          } else if (typeof errorData === 'string') {
+            message = errorData;
+            errorText = errorData;
+          }
+        } else if (anyError.message) {
+          message = anyError.message;
+          errorText = anyError.message;
+        } else {
+          try {
+            errorText = JSON.stringify(error);
+          } catch {
+            errorText = String(error);
+          }
         }
-      })();
+      } else if (error instanceof Error) {
+        message = error.message;
+        errorText = error.message;
+      } else if (typeof error === 'string') {
+        message = error;
+        errorText = error;
+      } else {
+        try {
+          errorText = JSON.stringify(error);
+        } catch {
+          errorText = String(error);
+        }
+      }
 
       console.log('❌ AccessToken刷新失败:', message);
 
-      // 若 refresh_token 无效（常见：并发刷新/被其它进程刷新/已失效），清理本地认证信息避免反复刷新死循环
-      if (errorText.includes('invalid_grant') || errorText.includes('invalid refresh token')) {
-        console.log('🧹 检测到 refresh_token 失效，清理本地认证信息');
+      // 若 refresh_token 无效（常见：并发刷新/被其它进程刷新/已失效），立即清理本地认证信息避免反复刷新死循环
+      const isInvalidGrant = errorText.includes('invalid_grant') || 
+                             errorText.includes('invalid refresh token') ||
+                             message.includes('invalid_grant') ||
+                             message.includes('invalid refresh token');
+      
+      if (isInvalidGrant) {
+        console.log('🧹 检测到 refresh_token 失效，立即清理本地认证信息');
         this.clearAuthCredentials();
       }
       
@@ -855,6 +890,17 @@ export class AuthService {
           return refreshResult;
         }
         console.log('❌ 刷新失败或仍未登录');
+        // 如果刷新失败且错误码是 REFRESH_ERROR（refresh_token 失效），说明 refresh_token 已失效
+        // 此时已经由 refreshAccessToken 清理了认证信息，直接返回未登录状态，不再尝试刷新
+        if (refreshResult.error?.code === 'REFRESH_ERROR') {
+          console.log('🧹 refresh_token 已失效，已清理认证信息，不再尝试刷新');
+          // 确保 refresh_token 已被清除（双重检查）
+          const remainingToken = storage.getString(STORAGE_KEYS.REFRESH_TOKEN);
+          if (remainingToken) {
+            console.log('⚠️ refresh_token 仍存在，强制清除');
+            this.clearAuthCredentials();
+          }
+        }
       } else {
         console.log('❌ 用户未登录（无 refresh_token）');
       }

@@ -63,8 +63,8 @@ export class AppLifecycleManager {
       // 更新长期认证状态
       await longTermAuthService.onAppForeground();
 
-      // 检查匿名登录并显示登录引导
-      loginPromptService.checkAnonymousOnForeground();
+      // 不再自动显示登录引导，允许匿名用户自由使用应用（符合 App Store 审核指南 5.1.1）
+      // loginPromptService.checkAnonymousOnForeground();
 
       // 同步订阅状态（RevenueCat）
       try {

@@ -501,14 +501,7 @@ const NewHomeScreen: React.FC = () => {
   };
 
   const handleAddSelfiePress = async () => {
-    const authResult = await authService.requireRealUser();
-    if (!authResult.success) {
-      if (authResult.error?.code === 'ANONYMOUS_USER' || authResult.error?.code === 'NOT_LOGGED_IN') {
-        navigation.navigate('NewAuth');
-      }
-      return;
-    }
-    // 判断是否为新用户（没有自拍）
+    // 允许匿名用户选择照片，不需要登录
     const isNewUser = !hasSelfies || selfies.length === 0;
     navigation.navigate('SelfieGuide', { isNewUser });
   };

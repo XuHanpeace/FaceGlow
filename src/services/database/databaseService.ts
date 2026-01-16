@@ -87,19 +87,21 @@ export class DatabaseService {
         return result.success;
       },
       () => {
-        const mod = require('../loginPromptService') as unknown as {
-          loginPromptService: { showManually: (reason: 'anonymous' | 'authLost') => void };
-        };
-        mod.loginPromptService.showManually('authLost');
+        // 不再为 token 刷新失败自动显示登录提示，允许匿名用户继续使用应用（符合 App Store 审核指南 5.1.1）
+        // const mod = require('../loginPromptService') as unknown as {
+        //   loginPromptService: { showManually: (reason: 'anonymous' | 'authLost') => void };
+        // };
+        // mod.loginPromptService.showManually('authLost');
       }
     );
 
-    // 请求拦截器：自动替换 data/params/url 中的 __AUTO__ 为当前 uid（缺失则弹登录引导）
+    // 请求拦截器：自动替换 data/params/url 中的 __AUTO__ 为当前 uid
+    // 不再为匿名用户自动显示登录提示，允许匿名用户使用应用（符合 App Store 审核指南 5.1.1）
     attachAutoUidInterceptor(this.axiosInstance, () => authService.getCurrentUserId(), () => {
-      const mod = require('../loginPromptService') as unknown as {
-        loginPromptService: { showManually: (reason: 'anonymous' | 'authLost') => void };
-      };
-      mod.loginPromptService.showManually('anonymous');
+      // const mod = require('../loginPromptService') as unknown as {
+      //   loginPromptService: { showManually: (reason: 'anonymous' | 'authLost') => void };
+      // };
+      // mod.loginPromptService.showManually('anonymous');
     });
 
     // 响应拦截器：统一错误处理

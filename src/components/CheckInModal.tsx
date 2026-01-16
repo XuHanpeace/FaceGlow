@@ -148,6 +148,10 @@ export const CheckInModal: React.FC<CheckInModalProps> = ({ visible, onClose }) 
       // 显示奖励弹窗
       setTimeout(() => {
         coinRewardModalRef.current?.show(rewardAmount);
+        // 奖励弹窗显示后，自动关闭签到半幅层
+        setTimeout(() => {
+          onClose();
+        }, 100);
       }, 300);
 
       console.log('✅ 签到成功，获得奖励:', rewardAmount);
@@ -191,6 +195,7 @@ export const CheckInModal: React.FC<CheckInModalProps> = ({ visible, onClose }) 
         style={[
           styles.container,
           {
+            height: SCREEN_HEIGHT < 700 ? SCREEN_HEIGHT * 0.65 : SCREEN_HEIGHT * 0.55,
             transform: [{ translateY: slideAnim }],
           },
         ]}
@@ -272,7 +277,7 @@ export const CheckInModal: React.FC<CheckInModalProps> = ({ visible, onClose }) 
                 </View>
               </View>
 
-              {/* 签到按钮 - 固定在底部 */}
+              {/* 签到按钮 - 固定在底部，不遮挡内容 */}
               <View style={styles.buttonContainer}>
                 <GradientButton
                   title={hasCheckedInToday ? '明天通知我' : isCheckingIn ? '签到中...' : '签到'}
@@ -309,7 +314,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: SCREEN_HEIGHT * 0.55, // 50%高度
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     overflow: 'hidden',
@@ -330,6 +334,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 12,
+    backgroundColor: 'transparent'
   },
   placeholder: {
     width: 32,
@@ -349,6 +354,8 @@ const styles = StyleSheet.create({
   },
   contentWrapper: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: 20,
   },
   weekStatusScrollView: {
@@ -361,8 +368,7 @@ const styles = StyleSheet.create({
   },
   rewardCenter: {
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 20,
+    marginBottom: 30,
   },
   bellContainer: {
     position: 'relative',
@@ -475,6 +481,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#131313', // 确保按钮区域有背景，不会透明
   },
   checkInButton: {
     width: '100%',

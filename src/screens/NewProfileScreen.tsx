@@ -47,7 +47,6 @@ type TabType = 'works' | 'account' | 'selfies';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_GAP = 8; // 卡片之间的固定间隔
 const CONTAINER_PADDING = 10; // 容器左右padding
-const CARD_WIDTH = (SCREEN_WIDTH - CONTAINER_PADDING * 2 - CARD_GAP) / 2; // 计算卡片宽度
 
 const NewProfileScreen: React.FC = () => {
   const navigation = useNavigation<NewProfileScreenNavigationProp>();
@@ -407,6 +406,10 @@ const NewProfileScreen: React.FC = () => {
     }, [dispatch])
   );
 
+  // 动态计算卡片宽度：使用 2 列
+  const columns = 2;
+  const cardWidth = (SCREEN_WIDTH - CONTAINER_PADDING * 2 - CARD_GAP * (columns - 1)) / columns;
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
@@ -415,14 +418,16 @@ const NewProfileScreen: React.FC = () => {
       <SafeAreaView style={{ backgroundColor: '#131313'}}/>
       <View style={styles.header}>
           <View style={styles.placeholder}>
-            {/* 签到入口 */}
-            <CheckInIcon
-              onPress={() => setShowCheckInModal(true)}
-              showRedDot={showRedDot}
-              shouldShake={shouldShake}
-              size={24}
-              iconColor="#fff"
-            />
+            {/* 签到入口 - 仅登录用户显示 */}
+            {isLoggedIn && (
+              <CheckInIcon
+                onPress={() => setShowCheckInModal(true)}
+                showRedDot={showRedDot}
+                shouldShake={shouldShake}
+                size={24}
+                iconColor="#fff"
+              />
+            )}
           </View>
           <Text style={styles.headerTitle}>简介</Text>
           <BackButton iconType="close" onPress={handleBackPress} absolute={false} />
@@ -648,7 +653,7 @@ const NewProfileScreen: React.FC = () => {
                         work={work}
                         onPress={handleWorkPress}
                         onDelete={handleWorkDelete}
-                        cardWidth={CARD_WIDTH}
+                        cardWidth={cardWidth}
                       />
                   ))}
                 </View>
@@ -783,11 +788,13 @@ const NewProfileScreen: React.FC = () => {
       <EditNameModal ref={editNameModalRef} />
       <AvatarSelectorModal ref={avatarSelectorModalRef} onSelect={handleAvatarSelect} />
 
-      {/* 签到Modal */}
-      <CheckInModal
-        visible={showCheckInModal}
-        onClose={() => setShowCheckInModal(false)}
-      />
+      {/* 签到Modal - 仅登录用户显示 */}
+      {isLoggedIn && (
+        <CheckInModal
+          visible={showCheckInModal}
+          onClose={() => setShowCheckInModal(false)}
+        />
+      )}
     </View>
   );
 };
@@ -978,7 +985,7 @@ const styles = StyleSheet.create({
   selfiesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     gap: 8,
   },
   selfieItem: {

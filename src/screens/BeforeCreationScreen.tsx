@@ -602,16 +602,14 @@ const BeforeCreationScreen: React.FC = () => {
     });
 
     try {
-      // 检查是否是真实用户
+      // 检查登录态，"一键创作"需要登录
       const authResult = await authService.requireRealUser();
       
       if (!authResult.success) {
-        if (authResult.error?.code === 'ANONYMOUS_USER' || authResult.error?.code === 'NOT_LOGGED_IN') {
-              navigation.navigate('NewAuth');
-        }
+        // 未登录时直接跳转到登录页
+        navigation.navigate('NewAuth');
         return;
       }
-
 
       // 获取当前选中的 Album 和对应的 Activity ID
       const currentAlbum = albumsWithCurrent[activeAlbumIndex];
@@ -632,16 +630,9 @@ const BeforeCreationScreen: React.FC = () => {
             reason: 'no_selfie_selected_multi',
           });
           
-          // 再次确认真实用户（防止用户登出）
-          const uploadAuthResult = await authService.requireRealUser();
-          if (uploadAuthResult.success) {
-            // 判断是否为新用户（没有自拍）
-            const isNewUser = !hasSelfies || selfies.length === 0;
-            navigation.navigate('SelfieGuide', { isNewUser });
-          } else {
-            // 如果用户未登录，先跳转到登录页面
-            navigation.navigate('NewAuth');
-          }
+          // 允许匿名用户选择照片，不需要登录
+          const isNewUser = !hasSelfies || selfies.length === 0;
+          navigation.navigate('SelfieGuide', { isNewUser });
           return;
         }
       } else {
@@ -654,16 +645,9 @@ const BeforeCreationScreen: React.FC = () => {
             reason: 'no_selfie_selected',
           });
           
-          // 再次确认真实用户（防止用户登出）
-          const uploadAuthResult = await authService.requireRealUser();
-          if (uploadAuthResult.success) {
-            // 判断是否为新用户（没有自拍）
-            const isNewUser = !hasSelfies || selfies.length === 0;
-            navigation.navigate('SelfieGuide', { isNewUser });
-          } else {
-            // 如果用户未登录，先跳转到登录页面
-            navigation.navigate('NewAuth');
-          }
+          // 允许匿名用户选择照片，不需要登录
+          const isNewUser = !hasSelfies || selfies.length === 0;
+          navigation.navigate('SelfieGuide', { isNewUser });
           return;
         }
       }
@@ -784,14 +768,13 @@ const BeforeCreationScreen: React.FC = () => {
         
         console.log('[BeforeCreation] Starting AsyncTask:', { taskType, prompt: finalPrompt });
         
-        // 尝试从 authService 直接获取当前用户信息，作为兜底
-        const currentUid = authService.getCurrentUserId();
-        const uid = currentUid || user?.uid;
-
-        if (!uid) {
-             console.error('[BeforeCreation] User UID not found in Redux or Auth Service');
-             throw new Error('用户未登录');
+        // 确保有认证态（包括匿名用户），获取 UID
+        const authData = await authService.ensureAuthenticated();
+        if (!authData.success || !authData.data?.uid) {
+          console.error('[BeforeCreation] Failed to get user UID');
+          throw new Error('无法获取用户信息');
         }
+        const uid = authData.data.uid;
 
         // 构建视频参数（视频特效使用）
         const videoParams: VideoParams = {};
@@ -914,9 +897,18 @@ const BeforeCreationScreen: React.FC = () => {
             }
           }
           // 其他错误
-          const errorMessage = error && typeof error === 'object' && 'message' in error 
-            ? (error as AsyncTaskError).message 
-            : (error instanceof Error ? error.message : String(error));
+          let errorMessage = '处理失败，请重试';
+          if (error && typeof error === 'object') {
+            if ('message' in error) {
+              errorMessage = (error as AsyncTaskError).message;
+            } else if (error instanceof Error) {
+              errorMessage = error.message;
+            }
+          } else if (error instanceof Error) {
+            errorMessage = error.message;
+          } else if (typeof error === 'string') {
+            errorMessage = error;
+          }
           throw new Error(errorMessage);
         }
 
@@ -974,7 +966,14 @@ const BeforeCreationScreen: React.FC = () => {
 
     } catch (error) {
       console.error('处理失败:', error);
-      const errorMessage = error instanceof Error ? error.message : '处理失败，请重试';
+      let errorMessage = '处理失败，请重试';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (error && typeof error === 'object' && 'message' in error) {
+        errorMessage = String((error as { message: unknown }).message);
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
       Alert.alert('错误', errorMessage);
     } finally {
       setIsFusionProcessing(false);

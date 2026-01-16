@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing, Platform } 
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
-import { useUserBalance } from '../hooks/useUser';
+import { useUserBalance, useUser } from '../hooks/useUser';
 import UserAvatar from './UserAvatar';
 import { CheckInIcon } from './CheckInIcon';
 import { useCheckInStatus } from '../hooks/useCheckInStatus';
@@ -26,6 +26,7 @@ const HomeHeader = forwardRef<HomeHeaderRef, HomeHeaderProps>((props, ref) => {
   
   // 使用用户hooks获取数据
   const { balanceFormatted } = useUserBalance();
+  const { isLoggedIn } = useUser();
   
   // 签到状态
   const { showRedDot, shouldShake } = useCheckInStatus();
@@ -73,15 +74,17 @@ const HomeHeader = forwardRef<HomeHeaderRef, HomeHeaderProps>((props, ref) => {
       {/* 左侧品牌文本（带渐变效果） */}
       <View style={styles.leftContainer}>
         <Text style={styles.brandText}>美颜换换</Text>
-        {/* 签到入口 */}
-        <CheckInIcon
-          onPress={handleCheckInPress}
-          showRedDot={showRedDot}
-          shouldShake={shouldShake}
-          size={24}
-          iconColor="#fff"
-          style={styles.checkInIcon}
-        />
+        {/* 签到入口 - 仅登录用户显示 */}
+        {isLoggedIn && (
+          <CheckInIcon
+            onPress={handleCheckInPress}
+            showRedDot={showRedDot}
+            shouldShake={shouldShake}
+            size={24}
+            iconColor="#fff"
+            style={styles.checkInIcon}
+          />
+        )}
       </View>
 
       {/* 右侧头像按钮 */}
@@ -114,11 +117,13 @@ const HomeHeader = forwardRef<HomeHeaderRef, HomeHeaderProps>((props, ref) => {
         </TouchableOpacity>
       </View>
 
-      {/* 签到Modal */}
-      <CheckInModal
-        visible={showCheckInModal}
-        onClose={() => setShowCheckInModal(false)}
-      />
+      {/* 签到Modal - 仅登录用户显示 */}
+      {isLoggedIn && (
+        <CheckInModal
+          visible={showCheckInModal}
+          onClose={() => setShowCheckInModal(false)}
+        />
+      )}
     </View>
   );
 });

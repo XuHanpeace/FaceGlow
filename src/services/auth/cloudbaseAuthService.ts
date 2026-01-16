@@ -293,16 +293,18 @@ export class CloudBaseAuthService {
       return response.data;
     } catch (error: any) {
       console.error('❌ Token刷新失败:', error.response?.data || error.message);
-          try {
-            const mod = require('../loginPromptService') as unknown as {
-              loginPromptService: { showForAuthLost: () => void };
-            };
-            mod.loginPromptService.showForAuthLost();
-          } catch (e) {
-            // ignore
-          }
+          // 不再为 token 刷新失败自动显示登录提示，允许匿名用户继续使用应用（符合 App Store 审核指南 5.1.1）
+          // try {
+          //   const mod = require('../loginPromptService') as unknown as {
+          //     loginPromptService: { showForAuthLost: () => void };
+          //   };
+          //   mod.loginPromptService.showForAuthLost();
+          // } catch (e) {
+          //   // ignore
+          // }
 
-        throw new Error(error.response.data.error_description || error.response.data.error || '令牌刷新失败');
+        const errorMessage = error.response?.data?.error_description || error.response?.data?.error || error.message || '令牌刷新失败';
+        throw new Error(errorMessage);
     }
   }
 

@@ -21,7 +21,8 @@ export function attachInterceptorsToAxiosInstance(instance: AxiosInstance): void
       return result.success;
     },
     () => {
-    getLoginPromptService().showManually('authLost');
+      // 不再为 token 刷新失败自动显示登录提示，允许匿名用户继续使用应用（符合 App Store 审核指南 5.1.1）
+      // getLoginPromptService().showManually('authLost');
     }
   );
 }
