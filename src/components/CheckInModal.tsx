@@ -148,10 +148,6 @@ export const CheckInModal: React.FC<CheckInModalProps> = ({ visible, onClose }) 
       // 显示奖励弹窗
       setTimeout(() => {
         coinRewardModalRef.current?.show(rewardAmount);
-        // 奖励弹窗显示后，自动关闭签到半幅层
-        setTimeout(() => {
-          onClose();
-        }, 100);
       }, 300);
 
       console.log('✅ 签到成功，获得奖励:', rewardAmount);
@@ -299,7 +295,10 @@ export const CheckInModal: React.FC<CheckInModalProps> = ({ visible, onClose }) 
       </Animated.View>
 
       {/* 奖励弹窗 */}
-      <CoinRewardModal ref={coinRewardModalRef} onClose={() => {}} />
+      <CoinRewardModal ref={coinRewardModalRef} onClose={() => {
+        // 奖励弹窗关闭后，自动关闭签到半幅层
+        onClose();
+      }} />
     </Modal>
   );
 };
