@@ -24,6 +24,8 @@ interface DialogProps {
   onCancel?: () => void;
   loading?: boolean;
   showCancel?: boolean;
+  /** 是否允许在 loading 状态下仍然执行取消（默认不允许） */
+  allowCancelWhileLoading?: boolean;
 }
 
 /**
@@ -40,6 +42,7 @@ const Dialog: React.FC<DialogProps> = ({
   onCancel,
   loading = false,
   showCancel = true,
+  allowCancelWhileLoading = false,
 }) => {
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -90,7 +93,7 @@ const Dialog: React.FC<DialogProps> = ({
   };
 
   const handleCancel = () => {
-    if (!loading && onCancel) {
+    if ((!loading || allowCancelWhileLoading) && onCancel) {
       onCancel();
     }
   };
@@ -106,7 +109,7 @@ const Dialog: React.FC<DialogProps> = ({
       animationType="none"
       onRequestClose={handleCancel}
     >
-      <TouchableWithoutFeedback onPress={loading ? undefined : handleCancel}>
+      <TouchableWithoutFeedback onPress={loading && !allowCancelWhileLoading ? undefined : handleCancel}>
         <View style={styles.mask}>
           <Animated.View
             style={[
@@ -142,7 +145,7 @@ const Dialog: React.FC<DialogProps> = ({
                   <TouchableOpacity
                     style={styles.cancelButton}
                     onPress={handleCancel}
-                    disabled={loading}
+                    disabled={loading && !allowCancelWhileLoading}
                     activeOpacity={0.7}
                   >
                     <Text style={styles.cancelButtonText}>{cancelText}</Text>

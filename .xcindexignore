@@ -1,0 +1,6 @@
+# 排除不需要索引的目录
+node_modules/
+ios/Pods/
+build/
+.git/
+*.xcarchive

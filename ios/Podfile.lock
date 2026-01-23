@@ -26,15 +26,15 @@ PODS:
   - PurchasesHybridCommonUI (17.17.0):
     - PurchasesHybridCommon (= 17.17.0)
     - RevenueCatUI (= 5.47.0)
-  - QCloudCore (6.5.1):
-    - QCloudCore/Default (= 6.5.1)
-  - QCloudCore/Default (6.5.1):
-    - QCloudTrack/Beacon (= 6.5.1)
-  - QCloudCOSXML (6.5.1):
-    - QCloudCOSXML/Default (= 6.5.1)
-  - QCloudCOSXML/Default (6.5.1):
-    - QCloudCore (= 6.5.1)
-  - QCloudTrack/Beacon (6.5.1)
+  - QCloudCore (6.5.3):
+    - QCloudCore/Default (= 6.5.3)
+  - QCloudCore/Default (6.5.3):
+    - QCloudTrack/Beacon (= 6.5.3)
+  - QCloudCOSXML (6.5.3):
+    - QCloudCOSXML/Default (= 6.5.3)
+  - QCloudCOSXML/Default (6.5.3):
+    - QCloudCore (= 6.5.3)
+  - QCloudTrack/Beacon (6.5.3)
   - RCT-Folly (2024.01.01.00):
     - boost
     - DoubleConversion
@@ -2269,9 +2269,9 @@ SPEC CHECKSUMS:
   libwebp: 02b23773aedb6ff1fd38cec7a77b81414c6842a8
   PurchasesHybridCommon: fc38c0596d63ad06a3acab2937496fbf77f8af07
   PurchasesHybridCommonUI: 015ce303055d9542a6da00905c14e445a9b88f9a
-  QCloudCore: 6f8c67b96448472d2c6a92b9cfe1bdb5abbb1798
-  QCloudCOSXML: 92f50a787b4e8d9a7cb6ea8e626775256b4840a7
-  QCloudTrack: 20b79388365b4c8ed150019c82a56f1569f237f8
+  QCloudCore: 463b8c0c99fdc48a1c9cc637ee5466a1e5cf0c6e
+  QCloudCOSXML: b092a768b1f290235ca99205123d12e5e8f389b4
+  QCloudTrack: 4bafb980038f59b78270acb260bf5b093a6d23db
   RCT-Folly: bf5c0376ffe4dd2cf438dcf86db385df9fdce648
   RCTDeprecation: 04da22e2344dd020d050964180d782db0852bc5a
   RCTRequired: 6bf323268981384245c672a0273617cf56f9d14c
@@ -2356,6 +2356,6 @@ SPEC CHECKSUMS:
   SSZipArchive: fe6a26b2a54d5a0890f2567b5cc6de5caa600aef
   Yoga: 15229115f886a6e594381100b299d3aa0238078a
 
-PODFILE CHECKSUM: c0ce4a52dec69f60f1c4c199431b01f7e9d0cafe
+PODFILE CHECKSUM: b1bb502aee63f771768582517d631cee0bd8c8c4
 
 COCOAPODS: 1.16.2

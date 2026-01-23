@@ -44,10 +44,17 @@ target 'MyCrossPlatformApp' do
         config.build_settings['GCC_GENERATE_DEBUGGING_SYMBOLS'] = 'YES'
         config.build_settings['STRIP_INSTALLED_PRODUCT'] = 'NO'
         
+        # 添加 -ObjC 链接标志，这对 Objective-C 类别和 QCloud SDK 很重要
+        config.build_settings['OTHER_LDFLAGS'] ||= ['$(inherited)']
+        unless config.build_settings['OTHER_LDFLAGS'].include?('-ObjC')
+          config.build_settings['OTHER_LDFLAGS'] << '-ObjC'
+        end
+        
         # 确保 Hermes 调试符号正确链接
         if target.name == 'React-jsinspector' || target.name.include?('hermes')
-          config.build_settings['OTHER_LDFLAGS'] ||= ['$(inherited)']
-          config.build_settings['OTHER_LDFLAGS'] << '-ObjC'
+          unless config.build_settings['OTHER_LDFLAGS'].include?('-ObjC')
+            config.build_settings['OTHER_LDFLAGS'] << '-ObjC'
+          end
         end
       end
     end
@@ -57,17 +64,6 @@ target 'MyCrossPlatformApp' do
       config.build_settings.delete('EXCLUDED_ARCHS[sdk=iphonesimulator*]')
     end
     
-    # 直接修改所有生成的 xcconfig 文件，移除 EXCLUDED_ARCHS 设置
-    Dir.glob(File.join(installer.sandbox.root, 'Target Support Files', '**', '*.xcconfig')).each do |xcconfig_path|
-      if File.exist?(xcconfig_path)
-        xcconfig_content = File.read(xcconfig_path)
-        if xcconfig_content.include?('EXCLUDED_ARCHS[sdk=iphonesimulator*] = arm64')
-          xcconfig_content.gsub!(/^EXCLUDED_ARCHS\[sdk=iphonesimulator\*\] = arm64$/, '')
-          File.write(xcconfig_path, xcconfig_content)
-        end
-      end
-    end
-
     # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202
     react_native_post_install(
       installer,
@@ -75,6 +71,21 @@ target 'MyCrossPlatformApp' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+    
+    # 在 react_native_post_install 之后，直接修改所有生成的 xcconfig 文件，移除 EXCLUDED_ARCHS 设置
+    # 这必须在最后执行，因为 xcconfig 文件是在 react_native_post_install 中生成的
+    Dir.glob(File.join(installer.sandbox.root, 'Target Support Files', '**', '*.xcconfig')).each do |xcconfig_path|
+      if File.exist?(xcconfig_path)
+        xcconfig_content = File.read(xcconfig_path)
+        original_content = xcconfig_content.dup
+        # 移除 EXCLUDED_ARCHS 行（包括前后可能有空行的情况）
+        xcconfig_content.gsub!(/^EXCLUDED_ARCHS\[sdk=iphonesimulator\*\] = arm64\s*$\n?/, '')
+        if xcconfig_content != original_content
+          File.write(xcconfig_path, xcconfig_content)
+          puts "✅ 已修复: #{xcconfig_path}"
+        end
+      end
+    end
     
     # 修复Hermes dSYM问题并确保调试符号链接
     installer.pods_project.targets.each do |target|
