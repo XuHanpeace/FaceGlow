@@ -127,13 +127,6 @@ function App(): JSX.Element {
         <LoginPromptManager />
         <AsyncTaskFloatBar />
         <AsyncTaskPanel />
-        {__DEV__ && (
-          <DebugEntry
-            onPress={() => {
-              navigationRef.current?.navigate('DebugTest' as never);
-            }}
-          />
-        )}
       </ModalProvider>
        <View style={styles.toastContainer} pointerEvents="box-none">
         <ToastProvider

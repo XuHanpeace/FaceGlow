@@ -28,7 +28,7 @@ import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import Dialog from '../components/Dialog';
 import { functionClient } from '../services/http/clients';
 import GradientButton from '../components/GradientButton';
-import { showSuccessToast } from '../utils/toast';
+import { showSuccessToast, showErrorToast } from '../utils/toast';
 import BackButton from '../components/BackButton';
 import LinearGradient from 'react-native-linear-gradient';
 import { UserWorkModel, TaskStatus } from '../types/model/user_works';
@@ -42,6 +42,10 @@ import FastImage from 'react-native-fast-image';
 import Video, { type VideoRef } from 'react-native-video';
 import { TaskType } from '../services/cloud/asyncTaskService';
 import { selectAllAlbums } from '../store/slices/activitySlice';
+import { setDefaultSelfie } from '../store/slices/userSlice';
+import { userDataService } from '../services/database/userDataService';
+import { fetchUserProfile } from '../store/middleware/asyncMiddleware';
+import { authService } from '../services/auth/authService';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -842,6 +846,8 @@ const UserWorkPreviewScreen: React.FC = () => {
   const [shareDialogTitle, setShareDialogTitle] = useState('');
   const [shareDialogMessage, setShareDialogMessage] = useState('');
   const [isCreatingPublicWork, setIsCreatingPublicWork] = useState(false);
+  const [showSetSelfieDialog, setShowSetSelfieDialog] = useState(false);
+  const [isSettingSelfie, setIsSettingSelfie] = useState(false);
   // 当用户在 loading 期间点“稍后”关闭弹窗时，避免后台完成后再次弹窗打扰
   const suppressShareDialogRef = useRef<boolean>(false);
   
@@ -1407,6 +1413,99 @@ const UserWorkPreviewScreen: React.FC = () => {
     });
   }, [allAlbums, navigation]);
 
+  // 处理设为自拍按钮点击
+  const handleSetAsSelfiePress = () => {
+    const currentResultImage = activeWork?.result_data?.[0]?.result_image;
+    if (!currentResultImage) return;
+    
+    // 检查是否是视频（视频不能设为自拍）
+    const isVideo = isVideoResource(currentResultImage);
+    if (isVideo) {
+      showErrorToast('视频作品不能设为自拍');
+      return;
+    }
+    
+    setShowSetSelfieDialog(true);
+  };
+
+  // 确认设为自拍
+  const handleConfirmSetAsSelfie = async () => {
+    const currentResultImage = activeWork?.result_data?.[0]?.result_image;
+    if (!currentResultImage) {
+      setShowSetSelfieDialog(false);
+      return;
+    }
+
+    try {
+      setIsSettingSelfie(true);
+      
+      // 1. 检查用户是否登录
+      const currentUserId = authService.getCurrentUserId();
+      if (!currentUserId) {
+        showErrorToast('请先登录');
+        setShowSetSelfieDialog(false);
+        setIsSettingSelfie(false);
+        return;
+      }
+
+      // 2. 上传图片到 COS（如果还不是 COS URL）
+      let selfieUrl = currentResultImage;
+      const isAlreadyUploaded = currentResultImage.includes('myqcloud.com');
+      
+      if (!isAlreadyUploaded) {
+        console.log('🔄 [SetSelfie] 图片未上传到COS，开始上传...');
+        const uploadResult = await imageUploadService.uploadImageToCOS(
+          currentResultImage,
+          'selfies',
+          `selfie_${Date.now()}`
+        );
+
+        if (!uploadResult.success || !uploadResult.cosUrl) {
+          throw new Error(uploadResult.error || '上传图片失败');
+        }
+
+        selfieUrl = uploadResult.cosUrl;
+        console.log('✅ [SetSelfie] 图片上传成功:', selfieUrl);
+      }
+
+      // 3. 获取用户现有数据，更新自拍列表
+      const userResponse = await userDataService.getUserByUid();
+      const existingSelfieList = userResponse.data?.record?.selfie_list || [];
+      
+      // 检查是否已经在列表中
+      if (existingSelfieList.includes(selfieUrl)) {
+        // 已在列表中，只需设为默认
+        dispatch(setDefaultSelfie(selfieUrl));
+        showSuccessToast('已设为默认自拍');
+      } else {
+        // 将新的自拍URL添加到列表中
+        const updatedSelfieList = [...existingSelfieList, selfieUrl];
+        
+        // 更新用户数据
+        await userDataService.updateUserData({
+          selfie_url: selfieUrl,
+          selfie_list: updatedSelfieList
+        });
+        
+        // 设置为默认自拍
+        dispatch(setDefaultSelfie(selfieUrl));
+        
+        // 刷新用户数据
+        await dispatch(fetchUserProfile());
+        
+        console.log('✅ [SetSelfie] 设为自拍成功:', selfieUrl);
+        showSuccessToast('已添加到我的自拍');
+      }
+      
+      setShowSetSelfieDialog(false);
+    } catch (error) {
+      console.error('设为自拍失败:', error);
+      showErrorToast('设为自拍失败，请稍后重试');
+    } finally {
+      setIsSettingSelfie(false);
+    }
+  };
+
   const getShareOptions = () => {
     const options = [
       {
@@ -1729,7 +1828,7 @@ const UserWorkPreviewScreen: React.FC = () => {
       </View>
       )}
 
-      {/* 下载/分享按钮区域（右下角偏上） */}
+      {/* 下载/分享/设为自拍按钮区域（右下角偏上） */}
       {activeWork?.result_data?.[0]?.result_image && !isVideoExpired && (
         <View style={[styles.actionButtonsContainer, { paddingBottom: Math.max(insets.bottom, 20) + 100 }]}>
           <TouchableOpacity 
@@ -1748,6 +1847,17 @@ const UserWorkPreviewScreen: React.FC = () => {
             <FontAwesome name="share-square" size={20} color="#fff" />
             <Text style={styles.actionButtonText}>分享</Text>
           </TouchableOpacity>
+          {/* 设为自拍按钮（仅图片作品显示） */}
+          {!isVideoResource(activeWork.result_data[0].result_image) && (
+            <TouchableOpacity 
+              style={styles.actionButton} 
+              onPress={handleSetAsSelfiePress}
+              activeOpacity={0.7}
+            >
+              <FontAwesome name="user-circle" size={20} color="#fff" />
+              <Text style={styles.actionButtonText}>设为自拍</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
@@ -1792,6 +1902,18 @@ const UserWorkPreviewScreen: React.FC = () => {
             suppressShareDialogRef.current = true;
           }
         }}
+      />
+
+      {/* 设为自拍确认弹窗 */}
+      <Dialog
+        visible={showSetSelfieDialog}
+        title="📸 设为自拍"
+        message="确定要将这张作品设为我的自拍吗？设置后可以用它来创作更多AI作品。"
+        confirmText="确认"
+        cancelText="取消"
+        loading={isSettingSelfie}
+        onConfirm={handleConfirmSetAsSelfie}
+        onCancel={() => setShowSetSelfieDialog(false)}
       />
     </View>
   );

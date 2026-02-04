@@ -13,6 +13,8 @@ import {
   Platform,
   TextInput,
   Keyboard,
+  InteractionManager,
+  Animated,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -61,6 +63,7 @@ const TemplateSlide = React.memo(({
   customPrompt,
   onCustomPromptChange,
   isVisible,
+  shouldAutoFocusPrompt,
 }: { 
   template: Template, 
   album: Album, 
@@ -71,6 +74,7 @@ const TemplateSlide = React.memo(({
   customPrompt: string,
   onCustomPromptChange: (text: string) => void,
   isVisible: boolean,
+  shouldAutoFocusPrompt: boolean,
 }) => {
   // 使用 AlbumRecord 结构中的 src_image 字段
   const albumRecord = album as unknown as AlbumRecord;
@@ -82,20 +86,35 @@ const TemplateSlide = React.memo(({
   // 统一入口：视频相册判断 + 封面/预览字段选择
   const { isVideoAlbum, coverImageUrl, previewVideoUrl } = getAlbumMediaInfo(albumRecord);
   const [videoFailed, setVideoFailed] = useState<boolean>(false);
-  const [keyboardHeight, setKeyboardHeight] = useState<number>(0);
+  
+  // 自定义提示词输入框 ref
+  const promptInputRef = useRef<TextInput>(null);
+  // 记录是否已经自动聚焦过（避免重复聚焦）
+  const hasAutoFocused = useRef<boolean>(false);
+  
+  // 使用 Animated 实现平滑的键盘动画（使用 useNativeDriver: true 提升性能）
+  const keyboardTranslateY = useRef(new Animated.Value(0)).current;
 
-  // 监听键盘显示/隐藏
+  // 监听键盘显示/隐藏，使用原生驱动动画
   useEffect(() => {
     const showSubscription = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
       (e) => {
-        setKeyboardHeight(e.endCoordinates.height);
+        Animated.timing(keyboardTranslateY, {
+          toValue: -e.endCoordinates.height,
+          duration: Platform.OS === 'ios' ? e.duration : 250,
+          useNativeDriver: true,
+        }).start();
       }
     );
     const hideSubscription = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => {
-        setKeyboardHeight(0);
+      (e) => {
+        Animated.timing(keyboardTranslateY, {
+          toValue: 0,
+          duration: Platform.OS === 'ios' ? (e?.duration || 250) : 250,
+          useNativeDriver: true,
+        }).start();
       }
     );
 
@@ -103,7 +122,25 @@ const TemplateSlide = React.memo(({
       showSubscription.remove();
       hideSubscription.remove();
     };
-  }, []);
+  }, [keyboardTranslateY]);
+
+  // 首次进入页面且有自定义提示词功能时，自动聚焦输入框
+  useEffect(() => {
+    if (shouldAutoFocusPrompt && albumRecord.enable_custom_prompt === true && !hasAutoFocused.current) {
+      // 使用 InteractionManager 确保在导航动画完成后再聚焦
+      const interactionPromise = InteractionManager.runAfterInteractions(() => {
+        // 延迟足够长的时间，确保页面完全稳定后再聚焦
+        setTimeout(() => {
+          if (promptInputRef.current && !hasAutoFocused.current) {
+            promptInputRef.current.focus();
+            hasAutoFocused.current = true;
+          }
+        }, 600);
+      });
+      
+      return () => interactionPromise.cancel();
+    }
+  }, [shouldAutoFocusPrompt, albumRecord.enable_custom_prompt]);
 
   return (
     <View style={styles.pageContainer}>
@@ -197,7 +234,12 @@ const TemplateSlide = React.memo(({
         </View>
       )}
 
-      <View style={[styles.contentOverlay, keyboardHeight > 0 && { paddingBottom: keyboardHeight + 20 }]}>
+      <Animated.View style={[
+        styles.contentOverlay, 
+        { 
+          transform: [{ translateY: keyboardTranslateY }]
+        }
+      ]}>
         {/* 单人模式：自拍选择器显示在内容区域 */}
         {!isMultiPerson && (
           <View style={styles.avatarContainer}>
@@ -220,6 +262,7 @@ const TemplateSlide = React.memo(({
         {albumRecord.enable_custom_prompt === true ? (
           <View style={styles.promptInputContainer}>
             <TextInput
+              ref={promptInputRef}
               style={styles.promptInput}
               placeholder="你可以手动输入你想说的话（可选）"
               placeholderTextColor="rgba(255, 255, 255, 0.5)"
@@ -276,7 +319,7 @@ const TemplateSlide = React.memo(({
             <Text style={styles.tipText}>💡小贴士: "多人合拍"需要上传至少两张自拍哦</Text>
           </View>
         )}
-      </View>
+      </Animated.View>
     </View>
   );
 });
@@ -291,6 +334,7 @@ const AlbumSlide = React.memo(({
   customPrompt,
   onCustomPromptChange,
   isAlbumVisible,
+  shouldAutoFocusPrompt,
 }: { 
   album: Album, 
   selectedSelfies: string[], 
@@ -300,6 +344,7 @@ const AlbumSlide = React.memo(({
   customPrompt: string,
   onCustomPromptChange: (text: string) => void,
   isAlbumVisible: boolean,
+  shouldAutoFocusPrompt: boolean,
 }) => {
   
   // 如果是 asyncTask，可能 template_list 为空，构造一个虚拟 template
@@ -337,9 +382,10 @@ const AlbumSlide = React.memo(({
         customPrompt={customPrompt}
         onCustomPromptChange={onCustomPromptChange}
         isVisible={isAlbumVisible && index === visibleTemplateIndex}
+        shouldAutoFocusPrompt={shouldAutoFocusPrompt && index === visibleTemplateIndex}
       />
     );
-  }, [album, selectedSelfies, isFusionProcessing, onUseStyle, onSelfieSelect, customPrompt, onCustomPromptChange, visibleTemplateIndex, isAlbumVisible]);
+  }, [album, selectedSelfies, isFusionProcessing, onUseStyle, onSelfieSelect, customPrompt, onCustomPromptChange, visibleTemplateIndex, isAlbumVisible, shouldAutoFocusPrompt]);
 
   return (
     <View style={styles.albumContainer}>
@@ -405,6 +451,8 @@ const BeforeCreationScreen: React.FC = () => {
   }, [albumsWithCurrent, albumData, activityId]);
 
   const [isFusionProcessing, setIsFusionProcessing] = useState(false);
+  // 标记是否是首次进入页面（用于自动聚焦自定义提示词输入框）
+  const [isInitialEntry, setIsInitialEntry] = useState(true);
   
   // 从存储中恢复自拍选择
   const getStoredSelectedSelfies = useCallback((): string[] => {
@@ -579,6 +627,8 @@ const BeforeCreationScreen: React.FC = () => {
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (viewableItems.length > 0 && viewableItems[0].index !== null) {
       setActiveAlbumIndex(viewableItems[0].index);
+      // 用户滑动切换后，不再是首次进入
+      setIsInitialEntry(false);
     }
   }, []);
 
@@ -1007,9 +1057,10 @@ const BeforeCreationScreen: React.FC = () => {
         customPrompt={customPrompt}
         onCustomPromptChange={handleCustomPromptChange}
         isAlbumVisible={index === activeAlbumIndex}
+        shouldAutoFocusPrompt={isInitialEntry && index === activeAlbumIndex}
       />
     );
-  }, [selectedSelfies, isFusionProcessing, handleUseStylePress, handleSelfieSelect, customPrompt, handleCustomPromptChange, activeAlbumIndex]);
+  }, [selectedSelfies, isFusionProcessing, handleUseStylePress, handleSelfieSelect, customPrompt, handleCustomPromptChange, activeAlbumIndex, isInitialEntry]);
 
   // 如果没有数据，显示 Loading 或空状态
   if (!albumsWithCurrent || albumsWithCurrent.length === 0) {

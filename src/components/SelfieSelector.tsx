@@ -62,6 +62,18 @@ const SelfieSelector: React.FC<SelfieSelectorProps> = ({
     }
   }, [selfies, currentSelectedSelfie, onSelfieSelect, defaultSelfieUrl]);
 
+  // 当默认自拍变化时（比如用户上传了新自拍），自动选中新的默认自拍
+  useEffect(() => {
+    if (defaultSelfieUrl && selfies.length > 0) {
+      const defaultSelfieExists = selfies.some(selfie => selfie.url === defaultSelfieUrl);
+      // 如果默认自拍存在于列表中，且当前选中的不是默认自拍，则自动切换
+      if (defaultSelfieExists && currentSelectedSelfie !== defaultSelfieUrl) {
+        setCurrentSelectedSelfie(defaultSelfieUrl);
+        onSelfieSelect(defaultSelfieUrl);
+      }
+    }
+  }, [defaultSelfieUrl, selfies]);
+
   const handleSelfiePress = async () => {
     if (selfies.length === 0) {
       // 没有自拍，允许匿名用户选择照片，不需要登录
