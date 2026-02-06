@@ -5,8 +5,8 @@
  * @format
  */
 
-import React, { useEffect } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { NavigationContainer, NavigationState } from '@react-navigation/native';
 import { StyleSheet, View, StatusBar, Platform } from 'react-native';
 import { Provider } from 'react-redux';
 import ToastProvider from 'toastify-react-native';
@@ -25,7 +25,10 @@ import LoginPromptManager from './src/components/LoginPromptManager';
 import AsyncTaskFloatBar from './src/components/AsyncTaskFloatBar';
 import AsyncTaskPanel from './src/components/AsyncTaskPanel';
 import DebugEntry from './src/components/DebugEntry';
-import { navigationRef } from './src/navigation/navigationUtils';
+import FloatingBottomTab from './src/components/FloatingBottomTab';
+import { navigationRef, replace } from './src/navigation/navigationUtils';
+import { fetchTasks, updateTaskProgress } from './src/store/slices/taskSlice';
+import { eventService } from './src/services/eventService';
 
 // Pushy 集成
 import { Pushy, UpdateProvider } from 'react-native-update';
@@ -49,6 +52,9 @@ declare global {
 }
 
 function App(): JSX.Element {
+  // 当前路由名称状态
+  const [currentRoute, setCurrentRoute] = useState<string>('NewHome');
+
   // 初始化应用服务
   useEffect(() => {
     const initializeApp = async () => {
@@ -88,6 +94,11 @@ function App(): JSX.Element {
           console.error('❌ RevenueCat SDK 初始化失败:', error);
           // RevenueCat 初始化失败不影响其他功能
         }
+
+        // 初始化任务数据
+        console.log('🚀 初始化任务数据...');
+        store.dispatch(fetchTasks());
+        console.log('✅ 任务数据初始化完成');
       } catch (error) {
         console.error('❌ 应用初始化异常:', error);
       }
@@ -95,13 +106,42 @@ function App(): JSX.Element {
     
     initializeApp();
 
+    // 全局监听任务进度事件（无需依赖具体页面是否挂载）
+    const unsubscribeTaskEvents = eventService.onTaskProgressUpdated((data) => {
+      console.log('📥 [App] 收到任务进度事件:', data);
+      store.dispatch(updateTaskProgress({ taskType: data.taskType, count: data.count }));
+    });
+
     // 清理函数
     return () => {
       console.log('🛑 应用卸载，停止生命周期管理器...');
       appLifecycleManager.stop();
       loginPromptService.cleanup();
+      unsubscribeTaskEvents();
     };
   }, []);
+
+  // 处理底部菜单点击 - 使用 replace 避免堆栈
+  const handleTabPress = useCallback((route: string) => {
+    // 底部菜单的路由都不需要参数，使用 replace 替换当前页面
+    if (route === 'NewHome') {
+      replace('NewHome', undefined);
+    } else if (route === 'TaskCenter') {
+      replace('TaskCenter');
+    } else if (route === 'NewProfile') {
+      replace('NewProfile');
+    }
+  }, []);
+
+  // 获取当前路由名称
+  const getActiveRouteName = (state: NavigationState | undefined): string => {
+    if (!state) return 'NewHome';
+    const route = state.routes[state.index];
+    if (route.state) {
+      return getActiveRouteName(route.state as NavigationState);
+    }
+    return route.name;
+  };
   
   const AppContent = (
     <Provider store={store}>
@@ -112,16 +152,24 @@ function App(): JSX.Element {
             ref={navigationRef}
             onStateChange={(state) => {
               // 获取当前路由名称
-              const currentRoute = state?.routes[state.index];
-              if (currentRoute?.name) {
-                // 上报页面访问（使用规范命名：将驼峰命名转为下划线命名）
-                const pageName = currentRoute.name.replace(/([A-Z])/g, '_$1').toLowerCase().replace(/^_/, '');
+              const routeName = getActiveRouteName(state);
+              setCurrentRoute(routeName);
+              
+              // 上报页面访问（使用规范命名：将驼峰命名转为下划线命名）
+              if (routeName) {
+                const pageName = routeName.replace(/([A-Z])/g, '_$1').toLowerCase().replace(/^_/, '');
                 aegisService.reportPageView(pageName);
               }
             }}
           >
             <StackNavigator />
           </NavigationContainer>
+          
+          {/* 悬浮底部菜单 */}
+          <FloatingBottomTab
+            currentRoute={currentRoute}
+            onTabPress={handleTabPress}
+          />
         </View>
        
         <LoginPromptManager />

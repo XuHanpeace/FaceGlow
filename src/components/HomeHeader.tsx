@@ -4,7 +4,6 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { useUserBalance, useUser } from '../hooks/useUser';
-import UserAvatar from './UserAvatar';
 import { CheckInIcon } from './CheckInIcon';
 import { useCheckInStatus } from '../hooks/useCheckInStatus';
 import { CheckInModal } from './CheckInModal';
@@ -20,7 +19,6 @@ interface HomeHeaderProps {
 }
 
 const HomeHeader = forwardRef<HomeHeaderRef, HomeHeaderProps>((props, ref) => {
-  const { onProfilePress } = props;
   const navigation = useNavigation<HomeHeaderNavigationProp>();
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   
@@ -56,15 +54,6 @@ const HomeHeader = forwardRef<HomeHeaderRef, HomeHeaderProps>((props, ref) => {
     outputRange: ['0deg', '720deg'],
   });
 
-  const handleProfilePress = () => {
-    if (onProfilePress) {
-      onProfilePress();
-    } else {
-      // 默认导航到个人页面
-      navigation.navigate('NewProfile');
-    }
-  };
-
   const handleCheckInPress = () => {
     setShowCheckInModal(true);
   };
@@ -87,9 +76,8 @@ const HomeHeader = forwardRef<HomeHeaderRef, HomeHeaderProps>((props, ref) => {
         )}
       </View>
 
-      {/* 右侧头像按钮 */}
+      {/* 右侧金币区域（移除头像入口，Profile 入口已移至底部菜单） */}
       <View style={styles.rightContainer}>
-         {/* 中间金币区域（在头像左边） */}
         <View style={styles.balanceContainer}>
           <TouchableOpacity 
             style={styles.balanceInfo}
@@ -112,9 +100,6 @@ const HomeHeader = forwardRef<HomeHeaderRef, HomeHeaderProps>((props, ref) => {
             </View>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.profileButton} onPress={handleProfilePress}>
-          <UserAvatar size={36} />
-        </TouchableOpacity>
       </View>
 
       {/* 签到Modal - 仅登录用户显示 */}
@@ -163,7 +148,6 @@ const styles = StyleSheet.create({
   balanceContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 12,
   },
   freeBadge: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -208,14 +192,6 @@ const styles = StyleSheet.create({
   },
   rightContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-  },
-  profileButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
     alignItems: 'center',
   },
 });

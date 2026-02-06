@@ -747,6 +747,7 @@ export const pollAsyncTask = createAsyncThunk(
                         console.log('[Redux] 最新单条作品数据拉取成功，更新Redux状态，taskStatus:', workData.taskStatus);
                         dispatch(updateWorkItem(workData));
                         console.log('[Redux] 已通过 updateWorkItem 更新作品:', workData._id);
+                        // 作品创作成功任务进度（春节/视频）统一在 AsyncTaskPanel 任务完成时触发
                       }
                   }
                 } catch(fetchError) {

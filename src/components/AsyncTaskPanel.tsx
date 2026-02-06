@@ -11,6 +11,7 @@ import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 import { authService } from '../services/auth/authService';
 import { userWorkService } from '../services/database/userWorkService';
 import { navigate } from '../navigation/navigationUtils';
+import { eventService } from '../services/eventService';
 
 // 辅助函数：从任务中获取 task_type
 function getTaskType(task: AsyncTask): TaskType | null {
@@ -80,6 +81,34 @@ function extractWorkRecord(data: unknown): UserWorkModel | null {
   return data as UserWorkModel;
 }
 
+/** 从任务 ext_data 判断是否为视频创作（触发视频创作任务进度） */
+function isVideoCreationTask(task: AsyncTask): boolean {
+  const ext = task.updatedWork?.ext_data;
+  if (!ext) return false;
+  try {
+    const d = JSON.parse(ext) as Record<string, unknown>;
+    const exec = String(d.task_execution_type || '');
+    const type = String(d.task_type || '');
+    return (
+      exec === 'async_image_to_video' ||
+      exec === 'async_video_effect' ||
+      type === 'image_to_video' ||
+      type === 'video_effect'
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** 从任务 ext_data 判断是否为春节写真创作（触发春节创作任务进度） */
+function isSpringCreationTask(task: AsyncTask): boolean {
+  const activityDesc = task.updatedWork?.activity_description;
+  if (!activityDesc) return false;
+  const name = String(activityDesc).toLowerCase();
+  return name.includes('春') || name.includes('年');
+
+}
+
 const { height } = Dimensions.get('window');
 
 const AsyncTaskPanel: React.FC = () => {
@@ -134,6 +163,16 @@ const AsyncTaskPanel: React.FC = () => {
       if (task.status === TaskStatus.SUCCESS && !completedTaskIdsRef.current.has(task.taskId)) {
         // 标记为已处理
         completedTaskIdsRef.current.add(task.taskId);
+        
+        // 作品创作成功：在面板内统一触发任务进度（春节写真 / 视频创作）
+        if (isVideoCreationTask(task)) {
+          eventService.emitVideoCreation();
+          console.log('📢 [AsyncTaskPanel] 已触发视频创作任务进度');
+        }
+        if (isSpringCreationTask(task)) {
+          eventService.emitSpringCreation();
+          console.log('📢 [AsyncTaskPanel] 已触发春节写真创作任务进度');
+        }
         
         // 显示Toast提示
         showSuccessToast('作品已生成完成，快去"我的作品"查看吧！', '创作完成');

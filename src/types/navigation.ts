@@ -50,4 +50,5 @@ export type RootStackParamList = {
   VideoTest: undefined;
   DebugTest: undefined;
   CheckIn: undefined;
+  TaskCenter: undefined;
 };

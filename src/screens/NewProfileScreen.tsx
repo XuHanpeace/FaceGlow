@@ -10,10 +10,10 @@ import {
   Alert,
   Dimensions,
   Image,
-  SafeAreaView,
 } from 'react-native';
 import FastImage from 'react-native-fast-image';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import { useTypedSelector, useAppDispatch } from '../store/hooks';
@@ -30,7 +30,6 @@ import { userDataService } from '../services/database/userDataService';
 import UserWorkCard from '../components/UserWorkCard';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { updateProfile } from '../store/slices/userSlice';
-import BackButton from '../components/BackButton';
 import { showSuccessToast } from '../utils/toast';
 import { EditNameModal, EditNameModalRef } from '../components/EditNameModal';
 import AvatarSelectorModal, { AvatarSelectorModalRef } from '../components/AvatarSelectorModal';
@@ -51,6 +50,7 @@ const CONTAINER_PADDING = 10; // 容器左右padding
 const NewProfileScreen: React.FC = () => {
   const navigation = useNavigation<NewProfileScreenNavigationProp>();
   const dispatch = useAppDispatch();
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<TabType>('works');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -142,11 +142,6 @@ const NewProfileScreen: React.FC = () => {
     loadUserWorks();
 
   }, []);
-
-  // 从Redux获取其他数据
-  const handleBackPress = () => {
-    navigation.goBack();
-  };
 
   // 处理头像选择
   const handleAvatarSelect = async (selfieUrl: string | null) => {
@@ -415,8 +410,7 @@ const NewProfileScreen: React.FC = () => {
       <StatusBar barStyle="light-content" backgroundColor="#000" />
       
       {/* 头部导航 */}
-      <SafeAreaView style={{ backgroundColor: '#131313'}}/>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top }]}>
           <View style={styles.placeholder}>
             {/* 签到入口 - 仅登录用户显示 */}
             {isLoggedIn && (
@@ -430,7 +424,7 @@ const NewProfileScreen: React.FC = () => {
             )}
           </View>
           <Text style={styles.headerTitle}>简介</Text>
-          <BackButton iconType="close" onPress={handleBackPress} absolute={false} />
+          <View style={styles.placeholder} />
         </View>
 
       <ScrollView 

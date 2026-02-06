@@ -349,6 +349,10 @@ const SelfieGuideScreen: React.FC = () => {
           setDefaultSelfieUrl(uploadResult.url);
           console.log('设置新自拍为默认自拍:', uploadResult.url);
           
+          // 触发自拍上传任务事件
+          eventService.emitSelfieUploaded();
+          console.log('📢 已触发自拍上传任务事件');
+          
           // 如果是新用户（进入页面时已判断），发放首次上传奖励
           if (isNewUser) {
             console.log('🎁 新用户首次上传自拍，发放奖励');

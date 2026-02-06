@@ -1,9 +1,10 @@
+const path = require('path');
 const {getDefaultConfig, mergeConfig} = require('@react-native/metro-config');
 
 /**
  * Metro configuration
  * https://reactnative.dev/docs/metro
- * 
+ *
  * 注意：视频文件（.mp4）使用原生资源路径 { uri: 'v2.mp4' } 访问，
  * 不会被包含在 JS bundle 中，从而减少热更新 bundle 大小。
  */
@@ -15,6 +16,20 @@ const config = {
         inlineRequires: true,
       },
     }),
+  },
+  resolver: {
+    resolveRequest: (context, moduleName, platform) => {
+      if (moduleName === '@react-native/virtualized-lists') {
+        return {
+          filePath: path.resolve(
+            __dirname,
+            'node_modules/@react-native/virtualized-lists/index.js',
+          ),
+          type: 'sourceFile',
+        };
+      }
+      return context.resolveRequest(context, moduleName, platform);
+    },
   },
 };
 

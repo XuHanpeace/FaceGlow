@@ -3,7 +3,6 @@ import {
   View,
   StyleSheet,
   StatusBar,
-  SafeAreaView,
   ActivityIndicator,
   Dimensions,
   Animated,
@@ -542,7 +541,6 @@ const NewHomeScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
-      <SafeAreaView style={styles.safeAreaTop} />
       
       {/* iPhone 刘海处的渐变胶囊 */}
       {Platform.OS === 'ios' && (
@@ -558,7 +556,7 @@ const NewHomeScreen: React.FC = () => {
         </View>
       )}
       
-      <View style={styles.fixedHeader}>
+      <View style={[styles.fixedHeader, { paddingTop: insets.top }]}>
         <HomeHeader
           ref={homeHeaderRef}
           onProfilePress={() => navigation.navigate('NewProfile')}

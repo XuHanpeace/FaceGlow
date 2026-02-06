@@ -1,4 +1,4 @@
-import { NavigationContainerRef } from '@react-navigation/native';
+import { NavigationContainerRef, StackActions } from '@react-navigation/native';
 import { createRef } from 'react';
 import { RootStackParamList } from '../types/navigation';
 
@@ -61,5 +61,19 @@ export function push<RouteName extends keyof RootStackParamList>(
     );
   } else {
     (navigationRef.current?.navigate as (name: RouteName) => void)(name);
+  }
+}
+
+// 替换当前路由（不堆栈）
+export function replace<RouteName extends keyof RootStackParamList>(
+  name: RouteName,
+  params?: RootStackParamList[RouteName]
+) {
+  const navigation = navigationRef.current
+
+
+  if (navigation) {
+    // 使用 StackActions.replace 替换当前路由
+    navigation.dispatch(StackActions.replace(name as string, params));
   }
 } 

@@ -46,6 +46,7 @@ import { setDefaultSelfie } from '../store/slices/userSlice';
 import { userDataService } from '../services/database/userDataService';
 import { fetchUserProfile } from '../store/middleware/asyncMiddleware';
 import { authService } from '../services/auth/authService';
+import { eventService } from '../services/eventService';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -1013,6 +1014,9 @@ const UserWorkPreviewScreen: React.FC = () => {
           : await shareService.saveImageToAlbum(currentResultImage);
         if (result.success) {
           showSuccessToast(isVideo ? '视频已保存到相册' : '图片已保存到相册');
+          // 触发作品下载任务事件
+          eventService.emitWorkDownloaded();
+          console.log('📢 已触发作品下载任务事件');
         } else {
           Alert.alert('下载失败', result.error || (isVideo ? '保存视频失败' : '保存图片失败'));
         }
@@ -1568,6 +1572,9 @@ const UserWorkPreviewScreen: React.FC = () => {
             
             // 复制到剪贴板
             await Clipboard.setString(shareText);
+            // 分享动作完成，更新任务进度（分享至微信 / 复制链接视为一次分享）
+            eventService.emitWorkShared();
+            console.log('📢 已触发作品分享任务事件（分享至微信）');
             
             // 显示 Dialog 提示
             setShareDialogTitle('🎉 分享链接已复制');
@@ -1703,6 +1710,9 @@ const UserWorkPreviewScreen: React.FC = () => {
             
             if (result.action === Share.sharedAction) {
               showSuccessToast('分享成功');
+              // 触发作品分享任务事件
+              eventService.emitWorkShared();
+              console.log('📢 已触发作品分享任务事件');
             } else if (result.action === Share.dismissedAction) {
               // 用户取消分享，不显示提示
             }
@@ -1729,6 +1739,9 @@ const UserWorkPreviewScreen: React.FC = () => {
             : await shareService.saveImageToAlbum(currentResultImage);
           if (result.success) {
             showSuccessToast(isVideo ? '视频已保存到相册' : '图片已保存到相册');
+            // 触发作品下载任务事件
+            eventService.emitWorkDownloaded();
+            console.log('📢 已触发作品下载任务事件');
           }
         },
       },

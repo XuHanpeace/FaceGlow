@@ -5,6 +5,7 @@ import selfieSlice from './slices/selfieSlice';
 import userSlice from './slices/userSlice';
 import asyncTaskSlice from './slices/asyncTaskSlice';
 import userWorksSlice from './slices/userWorksSlice';
+import taskSlice from './slices/taskSlice';
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ export const store = configureStore({
     user: userSlice,
     asyncTask: asyncTaskSlice,
     userWorks: userWorksSlice,
+    task: taskSlice,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

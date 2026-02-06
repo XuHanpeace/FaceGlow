@@ -17,6 +17,7 @@ import WebViewScreen from '../screens/WebViewScreen';
 import VideoTestScreen from '../screens/VideoTestScreen';
 import DebugTestScreen from '../screens/DebugTestScreen';
 import CheckInScreen from '../screens/CheckInScreen';
+import TaskCenterScreen from '../screens/TaskCenterScreen';
 import { RootStackParamList } from '../types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -34,6 +35,8 @@ const StackNavigator = () => {
         component={NewHomeScreen}
         options={{
           headerShown: false,
+          animation: 'none', // 底部 tab 切换无动画
+          animationTypeForReplace: 'pop', // replace 时也无动画
         }}
       />
       <Stack.Screen
@@ -62,8 +65,8 @@ const StackNavigator = () => {
         component={NewProfileScreen}
         options={{
           headerShown: false,
-          animation: 'slide_from_bottom',
-          animationDuration: 250,
+          animation: 'none', // 底部 tab 切换无动画
+          animationTypeForReplace: 'pop', // replace 时也无动画
         }}
       />
       <Stack.Screen
@@ -162,6 +165,15 @@ const StackNavigator = () => {
           headerShown: false,
           animation: 'slide_from_bottom',
           animationDuration: 250,
+        }}
+      />
+      <Stack.Screen
+        name="TaskCenter"
+        component={TaskCenterScreen}
+        options={{
+          headerShown: false,
+          animation: 'none', // 底部 tab 切换无动画
+          animationTypeForReplace: 'pop', // replace 时也无动画
         }}
       />
     </Stack.Navigator>

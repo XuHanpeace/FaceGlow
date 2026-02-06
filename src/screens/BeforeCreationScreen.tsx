@@ -1057,7 +1057,7 @@ const BeforeCreationScreen: React.FC = () => {
         customPrompt={customPrompt}
         onCustomPromptChange={handleCustomPromptChange}
         isAlbumVisible={index === activeAlbumIndex}
-        shouldAutoFocusPrompt={isInitialEntry && index === activeAlbumIndex}
+        shouldAutoFocusPrompt={false}
       />
     );
   }, [selectedSelfies, isFusionProcessing, handleUseStylePress, handleSelfieSelect, customPrompt, handleCustomPromptChange, activeAlbumIndex, isInitialEntry]);

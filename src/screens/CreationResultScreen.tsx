@@ -406,7 +406,7 @@ const CreationResultScreen: React.FC = () => {
         
         // 同时刷新作品列表，同步服务器数据（如果服务器返回的数据不同，会被合并）
         dispatch(fetchUserWorks());
-        
+
         showSuccessToast(`太棒了！已保存 ${resultData.length} 个作品到云端，可以在个人中心查看哦～`);
         // 保存成功后返回上一页
         setTimeout(() => {
