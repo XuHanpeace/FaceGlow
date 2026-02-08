@@ -10,14 +10,15 @@ export enum TaskType {
   VIDEO_EFFECT = 'video_effect', // 视频特效
   PORTRAIT_STYLE_REDRAW = 'portrait_style_redraw', // 人像风格重绘
   DOUBAO_IMAGE_TO_IMAGE = 'doubao_image_to_image', // 豆包图生图（同步返回）
+  HUNYUAN_IMAGE = 'hunyuan_image', // 混元生图（异步，prompt + 参考图）
 }
 
 /**
  * 阿里云百炼异步任务参数（通用）
  */
 export interface BailianParams {
-  /** 任务类型 */
-  task_type: TaskType;
+  /** 任务类型（支持从相册 task_execution_type 去掉 async_ 前缀派生，新增模型无需改枚举） */
+  task_type: TaskType | string;
   /** 提示词文本 */
   prompt: string;
   /** 是否启用自定义提示词（图生视频使用） */
@@ -70,6 +71,8 @@ export interface BailianParams {
     style_index?: number;
     /** 风格参考图URL，人像风格重绘使用（当style_index=-1时必填） */
     style_ref_url?: string;
+    /** 混元生图：prompt 扩写 1=开启 0=关闭（可由相册 task_params 透传） */
+    revise?: number;
   };
   /** 用户ID（价格>0时必填） */
   user_id?: string;

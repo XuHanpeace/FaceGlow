@@ -39,16 +39,14 @@ export enum ActivityTag {
  * 用于决定调用哪个云函数以及传递哪些参数
  */
 export enum TaskExecutionType {
-  // 同步任务 - 调用 fusion 云函数
-  SYNC_PORTRAIT = 'sync_portrait',        // 个人写真换脸
-  SYNC_GROUP_PHOTO = 'sync_group_photo',  // 多人合拍换脸
-  
+
   // 异步任务 - 调用 callBailian 云函数
   ASYNC_IMAGE_TO_IMAGE = 'async_image_to_image',           // 图生图
   ASYNC_IMAGE_TO_VIDEO = 'async_image_to_video',           // 图生视频
   ASYNC_VIDEO_EFFECT = 'async_video_effect',               // 视频特效
   ASYNC_PORTRAIT_STYLE_REDRAW = 'async_portrait_style_redraw', // 人像风格重绘
   ASYNC_DOUBAO_IMAGE_TO_IMAGE = 'async_doubao_image_to_image', // 豆包图生图（独立执行类型）
+  ASYNC_HUNYUAN_IMAGE = 'async_hunyuan_image',               // 混元生图（prompt + 参考图）
 }
 
 /**
@@ -253,6 +251,13 @@ export interface AlbumRecord {
    * 可选字段，仅在 task_execution_type 为 'async_portrait_style_redraw' 且 style_index 为 -1 时使用
    */
   style_ref_url?: string;
+
+  /**
+   * 任务级参数（由后台配置，客户端原样透传云函数）
+   * 例如混元生图：{ resolution: '720:1280', revise: 1 }
+   * 新增模型只需在后台配置此字段，客户端无需改动
+   */
+  task_params?: Record<string, any>;
 }
 
 /**

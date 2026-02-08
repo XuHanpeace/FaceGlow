@@ -35,9 +35,8 @@ import FastImage from 'react-native-fast-image';
 import { LoadingImage } from '../components/LoadingImage';
 import { useUser, useUserBalance, useUserSelfies } from '../hooks/useUser';
 import { AlbumRecord } from '../types/model/album';
-import { getAlbumMediaInfo, normalizeTaskExecutionType } from '../utils/albumUtils';
+import { getAlbumMediaInfo } from '../utils/albumUtils';
 import { aegisService } from '../services/monitoring/aegisService';
-import { TaskType } from '../services/cloud/asyncTaskService';
 import Video from 'react-native-video';
 import { MMKV } from 'react-native-mmkv';
 
@@ -632,6 +631,113 @@ const BeforeCreationScreen: React.FC = () => {
     }
   }, []);
 
+  /** 按 taskType 分别构建 images / videoParams / styleRedrawParams，再组装为 StartAsyncTaskPayload */
+  const buildTaskParams = useCallback((
+    taskType: string,
+    ctx: {
+      albumRecord: AlbumRecord;
+      currentTemplate: Template;
+      currentActivityId: string;
+      selectedSelfies: string[];
+      selfieUrls: string[];
+      isMultiPerson: boolean;
+      finalPrompt: string;
+      enableCustomPrompt: boolean;
+      trimmedCustomPrompt: string;
+      totalPrice: number;
+    }
+  ): StartAsyncTaskPayload => {
+    const {
+      albumRecord,
+      currentTemplate,
+      currentActivityId,
+      selectedSelfies,
+      selfieUrls,
+      isMultiPerson,
+      finalPrompt,
+      enableCustomPrompt,
+      trimmedCustomPrompt,
+      totalPrice,
+    } = ctx;
+    const excludeResultImage = albumRecord.exclude_result_image === true;
+
+    const buildImages = (): string[] => {
+      if (taskType === 'doubao_image_to_image') {
+        const arr: string[] = [];
+        if (albumRecord.result_image && !excludeResultImage) arr.push(albumRecord.result_image);
+        if (isMultiPerson && selectedSelfies.length >= 2 && selectedSelfies[0] && selectedSelfies[1]) {
+          arr.push(selectedSelfies[0], selectedSelfies[1]);
+        } else if (selectedSelfies[0]) arr.push(selectedSelfies[0]);
+        return arr;
+      }
+      // 非豆包（混元等）：isMultiPerson 时与豆包一致，显式取前两张；缺的用 selfieUrls 兜底（避免 state 未刷新或只选了一个槽）
+      if (isMultiPerson) {
+        const first = (selectedSelfies[0] && String(selectedSelfies[0]).trim()) || selfieUrls[0];
+        const second = (selectedSelfies[1] && String(selectedSelfies[1]).trim()) || selfieUrls[1];
+        const result = first && second ? [first, second] : first ? [first] : [];
+        if (result.length < 2 && (selectedSelfies.length >= 2 || selfieUrls.length >= 2)) {
+          console.warn('[BeforeCreation] buildImages(isMultiPerson): 期望2张，实际', result.length, { selectedSelfiesLen: selectedSelfies.length, selfieUrlsLen: selfieUrls.length });
+        }
+        return result;
+      }
+      let arr = selectedSelfies.filter((url): url is string => Boolean(url && String(url).trim()));
+
+      return arr;
+    };
+
+    const buildVideoParams = (): VideoParams => {
+      const v: VideoParams = {};
+      if (taskType === 'video_effect') {
+        v.resolution = '720P';
+        v.template = albumRecord.video_effect_template || 'flying';
+        v.style_type = albumRecord.video_effect_template || 'flying';
+      } else if (taskType === 'image_to_video') {
+        v.resolution = '720P';
+      }
+      return v;
+    };
+
+    const buildStyleRedrawParams = (): StyleRedrawParams => {
+      const s: StyleRedrawParams = {};
+      if (taskType === 'portrait_style_redraw') {
+        if (albumRecord.style_index !== undefined) s.style_index = albumRecord.style_index;
+        if (albumRecord.style_ref_url) s.style_ref_url = albumRecord.style_ref_url;
+      }
+      return s;
+    };
+
+    const videoParams = buildVideoParams();
+    const styleRedrawParams = buildStyleRedrawParams();
+    const imagesArray = buildImages();
+
+    return {
+      taskType,
+      prompt: finalPrompt || '',
+      enableCustomPrompt,
+      customPrompt: enableCustomPrompt ? trimmedCustomPrompt : '',
+      images: imagesArray,
+      excludeResultImage: taskType === 'doubao_image_to_image' ? excludeResultImage : undefined,
+      audioUrl: taskType === 'image_to_video' ? albumRecord.audio_url : undefined,
+      activityId: currentActivityId,
+      albumId: albumRecord.album_id,
+      activityTitle: albumRecord.album_name,
+      activityDescription: albumRecord.album_description,
+      activityImage: getAlbumMediaInfo(albumRecord).coverImageUrl,
+      templateId: currentTemplate?.template_id || albumRecord.album_id,
+      price: totalPrice,
+      videoParams: Object.keys(videoParams).length > 0 ? videoParams : undefined,
+      styleRedrawParams: Object.keys(styleRedrawParams).length > 0 ? styleRedrawParams : undefined,
+      taskParams: albumRecord.task_params,
+      promptData: {
+        text: finalPrompt,
+        srcImage: selectedSelfies[0] || undefined,
+        resultImage: albumRecord.result_image,
+        styleTitle: albumRecord.album_name,
+        styleDesc: albumRecord.album_description,
+      },
+    };
+  }, []);
+
   const handleUseStylePress = useCallback(async (currentTemplate: Template) => {
     // 触发触觉反馈
     const options = {
@@ -732,91 +838,50 @@ const BeforeCreationScreen: React.FC = () => {
       // 开始处理
       setIsFusionProcessing(true);
 
-      // 3.3 根据 task_execution_type 判断调用哪个云函数
-      // 兼容旧模板：将 sync/async 映射到新的具体类型
-      const normalizedTaskExecutionType = normalizeTaskExecutionType(
-        albumRecord.task_execution_type,
-        albumRecord.function_type
-      );
-      
-      console.log('[BeforeCreation] Task Execution Type:', { 
-          currentActivityId, 
-          original_task_execution_type: albumRecord.task_execution_type,
-          normalized_task_execution_type: normalizedTaskExecutionType,
-          function_type: albumRecord.function_type,
-      });
+      // 任务类型：相册 task_execution_type 去掉 async_ 前缀（如 async_hunyuan_image -> hunyuan_image），缺省为 image_to_image
+      const taskType: string = (albumRecord.task_execution_type || '').replace(/^async_/, '') || 'image_to_image';
+      const promptText = albumRecord.prompt_text || '';
+      const enableCustomPrompt = albumRecord.enable_custom_prompt === true;
+      const trimmedCustomPrompt = customPrompt.trim();
+      const finalPrompt = promptText;
 
-      // 判断是否为同步任务（调用 fusion 云函数）
-      const isSyncTask = normalizedTaskExecutionType === 'sync_portrait' || 
-                        normalizedTaskExecutionType === 'sync_group_photo';
-
-      if (!isSyncTask) {
-        // 异步任务逻辑（调用 callBailian 云函数）
-        // 从 AlbumRecord 中获取 prompt_text
-        const promptText = albumRecord.prompt_text || '';
-        
-        // 根据标准化后的 task_execution_type 映射到 TaskType
-        let taskType: TaskType;
-        if (normalizedTaskExecutionType === 'async_image_to_video') {
-          taskType = TaskType.IMAGE_TO_VIDEO;
-        } else if (normalizedTaskExecutionType === 'async_video_effect') {
-          taskType = TaskType.VIDEO_EFFECT;
-        } else if (normalizedTaskExecutionType === 'async_portrait_style_redraw') {
-          taskType = TaskType.PORTRAIT_STYLE_REDRAW;
-        } else if (normalizedTaskExecutionType === 'async_doubao_image_to_image') {
-          // 豆包图生图是独立的执行类型
-          taskType = TaskType.DOUBAO_IMAGE_TO_IMAGE;
-        } else {
-          // 默认或 async_image_to_image
-          taskType = TaskType.IMAGE_TO_IMAGE;
+      // 只要 isMultiPerson=true，就必须校验已选 2 张自拍且均有效
+      if (isMultiPerson) {
+        if (selectedSelfies.length < 2 || !selectedSelfies[0] || !selectedSelfies[1]) {
+          Alert.alert('错误', '多人合拍需要选择2张自拍');
+          setIsFusionProcessing(false);
+          return;
         }
+      }
 
-        // 自定义提示词：Seedance 图生视频由云函数拼接 prompt_text + custom_prompt
-        const enableCustomPrompt = albumRecord.enable_custom_prompt === true;
-        const trimmedCustomPrompt = customPrompt.trim();
-        const finalPrompt = promptText;
-        
-        // 豆包图生图需要 prompt_text、用户自拍图和 result_image
-        if (taskType === TaskType.DOUBAO_IMAGE_TO_IMAGE) {
-          if (!finalPrompt) {
-            Alert.alert('错误', '缺少提示词数据，无法进行豆包图生图创作');
-            setIsFusionProcessing(false);
-            return;
-          }
-          // 多人合拍模式：验证2张自拍
-          if (isMultiPerson) {
-            if (selectedSelfies.length < 2 || !selectedSelfies[0] || !selectedSelfies[1]) {
-              Alert.alert('错误', '多人合拍需要选择2张自拍');
-              setIsFusionProcessing(false);
-              return;
-            }
-          } else {
-            // 单人模式：验证1张自拍
-            if (!selectedSelfies[0]) {
-              Alert.alert('错误', '请先选择自拍照');
-              setIsFusionProcessing(false);
-              return;
-            }
-          }
-          // 注意：result_image 不再是必填项，因为 exclude_result_image 可能为 true
-        } else if (!finalPrompt && taskType !== TaskType.VIDEO_EFFECT) {
+      // 豆包图生图需要 prompt_text、用户自拍图和 result_image
+      if (taskType === 'doubao_image_to_image') {
+        if (!finalPrompt) {
+          Alert.alert('错误', '缺少提示词数据，无法进行豆包图生图创作');
+          setIsFusionProcessing(false);
+          return;
+        }
+        if (!isMultiPerson && !selectedSelfies[0]) {
+          Alert.alert('错误', '请先选择自拍照');
+          setIsFusionProcessing(false);
+          return;
+        }
+      } else if (!finalPrompt && taskType !== 'video_effect') {
           // 其他任务（除了视频特效）也需要 prompt
           Alert.alert('错误', '缺少提示词数据，无法进行创作');
           setIsFusionProcessing(false);
           return;
         }
         
-        // 验证必填参数
-        if ((taskType === TaskType.IMAGE_TO_IMAGE || taskType === TaskType.IMAGE_TO_VIDEO) && !selectedSelfies[0]) {
+        // 除视频特效外，其余异步任务均需要至少一张自拍（prompt+image 固化传参，新增模型无需改此处）
+        if (taskType !== 'video_effect' && !selectedSelfies[0]) {
           Alert.alert('错误', '请先选择自拍照');
           setIsFusionProcessing(false);
           return;
         }
         
-        // 视频特效使用首帧图片（从selectedSelfies[0]或images获取）
-        // 不需要额外验证，因为视频特效实际上使用的是首帧图片URL
-        
-        console.log('[BeforeCreation] Starting AsyncTask:', { taskType, prompt: finalPrompt });
+        // 视频特效使用首帧图片（从 selectedSelfies[0] 或 images 获取），不需要额外验证
+      console.log('[BeforeCreation] Starting AsyncTask:', { taskType, prompt: finalPrompt });
         
         // 确保有认证态（包括匿名用户），获取 UID
         const authData = await authService.ensureAuthenticated();
@@ -824,97 +889,19 @@ const BeforeCreationScreen: React.FC = () => {
           console.error('[BeforeCreation] Failed to get user UID');
           throw new Error('无法获取用户信息');
         }
-        const uid = authData.data.uid;
 
-        // 构建视频参数（视频特效使用）
-        const videoParams: VideoParams = {};
-        if (taskType === TaskType.VIDEO_EFFECT) {
-          videoParams.resolution = '720P'; // 默认720P
-          videoParams.template = albumRecord.video_effect_template || 'flying';
-          videoParams.style_type = albumRecord.video_effect_template || 'flying'; // 向后兼容
-        } else if (taskType === TaskType.IMAGE_TO_VIDEO) {
-          videoParams.resolution = '720P'; // 默认720P
-        }
-
-        // 构建人像风格重绘参数
-        const styleRedrawParams: StyleRedrawParams = {};
-        if (taskType === TaskType.PORTRAIT_STYLE_REDRAW) {
-          if (albumRecord.style_index !== undefined) {
-            styleRedrawParams.style_index = albumRecord.style_index;
-          }
-          if (albumRecord.style_ref_url) {
-            styleRedrawParams.style_ref_url = albumRecord.style_ref_url;
-          }
-        }
-
-        // 构建 images 数组
-        // 豆包图生图：result_image 默认在第一位（如果存在且未排除），后续为用户自拍
-        // 其他任务：使用 selectedSelfies[0]
-        let imagesArray: string[] = [];
-        // 从相册数据中读取 exclude_result_image 标记位（默认 false，即参考 result_image，保持历史版本兼容）
-        const excludeResultImage = albumRecord.exclude_result_image === true;
-        
-        if (taskType === TaskType.DOUBAO_IMAGE_TO_IMAGE) {
-          // 豆包图生图：按照新的顺序构建
-          // 1. 如果 exclude_result_image 为 false 且 result_image 存在，放在第一位
-          if (albumRecord.result_image && !excludeResultImage) {
-            imagesArray.push(albumRecord.result_image);
-          }
-          
-          // 2. 添加用户自拍（单人模式：1张，多人合拍：2张）
-          if (isMultiPerson) {
-            // 多人合拍：添加2张自拍
-            if (selectedSelfies.length >= 2 && selectedSelfies[0] && selectedSelfies[1]) {
-              imagesArray.push(selectedSelfies[0], selectedSelfies[1]);
-            }
-          } else {
-            // 单人模式：添加1张自拍
-            if (selectedSelfies[0]) {
-              imagesArray.push(selectedSelfies[0]);
-            }
-          }
-          
-          console.log('[BeforeCreation] 豆包图生图 images 数组:', {
-            'isMultiPerson': isMultiPerson,
-            'excludeResultImage': excludeResultImage,
-            'imagesArray': imagesArray,
-            '生成方式': excludeResultImage 
-              ? (isMultiPerson ? '仅使用2张用户自拍图 + prompt' : '仅使用用户自拍图 + prompt')
-              : (isMultiPerson ? '使用 result_image + 2张用户自拍图 + prompt' : '使用 result_image + 用户自拍图 + prompt')
-          });
-        } else {
-          // 其他异步任务使用自拍图
-          if (selectedSelfies[0]) {
-            imagesArray = [selectedSelfies[0]];
-          }
-        }
-
-        const taskParams: StartAsyncTaskPayload = {
-             taskType: taskType,
-             prompt: finalPrompt || '', // 视频特效和人像风格重绘不需要prompt，但保持向后兼容
-             enableCustomPrompt: enableCustomPrompt,
-             customPrompt: enableCustomPrompt ? trimmedCustomPrompt : '',
-             images: imagesArray, // 根据任务类型构建不同的 images 数组
-             excludeResultImage: taskType === TaskType.DOUBAO_IMAGE_TO_IMAGE ? excludeResultImage : undefined, // 仅在豆包图生图时传递
-             audioUrl: taskType === TaskType.IMAGE_TO_VIDEO ? albumRecord.audio_url : undefined, // 图生视频音频URL（如果相册数据中有）
-             activityId: currentActivityId,
-             albumId: albumRecord.album_id,
-             activityTitle: albumRecord.album_name,
-             activityDescription: albumRecord.album_description,
-             // 封面统一只传图片 URL，避免把 preview_video_url 这种视频 URL 当封面导致任务面板黑屏
-             activityImage: getAlbumMediaInfo(albumRecord).coverImageUrl,
-             templateId: currentTemplate?.template_id || albumRecord.album_id,
-             price: totalPrice,
-             videoParams: Object.keys(videoParams).length > 0 ? videoParams : undefined,
-             styleRedrawParams: Object.keys(styleRedrawParams).length > 0 ? styleRedrawParams : undefined,
-             promptData: {
-               text: finalPrompt,
-               srcImage: selectedSelfies[0] || undefined, // 豆包图生图使用用户选择的自拍图（多人合拍时使用第一张）
-               resultImage: albumRecord.result_image, // 场景图（如果存在）
-               styleTitle: albumRecord.album_name,
-               styleDesc: albumRecord.album_description,
-             }
-        };
+        const taskParams = buildTaskParams(taskType, {
+          albumRecord,
+          currentTemplate,
+          currentActivityId,
+          selectedSelfies,
+          selfieUrls,
+          isMultiPerson,
+          finalPrompt,
+          enableCustomPrompt,
+          trimmedCustomPrompt,
+          totalPrice,
+        });
         console.log('[BeforeCreation] Dispatching startAsyncTask:', taskParams);
 
         try {
@@ -974,45 +961,13 @@ const BeforeCreationScreen: React.FC = () => {
         });
 
         // 豆包图生图虽然调用是同步的，但需要至少5秒，所以也当作异步任务展示
-        const alertMessage = taskType === TaskType.DOUBAO_IMAGE_TO_IMAGE
+        const alertMessage = taskType === 'doubao_image_to_image'
           ? `AI正在努力创作中，预计需要5-10秒。完成后会提醒你，记得去"我的作品"查看哦～`
           : `AI正在努力创作中，预计需要1-3分钟。完成后会提醒你，记得去"我的作品"查看哦～`;
 
         Alert.alert('创作已开始', alertMessage, [
           { text: '好的', onPress: () => navigation.goBack() }
         ]);
-
-      } else {
-        // 同步任务（换脸）- 使用 templateId
-        if (!currentTemplate) {
-          Alert.alert('错误', '未找到选中的模板');
-          setIsFusionProcessing(false);
-          return;
-        }
-
-        // 验证 template_id 是否存在（换脸需要 templateId）
-        if (!currentTemplate.template_id) {
-          Alert.alert('错误', '模板ID缺失，无法进行换脸创作');
-          setIsFusionProcessing(false);
-          return;
-        }
-
-        // 埋点：跳转到换脸页面（使用 fg_action_ 前缀，包含专辑标题）
-        aegisService.reportUserAction('navigate_to_fusion', {
-          album_id: currentAlbum?.album_id || '',
-          album_title: currentAlbum?.album_name || '', // 专辑标题
-          template_id: currentTemplate?.template_id || '',
-          activity_id: currentActivityId,
-          task_type: 'face_fusion',
-        });
-
-        // 跳转到CreationResult页面（换脸使用 templateId）
-        navigation.navigate('CreationResult', {
-          albumData: currentAlbum,
-          selfieUrl: selectedSelfies[0] || undefined,
-          activityId: currentActivityId, 
-        });
-      }
 
     } catch (error) {
       console.error('处理失败:', error);
@@ -1028,7 +983,7 @@ const BeforeCreationScreen: React.FC = () => {
     } finally {
       setIsFusionProcessing(false);
     }
-  }, [selectedSelfies, customPrompt, navigation, activityId, albumsWithCurrent, activeAlbumIndex, activities, dispatch, user, userInfo, isVip, balance]);
+  }, [selectedSelfies, customPrompt, navigation, activityId, albumsWithCurrent, activeAlbumIndex, activities, dispatch, user, userInfo, isVip, balance, buildTaskParams, selfieUrls]);
 
   const handleBackPress = () => {
     navigation.goBack();

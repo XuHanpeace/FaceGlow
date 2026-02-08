@@ -8,7 +8,8 @@ import { fetchUserWorks, updateWorkItem } from './userWorksSlice';
 export interface AsyncTask {
   taskId: string;
   workId: string; // 关联的作品ID
-  taskType: TaskType;
+  /** 任务类型（与 callBailian task_type 一致，新增模型由相册 task_execution_type 派生，无需改枚举） */
+  taskType: TaskType | string;
   status: TaskStatus;
   startTime: number;
   activityTitle: string;
@@ -67,8 +68,8 @@ export interface StyleRedrawParams {
  * 发起异步任务的参数接口
  */
 export interface StartAsyncTaskPayload {
-  /** 任务类型：图生图、图生视频、视频特效 */
-  taskType: TaskType;
+  /** 任务类型（由相册 task_execution_type 去掉 async_ 前缀派生，如 async_hunyuan_image -> hunyuan_image，新增模型无需改枚举） */
+  taskType: TaskType | string;
   /** 提示词文本 */
   prompt: string;
   /** 是否启用自定义提示词（图生视频使用） */
@@ -106,6 +107,8 @@ export interface StartAsyncTaskPayload {
   videoParams?: VideoParams;
   /** 人像风格重绘参数 */
   styleRedrawParams?: StyleRedrawParams;
+  /** 任务级参数（从相册 task_params 透传，如混元 resolution/revise，新增模型无需改客户端） */
+  taskParams?: Record<string, any>;
 }
 
 interface AsyncTaskState {
@@ -329,6 +332,8 @@ export const startAsyncTask = createAsyncThunk(
           // 人像风格重绘参数
           style_index: payload.styleRedrawParams?.style_index,
           style_ref_url: payload.styleRedrawParams?.style_ref_url,
+          // 相册下发的任务参数（如混元 resolution/revise），新增模型由后台配置 task_params 即可
+          ...payload.taskParams,
         },
         // 统一由 HttpClient 拦截器注入 uid，避免业务层手动拼装
         user_id: '__AUTO__',
@@ -336,7 +341,7 @@ export const startAsyncTask = createAsyncThunk(
       };
 
       // 豆包图生图：先创建 PENDING 状态的任务，然后在后台处理
-      if (payload.taskType === TaskType.DOUBAO_IMAGE_TO_IMAGE) {
+      if (payload.taskType === 'doubao_image_to_image') {
         // 注意：余额检查在后台处理时进行，如果余额不足会更新任务状态为失败
         // 1. 先创建 PENDING 状态的任务记录（不调用 API）
         const taskId = `doubao_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
