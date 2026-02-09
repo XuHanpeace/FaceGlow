@@ -460,6 +460,7 @@ const BeforeCreationScreen: React.FC = () => {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.every((item: unknown) => typeof item === 'string')) {
+          console.log('[BeforeCreation] 从存储读取自拍选择:', parsed);
           return parsed;
         }
       }
@@ -472,15 +473,18 @@ const BeforeCreationScreen: React.FC = () => {
   // 保存自拍选择到存储
   const saveSelectedSelfies = useCallback((selfies: string[]) => {
     try {
-      storage.set(STORAGE_KEY_SELECTED_SELFIES, JSON.stringify(selfies));
+      const value = JSON.stringify(selfies);
+      storage.set(STORAGE_KEY_SELECTED_SELFIES, value);
+      console.log('[BeforeCreation] 保存自拍选择到存储:', selfies);
     } catch (error) {
       console.warn('保存自拍选择失败:', error);
     }
   }, []);
 
   const [selectedSelfies, setSelectedSelfies] = useState<string[]>(() => {
-    // 初始化时从存储中恢复
-    return getStoredSelectedSelfies();
+    // 初始化时先返回空数组，等待 selfieUrls 加载完成后再从存储恢复
+    // 这样可以确保在验证 URL 有效性时，selfieUrls 已经加载完成
+    return [];
   });
   const [activeAlbumIndex, setActiveAlbumIndex] = useState(initialIndex);
   const [customPrompt, setCustomPrompt] = useState<string>('');
@@ -544,13 +548,6 @@ const BeforeCreationScreen: React.FC = () => {
     }
   }, [activeAlbumIndex, albumsWithCurrent, getStoredCustomPrompt]);
 
-  // 监听 selectedSelfies 变化并保存到存储
-  useEffect(() => {
-    if (selectedSelfies.length > 0) {
-      saveSelectedSelfies(selectedSelfies);
-    }
-  }, [selectedSelfies, saveSelectedSelfies]);
-
   // 初始化自拍选择：只在首次加载或自拍列表变化时初始化，记住用户的选择
   useEffect(() => {
     if (selfieUrls.length === 0) {
@@ -564,52 +561,65 @@ const BeforeCreationScreen: React.FC = () => {
     const albumRecord = currentAlbum as unknown as AlbumRecord;
     const isMultiPerson = albumRecord.is_multi_person === true;
     
-    // 检查当前选择是否与相册类型匹配
+    // 验证存储的自拍URL是否仍然有效（在当前用户的selfieUrls列表中）
+    const validateSelfieUrl = (url: string): boolean => {
+      return selfieUrls.includes(url);
+    };
+    
+    // 直接从存储读取，而不是依赖 selectedSelfies state（避免循环更新）
+    const storedSelfies = getStoredSelectedSelfies();
+    
+    // 检查存储的选择是否与相册类型匹配，且URL仍然有效
     const needsMultiPerson = isMultiPerson;
-    const currentIsMultiPerson = selectedSelfies.length >= 2;
+    const storedIsMultiPerson = storedSelfies.length >= 2;
     
-    // 如果选择的数量与相册类型匹配，且都有值，就保留选择
-    if (needsMultiPerson && currentIsMultiPerson && selectedSelfies[0] && selectedSelfies[1]) {
-      return; // 保留用户的选择
-    }
-    if (!needsMultiPerson && !currentIsMultiPerson && selectedSelfies[0]) {
-      return; // 保留用户的选择
+    let targetSelfies: string[] = [];
+    
+    // 如果存储的选择数量与相册类型匹配，且都有值，且URL仍然有效，就使用存储的值
+    if (needsMultiPerson && storedIsMultiPerson && storedSelfies[0] && storedSelfies[1]) {
+      if (validateSelfieUrl(storedSelfies[0]) && validateSelfieUrl(storedSelfies[1])) {
+        targetSelfies = storedSelfies;
+      }
+    } else if (!needsMultiPerson && !storedIsMultiPerson && storedSelfies[0]) {
+      if (validateSelfieUrl(storedSelfies[0])) {
+        targetSelfies = storedSelfies;
+      }
     }
     
-    // 如果类型不匹配或没有选择，才初始化
-    if (isMultiPerson) {
-      // 多人合拍模式：填充第一张和第二张自拍
-      const newSelfies = [
-        selfieUrls[0] || '',
-        selfieUrls[1] || ''
-      ];
-      setSelectedSelfies(prev => {
-        // 如果之前是单人模式，需要扩展为多人模式，保留第一张自拍
-        if (prev.length === 1 && prev[0]) {
-          const result = [prev[0], newSelfies[1]];
-          // Check if result is different from prev
-          if (prev.length === result.length && prev[0] === result[0] && prev[1] === result[1]) return prev;
-          return result;
-        }
-        // Check if newSelfies is different from prev
-        if (prev.length === newSelfies.length && prev[0] === newSelfies[0] && prev[1] === newSelfies[1]) return prev;
-        return newSelfies;
-      });
-    } else {
-      // 单人模式：只填充第一张自拍
-      const newSelfies = [selfieUrls[0] || ''];
-      setSelectedSelfies(prev => {
-        // 如果之前是多人模式，保留第一张自拍
-        if (prev.length >= 1 && prev[0]) {
-          const result = [prev[0]];
-          if (prev.length === result.length && prev[0] === result[0]) return prev;
-          return result;
-        }
-        if (prev.length === newSelfies.length && prev[0] === newSelfies[0]) return prev;
-        return newSelfies;
-      });
+    // 如果存储的值无效，则使用默认值
+    if (targetSelfies.length === 0) {
+      if (isMultiPerson) {
+        // 多人合拍模式：优先使用存储的有效自拍，否则使用默认的第一张和第二张
+        const firstSelfie = storedSelfies[0] && validateSelfieUrl(storedSelfies[0]) 
+          ? storedSelfies[0] 
+          : selfieUrls[0] || '';
+        const secondSelfie = storedSelfies[1] && validateSelfieUrl(storedSelfies[1])
+          ? storedSelfies[1]
+          : selfieUrls[1] || '';
+        
+        targetSelfies = [firstSelfie, secondSelfie];
+      } else {
+        // 单人模式：优先使用存储的有效自拍，否则使用默认的第一张
+        const firstSelfie = storedSelfies[0] && validateSelfieUrl(storedSelfies[0])
+          ? storedSelfies[0]
+          : selfieUrls[0] || '';
+        
+        targetSelfies = [firstSelfie];
+      }
     }
-  }, [selfieUrls, activeAlbumIndex, albumsWithCurrent]);
+    
+    // 强制更新 selectedSelfies，确保组件正确显示存储的值
+    console.log('[BeforeCreation] 初始化自拍选择:', {
+      currentSelectedSelfies: selectedSelfies,
+      targetSelfies,
+      selfieUrlsLength: selfieUrls.length,
+      storedSelfies,
+      isMultiPerson,
+    });
+    
+    // 直接设置目标值，不进行比较，确保组件能正确更新
+    setSelectedSelfies(targetSelfies);
+  }, [selfieUrls, activeAlbumIndex, albumsWithCurrent, getStoredSelectedSelfies]);
 
   // 页面加载时上报埋点
   useEffect(() => {
@@ -808,6 +818,8 @@ const BeforeCreationScreen: React.FC = () => {
         }
       }
 
+      // 在点击创作时，显式保存当前的自拍选择到存储
+      saveSelectedSelfies(selectedSelfies);
       
       // 获取价格信息（用于传递给云函数）
       const albumPrice = currentAlbum.price || 0;
@@ -983,7 +995,7 @@ const BeforeCreationScreen: React.FC = () => {
     } finally {
       setIsFusionProcessing(false);
     }
-  }, [selectedSelfies, customPrompt, navigation, activityId, albumsWithCurrent, activeAlbumIndex, activities, dispatch, user, userInfo, isVip, balance, buildTaskParams, selfieUrls]);
+  }, [selectedSelfies, customPrompt, navigation, activityId, albumsWithCurrent, activeAlbumIndex, activities, dispatch, user, userInfo, isVip, balance, buildTaskParams, selfieUrls, saveSelectedSelfies]);
 
   const handleBackPress = () => {
     navigation.goBack();

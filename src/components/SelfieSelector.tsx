@@ -49,9 +49,20 @@ const SelfieSelector: React.FC<SelfieSelectorProps> = ({
     }, [dispatch])
   );
 
-  // 初始化选中的自拍
+  // 监听 selectedSelfieUrl prop 的变化，同步更新内部 state
   useEffect(() => {
-    if (!currentSelectedSelfie && selfies.length > 0) {
+    if (selectedSelfieUrl && selectedSelfieUrl !== currentSelectedSelfie) {
+      console.log('[SelfieSelector] selectedSelfieUrl prop 变化，更新内部 state:', selectedSelfieUrl);
+      setCurrentSelectedSelfie(selectedSelfieUrl);
+    } else if (!selectedSelfieUrl && currentSelectedSelfie) {
+      // 如果 prop 变为 undefined，清空选择
+      setCurrentSelectedSelfie(null);
+    }
+  }, [selectedSelfieUrl]);
+
+  // 初始化选中的自拍（仅在 currentSelectedSelfie 为空且没有传入 selectedSelfieUrl 时）
+  useEffect(() => {
+    if (!currentSelectedSelfie && !selectedSelfieUrl && selfies.length > 0) {
       // 优先使用默认自拍，如果没有则使用第一张
       const targetSelfie = defaultSelfieUrl 
         ? selfies.find(selfie => selfie.url === defaultSelfieUrl) || selfies[0]
@@ -60,11 +71,12 @@ const SelfieSelector: React.FC<SelfieSelectorProps> = ({
       setCurrentSelectedSelfie(targetSelfie.url);
       onSelfieSelect(targetSelfie.url);
     }
-  }, [selfies, currentSelectedSelfie, onSelfieSelect, defaultSelfieUrl]);
+  }, [selfies, currentSelectedSelfie, selectedSelfieUrl, onSelfieSelect, defaultSelfieUrl]);
 
   // 当默认自拍变化时（比如用户上传了新自拍），自动选中新的默认自拍
+  // 注意：只有在没有传入 selectedSelfieUrl prop 时才自动切换，避免覆盖外部传入的选择
   useEffect(() => {
-    if (defaultSelfieUrl && selfies.length > 0) {
+    if (!selectedSelfieUrl && defaultSelfieUrl && selfies.length > 0) {
       const defaultSelfieExists = selfies.some(selfie => selfie.url === defaultSelfieUrl);
       // 如果默认自拍存在于列表中，且当前选中的不是默认自拍，则自动切换
       if (defaultSelfieExists && currentSelectedSelfie !== defaultSelfieUrl) {
@@ -72,7 +84,7 @@ const SelfieSelector: React.FC<SelfieSelectorProps> = ({
         onSelfieSelect(defaultSelfieUrl);
       }
     }
-  }, [defaultSelfieUrl, selfies]);
+  }, [defaultSelfieUrl, selfies, selectedSelfieUrl, currentSelectedSelfie, onSelfieSelect]);
 
   const handleSelfiePress = async () => {
     if (selfies.length === 0) {
