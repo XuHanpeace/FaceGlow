@@ -49,6 +49,7 @@ export type RootStackParamList = {
   };
   VideoTest: undefined;
   DebugTest: undefined;
+  RNRenderLab: undefined;
   CheckIn: undefined;
   TaskCenter: undefined;
 };

@@ -17,6 +17,7 @@
 		3C6BBF232EE51A2F00341FD8 /* v2.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = 3C6BBF202EE51A2F00341FD8 /* v2.mp4 */; };
 		3CB74E8F2E707E1800AB5C28 /* ApplePayModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 3CB74E8E2E707E1800AB5C28 /* ApplePayModule.m */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		A1F0C3D42F1B4E5600ABC001 /* NativeFaceGlowTurbo.mm in Sources */ = {isa = PBXBuildFile; fileRef = A1F0C3D42F1B4E5600ABC003 /* NativeFaceGlowTurbo.mm */; };
 		C11295B267451C3619CCC004 /* libPods-MyCrossPlatformApp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B24654D864AB3E54102D98DF /* libPods-MyCrossPlatformApp.a */; };
 		ED297164215061F000B7C4FE /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ED297163215061F000B7C4FE /* StoreKit.framework */; };
 /* End PBXBuildFile section */
@@ -42,6 +43,8 @@
 		3CB74E8E2E707E1800AB5C28 /* ApplePayModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ApplePayModule.m; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = MyCrossPlatformApp/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		8C14897F460798EC11F9FF3B /* Pods-MyCrossPlatformApp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MyCrossPlatformApp.debug.xcconfig"; path = "Target Support Files/Pods-MyCrossPlatformApp/Pods-MyCrossPlatformApp.debug.xcconfig"; sourceTree = "<group>"; };
+		A1F0C3D42F1B4E5600ABC002 /* NativeFaceGlowTurbo.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MyCrossPlatformApp/NativeFaceGlowTurbo.h; sourceTree = "<group>"; };
+		A1F0C3D42F1B4E5600ABC003 /* NativeFaceGlowTurbo.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = MyCrossPlatformApp/NativeFaceGlowTurbo.mm; sourceTree = "<group>"; };
 		B24654D864AB3E54102D98DF /* libPods-MyCrossPlatformApp.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-MyCrossPlatformApp.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		ED297163215061F000B7C4FE /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
@@ -126,6 +129,8 @@
 				3CB74E8E2E707E1800AB5C28 /* ApplePayModule.m */,
 				365D68972E5B05DC00CF6564 /* NativeCOS.h */,
 				365D68952E5B05C800CF6564 /* NativeCOS.m */,
+				A1F0C3D42F1B4E5600ABC002 /* NativeFaceGlowTurbo.h */,
+				A1F0C3D42F1B4E5600ABC003 /* NativeFaceGlowTurbo.mm */,
 				13B07FAE1A68108700A75B9A /* MyCrossPlatformApp */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				00E356EF1AD99517003FC87E /* MyCrossPlatformAppTests */,
@@ -330,6 +335,7 @@
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
 				365D68962E5B05C800CF6564 /* NativeCOS.m in Sources */,
 				365F1FB72D1710BA00177D30 /* NativeNavigation.m in Sources */,
+				A1F0C3D42F1B4E5600ABC001 /* NativeFaceGlowTurbo.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

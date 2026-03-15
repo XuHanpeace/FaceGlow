@@ -135,6 +135,17 @@ const DebugTestScreen: React.FC = () => {
           使用 Mock 数据测试异步任务功能
         </Text>
 
+        <TouchableOpacity
+          style={styles.renderLabEntry}
+          onPress={() => navigation.navigate('RNRenderLab')}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.renderLabTitle}>RN - iOS 渲染原理实验页</Text>
+          <Text style={styles.renderLabSubtitle}>
+            Fiber / 线程 / 上屏 / 性能优化，可交互并带日志讲解
+          </Text>
+        </TouchableOpacity>
+
         {testButtons.map((button, index) => {
           const isLoading = loading === button.taskName;
           
@@ -215,6 +226,25 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderRadius: 12,
     overflow: 'hidden',
+  },
+  renderLabEntry: {
+    marginBottom: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(126, 163, 255, 0.6)',
+    backgroundColor: 'rgba(53, 93, 221, 0.22)',
+    padding: 14,
+  },
+  renderLabTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#EAF0FF',
+    marginBottom: 6,
+  },
+  renderLabSubtitle: {
+    fontSize: 12,
+    color: '#C9D8FF',
+    lineHeight: 18,
   },
   button: {
     padding: 20,

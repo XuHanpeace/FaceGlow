@@ -26,7 +26,7 @@ import AsyncTaskFloatBar from './src/components/AsyncTaskFloatBar';
 import AsyncTaskPanel from './src/components/AsyncTaskPanel';
 import DebugEntry from './src/components/DebugEntry';
 import FloatingBottomTab from './src/components/FloatingBottomTab';
-import { navigationRef, replace } from './src/navigation/navigationUtils';
+import { navigationRef, navigate, replace } from './src/navigation/navigationUtils';
 import { fetchTasks, updateTaskProgress } from './src/store/slices/taskSlice';
 import { eventService } from './src/services/eventService';
 
@@ -170,6 +170,7 @@ function App(): JSX.Element {
             currentRoute={currentRoute}
             onTabPress={handleTabPress}
           />
+          {__DEV__ && <DebugEntry onPress={() => navigate('DebugTest')} />}
         </View>
        
         <LoginPromptManager />

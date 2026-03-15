@@ -1,4 +1,3 @@
-import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import NewHomeScreen from '../screens/NewHomeScreen';
@@ -16,6 +15,7 @@ import AboutUsScreen from '../screens/AboutUsScreen';
 import WebViewScreen from '../screens/WebViewScreen';
 import VideoTestScreen from '../screens/VideoTestScreen';
 import DebugTestScreen from '../screens/DebugTestScreen';
+import RNRenderLabScreen from '../screens/RNRenderLabScreen';
 import CheckInScreen from '../screens/CheckInScreen';
 import TaskCenterScreen from '../screens/TaskCenterScreen';
 import { RootStackParamList } from '../types/navigation';
@@ -152,6 +152,15 @@ const StackNavigator = () => {
       <Stack.Screen
         name="DebugTest"
         component={DebugTestScreen}
+        options={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          animationDuration: 250,
+        }}
+      />
+      <Stack.Screen
+        name="RNRenderLab"
+        component={RNRenderLabScreen}
         options={{
           headerShown: false,
           animation: 'slide_from_right',

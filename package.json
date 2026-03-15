@@ -85,6 +85,11 @@
   "engines": {
     "node": ">=18"
   },
+  "codegenConfig": {
+    "name": "FaceGlowSpecs",
+    "type": "modules",
+    "jsSrcsDir": "specs"
+  },
   "lint-staged": {
     "**/*": "prettier --write --ignore-unknown"
   }
